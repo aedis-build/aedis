@@ -37,5 +37,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Aedis.Architecture.Tests/Aedis.Architecture.Tests.csproj" />
+    <Project Path="tests/Aedis.Storage.Tests/Aedis.Storage.Tests.csproj" />
   </Folder>
 </Solution>
