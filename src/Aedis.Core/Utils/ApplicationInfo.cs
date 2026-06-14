@@ -30,8 +30,14 @@ public static class ApplicationInfo
     }
 
     public static DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
-    public static DateTimeOffset BrasiliaNow => TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, GetDefaultTimeZone());
-    public static DateOnly BrasiliaToday => DateOnly.FromDateTime(BrasiliaNow.DateTime);
+
+    /// <summary>Agora no fuso padrão (<c>TZ_DEFAULT</c>, ou Brasil se ausente).</summary>
+    public static DateTimeOffset Now => TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, GetDefaultTimeZone());
+
+    /// <summary>Data de hoje no fuso padrão (<c>TZ_DEFAULT</c>, ou Brasil se ausente).</summary>
+    public static DateOnly Today => DateOnly.FromDateTime(Now.DateTime);
+
+    /// <summary>Data de hoje em UTC.</summary>
     public static DateOnly Date => DateOnly.FromDateTime(UtcNow.Date);
 
     public static void SetName(string name) {
@@ -45,7 +51,30 @@ public static class ApplicationInfo
         _overrideName = null;
     }
 
+    /// <summary>
+    ///     Fuso horário padrão da aplicação. Lê a variável de ambiente <c>TZ_DEFAULT</c>
+    ///     (ex.: "America/Sao_Paulo", "UTC", "Europe/Lisbon"); se ausente, vazia ou inválida,
+    ///     usa o Brasil (America/Sao_Paulo) como padrão.
+    /// </summary>
     public static TimeZoneInfo GetDefaultTimeZone() {
+        var configured = Environment.GetEnvironmentVariable("TZ_DEFAULT");
+
+        if (!string.IsNullOrWhiteSpace(configured)) {
+            try {
+                return TimeZoneInfo.FindSystemTimeZoneById(configured);
+            }
+            catch (TimeZoneNotFoundException) {
+                // valor inválido → cai no default
+            }
+            catch (InvalidTimeZoneException) {
+                // dados de fuso corrompidos → cai no default
+            }
+        }
+
+        return BrazilDefault();
+    }
+
+    private static TimeZoneInfo BrazilDefault() {
         try {
             return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
         }
