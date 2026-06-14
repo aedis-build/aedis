@@ -1,4 +1,4 @@
-namespace Aedis.Domain.Strategy;
+namespace Aedis.Domain.Strategy.Abstractions;
 
 public interface IStrategy<in TContext>
 {

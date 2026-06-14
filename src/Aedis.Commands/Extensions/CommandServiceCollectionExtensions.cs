@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Aedis.Commands.Abstractions;
 
 namespace Aedis.Commands.Extensions;
 

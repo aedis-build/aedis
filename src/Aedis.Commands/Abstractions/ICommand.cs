@@ -1,4 +1,4 @@
-namespace Aedis.Commands;
+namespace Aedis.Commands.Abstractions;
 
 /// <summary>
 ///     Representa um comando que pode ser executado e retorna um resultado.

@@ -1,3 +1,4 @@
+using Aedis.Domain.ChainOfResponsibility.Abstractions;
 namespace Aedis.Domain.ChainOfResponsibility;
 
 /// <summary>

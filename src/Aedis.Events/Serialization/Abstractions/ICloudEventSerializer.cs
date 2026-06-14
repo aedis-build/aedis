@@ -1,4 +1,4 @@
-namespace Aedis.Events.Serialization;
+namespace Aedis.Events.Serialization.Abstractions;
 
 /// <summary>
 ///     Interface para serialização e deserialização de ResourceCloudEvent.

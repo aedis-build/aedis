@@ -1,4 +1,4 @@
-namespace Aedis.Domain.ChainOfResponsibility;
+namespace Aedis.Domain.ChainOfResponsibility.Abstractions;
 
 /// <summary>
 ///     Interface para executar uma cadeia de handlers.

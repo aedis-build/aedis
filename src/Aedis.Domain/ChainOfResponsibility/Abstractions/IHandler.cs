@@ -1,4 +1,4 @@
-namespace Aedis.Domain.ChainOfResponsibility;
+namespace Aedis.Domain.ChainOfResponsibility.Abstractions;
 
 /// <summary>
 ///     Defines the contract for a handler in the chain of responsibility pattern.

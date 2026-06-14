@@ -1,3 +1,4 @@
+using Aedis.Domain.Specifications.Abstractions;
 namespace Aedis.Domain.Specifications;
 
 public abstract class SpecificationBase<T> : ISpecification<T>

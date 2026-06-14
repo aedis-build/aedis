@@ -1,4 +1,4 @@
-namespace Aedis.Domain.Strategy;
+namespace Aedis.Domain.Strategy.Abstractions;
 
 /// <summary>
 ///     Estratégia que pode ser identificada por uma chave direta (enum, string, etc).

@@ -1,4 +1,5 @@
 using Aedis.Domain.Strategy;
+using Aedis.Domain.Strategy.Abstractions;
 
 namespace Aedis.Database.Abstractions;
 

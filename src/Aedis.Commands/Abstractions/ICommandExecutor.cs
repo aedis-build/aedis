@@ -1,4 +1,4 @@
-namespace Aedis.Commands;
+namespace Aedis.Commands.Abstractions;
 
 /// <summary>
 ///     Executor de comandos responsável por encontrar o handler apropriado e executar o comando.

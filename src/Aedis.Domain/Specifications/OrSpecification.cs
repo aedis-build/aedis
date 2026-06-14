@@ -1,3 +1,4 @@
+using Aedis.Domain.Specifications.Abstractions;
 namespace Aedis.Domain.Specifications;
 
 public class OrSpecification<T>(ISpecification<T> left, ISpecification<T> right) : SpecificationBase<T>

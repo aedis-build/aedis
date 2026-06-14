@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Aedis.Core.Utils;
 using SystemJsonSerializer = System.Text.Json.JsonSerializer;
+using Aedis.Events.Serialization.Abstractions;
 
 namespace Aedis.Events.Serialization;
 

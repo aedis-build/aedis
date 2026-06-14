@@ -1,4 +1,4 @@
-namespace Aedis.Domain.Specifications;
+namespace Aedis.Domain.Specifications.Abstractions;
 
 public interface ISpecification<T>
 {

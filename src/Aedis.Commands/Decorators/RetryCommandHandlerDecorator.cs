@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Aedis.Commands.Abstractions;
 
 namespace Aedis.Commands.Decorators;
 
