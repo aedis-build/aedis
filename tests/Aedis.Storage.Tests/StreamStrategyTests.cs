@@ -1,13 +1,16 @@
 using System.Text;
+using Aedis.Domain.Strategy.Abstractions;
 using Aedis.Storage.Abstractions;
 using Aedis.Storage.Abstractions.Streaming;
+using FluentAssertions;
+using NSubstitute;
 using Xunit;
 
 namespace Aedis.Storage.Tests;
 
 /// <summary>
 ///     O diferencial da plataforma: seleção correta da estratégia de stream/memória conforme
-///     o <see cref="StreamMode" /> e o tamanho do conteúdo.
+///     o <see cref="StreamMode" /> e o tamanho do conteúdo. Exercita as estratégias e o resolver reais.
 /// </summary>
 public sealed class StreamStrategyTests
 {
@@ -33,8 +36,8 @@ public sealed class StreamStrategyTests
 
         await StreamStrategyResolver.CreateDefault().ExecuteAsync(ctx);
 
-        Assert.IsType<MemoryStream>(ctx.Result);
-        Assert.Equal(Payload, await ToBytesAsync(ctx.Result!));
+        ctx.Result.Should().BeOfType<MemoryStream>();
+        (await ToBytesAsync(ctx.Result!)).Should().Equal(Payload);
     }
 
     [Fact]
@@ -44,8 +47,8 @@ public sealed class StreamStrategyTests
 
         await StreamStrategyResolver.CreateDefault().ExecuteAsync(ctx);
 
-        Assert.IsType<FileStream>(ctx.Result);
-        Assert.Equal(Payload, await ToBytesAsync(ctx.Result!));
+        ctx.Result.Should().BeOfType<FileStream>();
+        (await ToBytesAsync(ctx.Result!)).Should().Equal(Payload);
     }
 
     [Fact]
@@ -54,8 +57,8 @@ public sealed class StreamStrategyTests
 
         await StreamStrategyResolver.CreateDefault().ExecuteAsync(ctx);
 
-        Assert.IsType<FileStream>(ctx.Result);
-        Assert.Equal(Payload, await ToBytesAsync(ctx.Result!));
+        ctx.Result.Should().BeOfType<FileStream>();
+        (await ToBytesAsync(ctx.Result!)).Should().Equal(Payload);
     }
 
     [Theory]
@@ -67,6 +70,34 @@ public sealed class StreamStrategyTests
 
         await StreamStrategyResolver.CreateDefault().ExecuteAsync(ctx);
 
-        Assert.Same(source, ctx.Result);
+        ctx.Result.Should().BeSameAs(source);
+    }
+
+    [Fact]
+    public async Task Resolver_executa_apenas_a_estrategia_que_aceita_o_contexto() {
+        var aceita = Substitute.For<IStrategy<StreamContext>>();
+        aceita.CanHandle(Arg.Any<StreamContext>()).Returns(true);
+
+        var ignora = Substitute.For<IStrategy<StreamContext>>();
+        ignora.CanHandle(Arg.Any<StreamContext>()).Returns(false);
+
+        var resolver = new StreamStrategyResolver([ignora, aceita]);
+        var ctx = Context(StreamMode.Default, Payload.Length);
+
+        await resolver.ExecuteAsync(ctx);
+
+        await aceita.Received(1).ExecuteAsync(ctx, Arg.Any<CancellationToken>());
+        await ignora.DidNotReceive().ExecuteAsync(Arg.Any<StreamContext>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Resolver_lanca_quando_nenhuma_estrategia_aceita() {
+        var nenhuma = Substitute.For<IStrategy<StreamContext>>();
+        nenhuma.CanHandle(Arg.Any<StreamContext>()).Returns(false);
+
+        var resolver = new StreamStrategyResolver([nenhuma]);
+        var act = () => resolver.ExecuteAsync(Context(StreamMode.Memory, 0));
+
+        await act.Should().ThrowAsync<NotSupportedException>();
     }
 }

@@ -1,17 +1,20 @@
 using System.Text;
 using Aedis.Storage.Abstractions;
+using FluentAssertions;
+using NSubstitute;
 using Xunit;
 
 namespace Aedis.Storage.Tests;
 
 /// <summary>
-///     Comportamento real do <see cref="DirectoryService" /> (impl FileSystem default):
-///     roundtrip, listagem, copy/move/delete, modos de stream e bloqueio de path traversal.
+///     Comportamento real do <see cref="DirectoryService" /> (impl FileSystem default), exercitado
+///     pelo contrato <see cref="IDirectory" />: roundtrip, listagem, copy/move/delete, modos de stream,
+///     progresso e bloqueio de path traversal.
 /// </summary>
 public sealed class DirectoryServiceTests : IDisposable
 {
     private readonly string _baseDir;
-    private readonly DirectoryService _sut;
+    private readonly IDirectory _sut;
 
     public DirectoryServiceTests() {
         _baseDir = Path.Combine(Path.GetTempPath(), "aedis-storage-tests", Guid.NewGuid().ToString("N"));
@@ -29,17 +32,27 @@ public sealed class DirectoryServiceTests : IDisposable
 
     private static Stream StreamOf(string content) => new MemoryStream(Encoding.UTF8.GetBytes(content));
 
-    private static async Task<string> ReadAllAsync(Stream stream) {
-        await using (stream) {
+    private static async Task<string> ReadAllAsync(Stream? stream) {
+        stream.Should().NotBeNull();
+        await using (stream!) {
             using var reader = new StreamReader(stream, Encoding.UTF8);
             return await reader.ReadToEndAsync();
         }
     }
 
     [Fact]
-    public void Construtor_cria_a_pasta_base_se_nao_existir() {
-        Assert.True(Directory.Exists(_baseDir));
-        Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetFullPath(_baseDir)), _sut.BasePath);
+    public void Construtor_cria_a_pasta_base_e_expoe_o_BasePath() {
+        var svc = new DirectoryService(_baseDir);
+
+        Directory.Exists(_baseDir).Should().BeTrue();
+        svc.BasePath.Should().Be(Path.TrimEndingDirectorySeparator(Path.GetFullPath(_baseDir)));
+    }
+
+    [Fact]
+    public void Construtor_exige_basePath() {
+        var act = () => new DirectoryService("  ");
+
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
@@ -48,13 +61,12 @@ public sealed class DirectoryServiceTests : IDisposable
 
         var result = await _sut.GetObjectAsync("docs/hello.txt");
 
-        Assert.NotNull(result);
-        Assert.Equal("olá mundo", await ReadAllAsync(result!));
+        (await ReadAllAsync(result)).Should().Be("olá mundo");
     }
 
     [Fact]
     public async Task Get_retorna_null_quando_objeto_nao_existe() {
-        Assert.Null(await _sut.GetObjectAsync("inexistente.txt"));
+        (await _sut.GetObjectAsync("inexistente.txt")).Should().BeNull();
     }
 
     [Fact]
@@ -63,8 +75,7 @@ public sealed class DirectoryServiceTests : IDisposable
 
         var result = await _sut.GetObjectAsync("a.txt", StreamMode.Memory);
 
-        Assert.IsType<MemoryStream>(result);
-        Assert.Equal("pequeno", await ReadAllAsync(result!));
+        result.Should().BeOfType<MemoryStream>();
     }
 
     [Theory]
@@ -77,8 +88,7 @@ public sealed class DirectoryServiceTests : IDisposable
 
         var result = await _sut.GetObjectAsync("x.bin", mode);
 
-        Assert.NotNull(result);
-        Assert.Equal("conteúdo-" + mode, await ReadAllAsync(result!));
+        (await ReadAllAsync(result)).Should().Be("conteúdo-" + mode);
     }
 
     [Fact]
@@ -89,16 +99,16 @@ public sealed class DirectoryServiceTests : IDisposable
         var keys = new List<string>();
         await foreach (var obj in _sut.ListObjectsAsync(null)) keys.Add(obj.FilePath);
 
-        Assert.Contains("f1.txt", keys);
-        Assert.Contains("sub/f2.txt", keys);
+        keys.Should().Contain("f1.txt").And.Contain("sub/f2.txt");
     }
 
     [Fact]
     public async Task Delete_remove_o_objeto() {
         await _sut.PutObjectAsync("del.txt", StreamOf("x"));
+
         await _sut.DeleteObjectAsync("del.txt");
 
-        Assert.Null(await _sut.GetObjectAsync("del.txt"));
+        (await _sut.GetObjectAsync("del.txt")).Should().BeNull();
     }
 
     [Fact]
@@ -107,8 +117,8 @@ public sealed class DirectoryServiceTests : IDisposable
 
         await _sut.CopyObjectAsync("src.txt", "dst.txt");
 
-        Assert.Equal("dado", await ReadAllAsync((await _sut.GetObjectAsync("src.txt"))!));
-        Assert.Equal("dado", await ReadAllAsync((await _sut.GetObjectAsync("dst.txt"))!));
+        (await ReadAllAsync(await _sut.GetObjectAsync("src.txt"))).Should().Be("dado");
+        (await ReadAllAsync(await _sut.GetObjectAsync("dst.txt"))).Should().Be("dado");
     }
 
     [Fact]
@@ -117,19 +127,17 @@ public sealed class DirectoryServiceTests : IDisposable
 
         await _sut.MoveObjectAsync("from.txt", "to.txt");
 
-        Assert.Null(await _sut.GetObjectAsync("from.txt"));
-        Assert.Equal("dado", await ReadAllAsync((await _sut.GetObjectAsync("to.txt"))!));
+        (await _sut.GetObjectAsync("from.txt")).Should().BeNull();
+        (await ReadAllAsync(await _sut.GetObjectAsync("to.txt"))).Should().Be("dado");
     }
 
     [Fact]
     public async Task Put_reporta_progresso_ate_100() {
-        var reports = new List<int>();
+        var onProgress = Substitute.For<Action<UploadProgress>>();
 
-        await _sut.PutObjectAsync("p.txt", StreamOf("conteúdo de progresso"),
-            onProgress: p => reports.Add(p.PercentDone));
+        await _sut.PutObjectAsync("p.txt", StreamOf("conteúdo de progresso"), onProgress: onProgress);
 
-        Assert.NotEmpty(reports);
-        Assert.Equal(100, reports[^1]);
+        onProgress.Received().Invoke(Arg.Is<UploadProgress>(p => p.PercentDone == 100));
     }
 
     [Theory]
@@ -137,7 +145,8 @@ public sealed class DirectoryServiceTests : IDisposable
     [InlineData("../../etc/passwd")]
     [InlineData("sub/../../fora.txt")]
     public async Task Bloqueia_path_traversal(string maliciousKey) {
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.PutObjectAsync(maliciousKey, StreamOf("x")));
+        var act = () => _sut.PutObjectAsync(maliciousKey, StreamOf("x"));
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 }
