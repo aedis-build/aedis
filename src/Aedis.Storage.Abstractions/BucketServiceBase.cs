@@ -12,12 +12,7 @@ namespace Aedis.Storage.Abstractions;
 /// <typeparam name="T">Marcador que distingue buckets no contêiner de DI.</typeparam>
 public abstract class BucketServiceBase<T> : IBucket<T>
 {
-    private readonly IStrategyResolver<StreamContext> _streamResolver =
-        new StreamStrategyResolver([
-            new MemoryStreamStrategy(),
-            new TempFileStreamStrategy(),
-            new ChunkedStreamStrategy()
-        ]);
+    private readonly IStrategyResolver<StreamContext> _streamResolver = StreamStrategyResolver.CreateDefault();
 
     // ---------- Template methods (lógica comum, agnóstica de provider) ----------
 

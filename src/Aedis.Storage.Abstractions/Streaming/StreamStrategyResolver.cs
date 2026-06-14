@@ -11,6 +11,15 @@ public sealed class StreamStrategyResolver(IEnumerable<IStrategy<StreamContext>>
 {
     private readonly IReadOnlyList<IStrategy<StreamContext>> _strategies = strategies.ToList();
 
+    /// <summary>Cria o resolver com as estratégias padrão (Memory, TempFile, Chunked).</summary>
+    public static StreamStrategyResolver CreateDefault() {
+        return new StreamStrategyResolver([
+            new MemoryStreamStrategy(),
+            new TempFileStreamStrategy(),
+            new ChunkedStreamStrategy()
+        ]);
+    }
+
     public async Task ExecuteAsync(StreamContext context, CancellationToken cancellationToken = default) {
         var strategy = _strategies.FirstOrDefault(s => s.CanHandle(context))
                        ?? throw new NotSupportedException($"StreamMode '{context.Mode}' não suportado.");
