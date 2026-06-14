@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
+    <ProjectReference Include="..\Aedis.Domain\Aedis.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
