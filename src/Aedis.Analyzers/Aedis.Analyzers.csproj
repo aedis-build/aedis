@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Analyzers Roslyn alvejam netstandard2.0 (rodam dentro do compilador). -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageId>Aedis.Analyzers</PackageId>
+    <Description>Aedis.Analyzers — diagnostics Roslyn que impõem a regra de dependência (domínio não referencia implementação) e convenções do Aedis.</Description>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Empacota o analyzer na pasta correta do .nupkg. -->
+  <ItemGroup>
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+
+</Project>

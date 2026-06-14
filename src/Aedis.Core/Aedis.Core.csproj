@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Core</PackageId>
+    <Description>Aedis.Core — parte da plataforma Aedis.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="UUIDNext" />
+  </ItemGroup>
+
+</Project>

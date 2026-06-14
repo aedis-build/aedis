@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Messaging.Abstractions</PackageId>
+    <Description>Aedis.Messaging.Abstractions — parte da plataforma Aedis.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
+    <ProjectReference Include="..\Aedis.Events\Aedis.Events.csproj" />
+  </ItemGroup>
+
+</Project>

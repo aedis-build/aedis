@@ -1,0 +1,43 @@
+## .NET / build
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+*.userosscache
+*.dll
+*.pdb
+*.exe
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!Directory.Packages.props
+
+## Test results
+[Tt]est[Rr]esult*/
+TestResults/
+*.trx
+*.coverage
+coverage*.json
+coverage*.xml
+coverage*.cobertura.xml
+
+## IDEs
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Misc
+*.log
+artifacts/

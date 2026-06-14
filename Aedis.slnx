@@ -1,0 +1,41 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Aedis.Analyzers/Aedis.Analyzers.csproj" />
+    <Project Path="src/Aedis.Build/Aedis.Build.csproj" />
+    <Project Path="src/Aedis.Cache.Abstractions/Aedis.Cache.Abstractions.csproj" />
+    <Project Path="src/Aedis.Cache.Redis/Aedis.Cache.Redis.csproj" />
+    <Project Path="src/Aedis.Commands/Aedis.Commands.csproj" />
+    <Project Path="src/Aedis.Core/Aedis.Core.csproj" />
+    <Project Path="src/Aedis.Database.Abstractions/Aedis.Database.Abstractions.csproj" />
+    <Project Path="src/Aedis.Database.Postgres/Aedis.Database.Postgres.csproj" />
+    <Project Path="src/Aedis.Database.SqlServer/Aedis.Database.SqlServer.csproj" />
+    <Project Path="src/Aedis.Diagnostics/Aedis.Diagnostics.csproj" />
+    <Project Path="src/Aedis.Domain/Aedis.Domain.csproj" />
+    <Project Path="src/Aedis.Events/Aedis.Events.csproj" />
+    <Project Path="src/Aedis.Excel.Abstractions/Aedis.Excel.Abstractions.csproj" />
+    <Project Path="src/Aedis.Excel.MiniExcel/Aedis.Excel.MiniExcel.csproj" />
+    <Project Path="src/Aedis.Exceptions/Aedis.Exceptions.csproj" />
+    <Project Path="src/Aedis.Hosting.Abstractions/Aedis.Hosting.Abstractions.csproj" />
+    <Project Path="src/Aedis.Hosting.AspNetCore/Aedis.Hosting.AspNetCore.csproj" />
+    <Project Path="src/Aedis.Hosting.Worker/Aedis.Hosting.Worker.csproj" />
+    <Project Path="src/Aedis.Http/Aedis.Http.csproj" />
+    <Project Path="src/Aedis.Messaging.Abstractions/Aedis.Messaging.Abstractions.csproj" />
+    <Project Path="src/Aedis.Messaging.AwsSqs/Aedis.Messaging.AwsSqs.csproj" />
+    <Project Path="src/Aedis.Messaging.IbmMq/Aedis.Messaging.IbmMq.csproj" />
+    <Project Path="src/Aedis.Messaging.RabbitMq/Aedis.Messaging.RabbitMq.csproj" />
+    <Project Path="src/Aedis.Observability.Abstractions/Aedis.Observability.Abstractions.csproj" />
+    <Project Path="src/Aedis.Observability.Otlp/Aedis.Observability.Otlp.csproj" />
+    <Project Path="src/Aedis.Observability.Serilog/Aedis.Observability.Serilog.csproj" />
+    <Project Path="src/Aedis.Pdf.Abstractions/Aedis.Pdf.Abstractions.csproj" />
+    <Project Path="src/Aedis.Pdf.QuestPdf/Aedis.Pdf.QuestPdf.csproj" />
+    <Project Path="src/Aedis.Scheduling.Hangfire/Aedis.Scheduling.Hangfire.csproj" />
+    <Project Path="src/Aedis.Security.Abstractions/Aedis.Security.Abstractions.csproj" />
+    <Project Path="src/Aedis.Security.Keycloak/Aedis.Security.Keycloak.csproj" />
+    <Project Path="src/Aedis.Storage.Abstractions/Aedis.Storage.Abstractions.csproj" />
+    <Project Path="src/Aedis.Storage.S3/Aedis.Storage.S3.csproj" />
+    <Project Path="src/Aedis.Templates/Aedis.Templates.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Aedis.Architecture.Tests/Aedis.Architecture.Tests.csproj" />
+  </Folder>
+</Solution>

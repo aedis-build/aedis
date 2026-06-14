@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Build</PackageId>
+    <Description>Aedis.Build — meta-pacote batteries-included: cura uma stack padrão (ASP.NET Core + Postgres + Redis + AWS SQS + OTLP + Keycloak + diagnostics).</Description>
+    <!-- Meta-pacote: sem código próprio. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Hosting.AspNetCore\Aedis.Hosting.AspNetCore.csproj" />
+    <ProjectReference Include="..\Aedis.Hosting.Worker\Aedis.Hosting.Worker.csproj" />
+    <ProjectReference Include="..\Aedis.Cache.Redis\Aedis.Cache.Redis.csproj" />
+    <ProjectReference Include="..\Aedis.Database.Postgres\Aedis.Database.Postgres.csproj" />
+    <ProjectReference Include="..\Aedis.Messaging.AwsSqs\Aedis.Messaging.AwsSqs.csproj" />
+    <ProjectReference Include="..\Aedis.Observability.Otlp\Aedis.Observability.Otlp.csproj" />
+    <ProjectReference Include="..\Aedis.Security.Keycloak\Aedis.Security.Keycloak.csproj" />
+    <ProjectReference Include="..\Aedis.Diagnostics\Aedis.Diagnostics.csproj" />
+  </ItemGroup>
+
+</Project>

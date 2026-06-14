@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Hosting.AspNetCore</PackageId>
+    <Description>Aedis.Hosting.AspNetCore — parte da plataforma Aedis.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Hosting.Abstractions\Aedis.Hosting.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Commands\Aedis.Commands.csproj" />
+    <ProjectReference Include="..\Aedis.Observability.Abstractions\Aedis.Observability.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Exceptions\Aedis.Exceptions.csproj" />
+    <ProjectReference Include="..\Aedis.Security.Abstractions\Aedis.Security.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" />
+    <PackageReference Include="Microsoft.AspNetCore.ResponseCompression" />
+    <PackageReference Include="FluentValidation.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

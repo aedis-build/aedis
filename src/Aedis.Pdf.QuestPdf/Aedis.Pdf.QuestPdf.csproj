@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Pdf.QuestPdf</PackageId>
+    <Description>Aedis.Pdf.QuestPdf — parte da plataforma Aedis.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Pdf.Abstractions\Aedis.Pdf.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="ZXing.Net" />
+  </ItemGroup>
+
+</Project>
