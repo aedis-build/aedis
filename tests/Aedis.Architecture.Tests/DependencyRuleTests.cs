@@ -12,7 +12,7 @@ public class DependencyRuleTests
     [Fact]
     public void Dominio_nao_depende_de_AspNetCore()
     {
-        var result = Types.InAssembly(typeof(Aedis.Domain.AssemblyMarker).Assembly)
+        var result = Types.InAssembly(typeof(Aedis.Domain.Specifications.ISpecification<>).Assembly)
             .Should()
             .NotHaveDependencyOn("Microsoft.AspNetCore")
             .GetResult();
@@ -23,7 +23,7 @@ public class DependencyRuleTests
     [Fact]
     public void Dominio_nao_depende_de_implementacoes_de_provider()
     {
-        var result = Types.InAssembly(typeof(Aedis.Domain.AssemblyMarker).Assembly)
+        var result = Types.InAssembly(typeof(Aedis.Domain.Specifications.ISpecification<>).Assembly)
             .Should()
             .NotHaveDependencyOnAny(
                 "Npgsql", "StackExchange.Redis", "RabbitMQ.Client",
