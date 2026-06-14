@@ -26,14 +26,14 @@ public class LoggingCommandHandlerDecorator<TCommand, TResult> : ICommandHandler
         var commandName = typeof(TCommand).Name;
         var stopwatch = Stopwatch.StartNew();
 
-        _logger.LogInformation("Executing command {CommandName}", commandName);
+        _logger.LogDebug("Executing command {CommandName}", commandName);
 
         try {
             var result = await _inner.HandleAsync(command, cancellationToken);
 
             stopwatch.Stop();
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Command {CommandName} executed successfully in {ElapsedMs}ms",
                 commandName, stopwatch.ElapsedMilliseconds);
 

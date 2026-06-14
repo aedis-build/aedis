@@ -49,7 +49,7 @@ public sealed class ChainExecutor<TRequest, TResponse> : IChainExecutor<TRequest
             return response;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            _logger?.LogInformation("Chain execution was cancelled for request type {RequestType}",
+            _logger?.LogDebug("Chain execution was cancelled for request type {RequestType}",
                 typeof(TRequest).Name);
             throw;
         }

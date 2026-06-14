@@ -55,7 +55,7 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
 
         _isExecuted = true;
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "Starting Saga {SagaId} (type: {SagaType}) with {StepCount} steps",
             SagaId,
             context.SagaType,
@@ -109,7 +109,7 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
 
             _executionResult = SagaExecutionResult.Successful(_executedSteps.Count);
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Saga {SagaId} executed successfully. {StepCount} steps completed",
                 SagaId,
                 _executedSteps.Count);
@@ -155,7 +155,7 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
 
         _isCompleted = true;
 
-        _logger.LogInformation("Saga {SagaId} marked as completed", SagaId);
+        _logger.LogDebug("Saga {SagaId} marked as completed", SagaId);
 
         if (_stateStore != null) await _stateStore.MarkAsCompletedAsync(SagaId, ct);
     }
@@ -222,7 +222,7 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
 
                 compensatedCount++;
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Step {StepName} compensated successfully in {ElapsedMs}ms",
                     step.StepName,
                     stopwatch.ElapsedMilliseconds);
