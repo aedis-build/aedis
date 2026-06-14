@@ -15,7 +15,7 @@ public record ProviderErrorDetail
     public string Identifier { get; set; } = string.Empty;
 
     /// <summary>
-    ///     ID do item no provedor (ex: protocolo B3)
+    ///     ID do item no provedor (ex: protocolo/ID no provedor)
     /// </summary>
     [Key(1)]
     public string? ProviderItemId { get; set; }

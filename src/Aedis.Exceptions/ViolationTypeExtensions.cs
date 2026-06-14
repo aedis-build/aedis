@@ -9,7 +9,7 @@ public static class ViolationTypeExtensions
 {
     /// <summary>
     ///     Converte o <see cref="ViolationType" /> para string em formato snake_case.
-    ///     Usado para serialização JSON e compatibilidade com o padrão PayHop.
+    ///     Usado para serialização JSON e compatibilidade com o padrão do Aedis.
     /// </summary>
     /// <param name="violationType">Tipo de violação a ser convertido.</param>
     /// <returns>String em formato snake_case (ex: "validation_error", "foreign_key_violation").</returns>

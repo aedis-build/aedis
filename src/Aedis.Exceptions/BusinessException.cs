@@ -87,7 +87,7 @@ public class BusinessException : Exception
     public int EffectiveStatusCode => StatusCode ?? DefaultStatusCode;
 
     /// <summary>
-    ///     Mapeia ViolationType para category conforme padrão PayHop.
+    ///     Mapeia ViolationType para category conforme padrão do Aedis.
     /// </summary>
     private static string MapViolationTypeToCategory(ViolationType violationType) {
         return violationType switch {
@@ -108,7 +108,7 @@ public class BusinessException : Exception
         return violationType switch {
             ViolationType.ConflictError => 409,
             ViolationType.PreconditionFailed => 412,
-            _ => 422 // Default para regras de negócio
+            _ => 412 // Default para regras de negócio
         };
     }
 }

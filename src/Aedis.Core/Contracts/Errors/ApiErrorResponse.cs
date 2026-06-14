@@ -9,7 +9,7 @@ namespace Aedis.Core.Errors;
 public record ApiErrorResponse
 {
     /// <summary>
-    ///     URI que identifica o tipo de problema (ex: "https://api.payhop.com/errors/validation")
+    ///     URI que identifica o tipo de problema (ex: "https://api.example.com/errors/validation")
     /// </summary>
     [Key(0)]
     public string Type { get; set; } = "about:blank";

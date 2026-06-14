@@ -7,13 +7,13 @@ public enum ResponseType
 {
     /// <summary>
     ///     Resposta síncrona: resultado disponível imediatamente na resposta HTTP.
-    ///     Exemplo: CERC sem interoperabilidade.
+    ///     Exemplo: provedor que responde de forma imediata.
     /// </summary>
     Sync = 0,
 
     /// <summary>
     ///     Resposta assíncrona: resultado entregue posteriormente via callback, arquivo ou fila.
-    ///     Exemplos: B3 (sempre async), CERC com interop, Nuclea (IBM MQ).
+    ///     Exemplo: provedor que processa em background e notifica depois (callback, fila, arquivo).
     /// </summary>
     Async = 1
 }

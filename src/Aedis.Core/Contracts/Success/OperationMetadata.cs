@@ -34,7 +34,7 @@ public record OperationMetadata
     public string? ProviderId { get; set; }
 
     /// <summary>
-    ///     Nome do provedor (B3, Cerc, Nuclea, etc)
+    ///     Nome do provedor externo (ex.: gateway, API externa, serviço de terceiros)
     /// </summary>
     [Key(4)]
     public string Provider { get; set; } = string.Empty;

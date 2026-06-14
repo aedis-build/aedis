@@ -11,8 +11,8 @@ namespace Aedis.Events;
 /// var cloudEvent = CloudEventBuilder
 ///     .Create()
 ///     .WithId(Guid.NewGuid())
-///     .WithSource("/payhop/notifications")
-///     .WithType("com.payhop.order.created")
+///     .WithSource("/notifications")
+///     .WithType("com.acme.order.created")
 ///     .WithSubject($"partner:{partnerId}:correlation:{correlationId}")
 ///     .WithTime(DateTimeOffset.UtcNow)
 ///     .WithData(payload)
@@ -51,7 +51,7 @@ public class CloudEventBuilder
     }
 
     /// <summary>
-    ///     Define a origem do evento (ex: "/payhop/notifications").
+    ///     Define a origem do evento (ex: "/notifications").
     /// </summary>
     /// <param name="source">Origem do evento</param>
     /// <returns>Builder para encadeamento</returns>
@@ -61,7 +61,7 @@ public class CloudEventBuilder
     }
 
     /// <summary>
-    ///     Define o tipo do evento (ex: "com.payhop.order.created").
+    ///     Define o tipo do evento (ex: "com.acme.order.created").
     /// </summary>
     /// <param name="type">Tipo do evento</param>
     /// <returns>Builder para encadeamento</returns>

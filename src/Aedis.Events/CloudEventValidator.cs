@@ -7,10 +7,12 @@ namespace Aedis.Events;
 /// </summary>
 public static class CloudEventValidator
 {
+    // source: URI-reference em forma de caminho — um ou mais segments, ex.: "/orders", "/orders/payments".
     private static readonly Regex SourcePattern =
-        new(@"^/payhop/[a-z0-9-]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        new(@"^/[a-z0-9-]+(?:/[a-z0-9-]+)*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private static readonly Regex TypePattern = new(@"^com\.payhop\.[a-z0-9]+(?:\.[a-z0-9]+)*$",
+    // type: convenção reverse-DNS recomendada pelo CloudEvents, ex.: "com.acme.order.created".
+    private static readonly Regex TypePattern = new(@"^[a-z0-9]+(?:\.[a-z0-9]+)+$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
@@ -36,13 +38,13 @@ public static class CloudEventValidator
         if (string.IsNullOrWhiteSpace(cloudEvent.Source))
             errors.Add("source is required");
         else if (!SourcePattern.IsMatch(cloudEvent.Source))
-            errors.Add($"source must match pattern '/payhop/<service>', got '{cloudEvent.Source}'");
+            errors.Add($"source must be a path like '/<service>', got '{cloudEvent.Source}'");
 
         // Validar type
         if (string.IsNullOrWhiteSpace(cloudEvent.Type))
             errors.Add("type is required");
         else if (!TypePattern.IsMatch(cloudEvent.Type))
-            errors.Add($"type must match pattern 'com.payhop.<domain>.<event>', got '{cloudEvent.Type}'");
+            errors.Add($"type must follow reverse-DNS '<org>.<domain>.<event>', got '{cloudEvent.Type}'");
 
         // Validar time
         if (cloudEvent.Time == default) errors.Add("time is required");

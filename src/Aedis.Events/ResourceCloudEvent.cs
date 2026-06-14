@@ -22,10 +22,10 @@ namespace Aedis.Events;
 ///             <description><c>id</c> - Identificador único do evento (UUID)</description>
 ///         </item>
 ///         <item>
-///             <description><c>source</c> - Origem do evento (ex: "/payhop/notifications")</description>
+///             <description><c>source</c> - Origem do evento (ex: "/notifications")</description>
 ///         </item>
 ///         <item>
-///             <description><c>type</c> - Tipo do evento (ex: "com.payhop.order.created")</description>
+///             <description><c>type</c> - Tipo do evento (ex: "com.acme.order.created")</description>
 ///         </item>
 ///         <item>
 ///             <description><c>time</c> - Timestamp UTC do evento</description>
@@ -71,16 +71,16 @@ public class ResourceCloudEvent
 
     /// <summary>
     ///     Origem do evento (serviço ou módulo).
-    ///     Recomendação: "/payhop/&lt;serviço-ou-domínio&gt;"
-    ///     Exemplos: "/payhop/notifications", "/payhop/orders", "/payhop/payments"
+    ///     Recomendação: "/&lt;serviço-ou-domínio&gt;"
+    ///     Exemplos: "/notifications", "/orders", "/payments"
     /// </summary>
     [JsonPropertyName("source")]
     public string Source { get; set; } = default!;
 
     /// <summary>
     ///     Tipo do evento (equivalente ao antigo eventType).
-    ///     Segue convenção: "com.payhop.&lt;domínio&gt;.&lt;evento&gt;"
-    ///     Exemplos: "com.payhop.order.created", "com.payhop.payment.approved"
+    ///     Segue convenção: "com.acme.&lt;domínio&gt;.&lt;evento&gt;"
+    ///     Exemplos: "com.acme.order.created", "com.acme.payment.approved"
     /// </summary>
     [JsonPropertyName("type")]
     public string Type { get; set; } = default!;

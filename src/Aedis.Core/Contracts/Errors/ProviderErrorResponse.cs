@@ -10,7 +10,7 @@ namespace Aedis.Core.Errors;
 public record ProviderErrorResponse : ApiErrorResponse
 {
     /// <summary>
-    ///     Nome do provedor (B3, NUCLEA, CERC, etc)
+    ///     Nome do provedor externo (ex.: gateway, API externa, serviço de terceiros)
     /// </summary>
     [Key(9)]
     public string Provider { get; set; } = string.Empty;
