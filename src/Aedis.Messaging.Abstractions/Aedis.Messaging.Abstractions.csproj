@@ -10,4 +10,8 @@
     <ProjectReference Include="..\Aedis.Events\Aedis.Events.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MessagePack" />
+  </ItemGroup>
+
 </Project>
