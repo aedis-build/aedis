@@ -1,8 +1,8 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Aedis.Domain.ChainOfResponsibility;
 using Aedis.Domain.ChainOfResponsibility.Abstractions;
+using Microsoft.Extensions.Logging;
 
-namespace Aedis.Domain.ChainOfResponsibility;
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 ///     Extensões para configuração de Chain of Responsibility no DI container
@@ -32,7 +32,7 @@ public static class ChainOfResponsibilityServiceCollectionExtensions
     ///         ServiceLifetime.Scoped);
     ///     </code>
     /// </example>
-    public static IServiceCollection AddChainExecutor<TRequest, TResponse>(
+    public static IServiceCollection AddAedisChainExecutor<TRequest, TResponse>(
         this IServiceCollection services,
         Func<IServiceProvider, IHandler<TRequest, TResponse>> chainBuilder,
         ServiceLifetime lifetime = ServiceLifetime.Scoped)
