@@ -1,3 +1,4 @@
+using System.Text;
 using Aedis.Exceptions;
 using Aedis.Messaging.Abstractions;
 using Aedis.Messaging.RabbitMq;
@@ -46,6 +47,23 @@ public sealed class RabbitMqPublishSubscribeTests : IAsyncLifetime
     }
 
     private sealed class BusinessRejected() : PermanentFailureException("rejeitado por regra de negócio");
+
+    // Mensagem de payload bruto: ToData() emite bytes; FromRaw() os reconstrói (inverso simétrico).
+    public sealed class RawNote : MessageBase, IRawMessage
+    {
+        public RawNote() { }
+        public RawNote(byte[] payload) => Payload = payload;
+
+        public override string EventName => "test.raw.note";
+        public byte[] Payload { get; private set; } = [];
+
+        public override object ToData() => Payload;
+
+        public void FromRaw(byte[] rawData, string correlationId = "") {
+            Payload = rawData;
+            if (!string.IsNullOrEmpty(correlationId)) CorrelationId = correlationId;
+        }
+    }
 
     private RabbitMqMessageBrokerService CreateBroker() {
         var options = Options.Create(new RabbitMqOptions {
@@ -109,6 +127,49 @@ public sealed class RabbitMqPublishSubscribeTests : IAsyncLifetime
 
         result.OrderId.Should().Be(7);
         result.Customer.Should().Be("Núcleo");
+    }
+
+    [Fact]
+    public async Task Raw_message_faz_roundtrip_via_FromRaw() {
+        await using var broker = CreateBroker();
+        var payload = Encoding.UTF8.GetBytes("payload bruto do Aedis");
+
+        var result = await PublishAndReceiveAsync(broker, "raw", new RawNote(payload));
+
+        result.Payload.Should().Equal(payload);
+    }
+
+    [Fact]
+    public async Task PublishRaw_entrega_bytes_ao_handler_via_FromRaw() {
+        const string exchange = "aedis.rawpub.topic";
+        const string queue = "aedis-rawpub-queue";
+        const string routingKey = "evt";
+
+        await using var broker = CreateBroker();
+        var payload = Encoding.UTF8.GetBytes("bytes de um produtor externo");
+
+        var received = new TaskCompletionSource<RawNote>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = Substitute.For<IMessageHandler<RawNote>>();
+        handler.HandleAsync(Arg.Any<RawNote>(), Arg.Any<CancellationToken>())
+            .Returns(call => {
+                received.TrySetResult(call.Arg<RawNote>());
+                return Task.CompletedTask;
+            });
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var subscribing = broker.SubscribeAsync(queue, exchange, routingKey, handler, ConsumerRetryOptions.None(),
+            cts.Token);
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+
+        await broker.PublishRawAsync(exchange, routingKey, payload, "application/octet-stream", "corr-123", cts.Token);
+        var result = await received.Task.WaitAsync(TimeSpan.FromSeconds(20));
+
+        result.Payload.Should().Equal(payload);
+        result.CorrelationId.Should().Be("corr-123");
+
+        await cts.CancelAsync();
+        try { await subscribing; }
+        catch (OperationCanceledException) { }
     }
 
     [Fact]

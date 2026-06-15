@@ -50,6 +50,21 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         }, cancellationToken);
     }
 
+    public Task PublishRawAsync(string exchange, string routingKey, ReadOnlyMemory<byte> payload,
+        string contentType = "application/octet-stream", string? correlationId = null,
+        CancellationToken cancellationToken = default) {
+        return ExecuteWithChannelAsync(async channel => {
+            await CreateOrGetExchangeAsync(exchange, channel, cancellationToken);
+
+            var props = new BasicProperties { Persistent = true, ContentType = contentType };
+            if (correlationId is not null) props.CorrelationId = correlationId;
+
+            await channel.BasicPublishAsync(exchange, routingKey, false, props, payload, cancellationToken);
+            _logger.LogDebug("Payload bruto publicado em {Exchange}/{RoutingKey} ({ContentType})",
+                exchange, routingKey, contentType);
+        }, cancellationToken);
+    }
+
     public async Task SubscribeAsync<T>(string queue, string exchange, string routingKey,
         IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
         where T : class, IMessage {
@@ -117,8 +132,7 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         ConsumerRetryOptions retryOptions, BasicDeliverEventArgs eventArgs, CancellationToken cancellationToken)
         where T : class, IMessage {
         try {
-            var serializer = _serializers.ResolveForContentType(eventArgs.BasicProperties.ContentType);
-            if (serializer.Deserialize(eventArgs.Body, typeof(T)) is T message)
+            if (Materialize<T>(eventArgs) is T message)
                 await handler.HandleAsync(message, cancellationToken);
 
             await channel.BasicAckAsync(eventArgs.DeliveryTag, false, cancellationToken);
@@ -139,5 +153,21 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
             // Requeue: o x-delivery-limit do quorum envia para a DLQ após MaxRetries.
             await channel.BasicNackAsync(eventArgs.DeliveryTag, false, true, cancellationToken);
         }
+    }
+
+    /// <summary>
+    ///     Reconstrói a mensagem do corpo recebido: se <typeparamref name="T" /> é <see cref="IRawMessage" />,
+    ///     chama <c>FromRaw</c> (inverso simétrico de <c>ToData</c>); caso contrário, desserializa pelo
+    ///     content-type via <see cref="MessageSerializerResolver" />.
+    /// </summary>
+    private object? Materialize<T>(BasicDeliverEventArgs eventArgs) where T : class, IMessage {
+        if (typeof(IRawMessage).IsAssignableFrom(typeof(T))) {
+            var raw = (IRawMessage)Activator.CreateInstance(typeof(T))!;
+            raw.FromRaw(eventArgs.Body.ToArray(), eventArgs.BasicProperties.CorrelationId ?? string.Empty);
+            return raw;
+        }
+
+        var serializer = _serializers.ResolveForContentType(eventArgs.BasicProperties.ContentType);
+        return serializer.Deserialize(eventArgs.Body, typeof(T));
     }
 }
