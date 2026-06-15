@@ -1,3 +1,4 @@
+using Aedis.Hosting.Abstractions;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -35,5 +36,19 @@ public sealed class DiagnosticsRegistrationTests
 
         report.Entries.Keys.Should().Contain("shutdown");
         report.Status.Should().Be(HealthStatus.Healthy);
+    }
+
+    [Fact]
+    public void Registra_IDisposableRegistry_como_singleton() {
+        var provider = new ServiceCollection()
+            .AddLogging()
+            .AddAedisDiagnostics()
+            .BuildServiceProvider();
+
+        var first = provider.GetRequiredService<IDisposableRegistry>();
+        var second = provider.GetRequiredService<IDisposableRegistry>();
+
+        first.Should().BeOfType<DisposableRegistry>();
+        first.Should().BeSameAs(second, "o registro é singleton — um por processo");
     }
 }
