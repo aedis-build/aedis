@@ -35,6 +35,7 @@
   <ItemGroup Label="Storage">
     <PackageVersion Include="AWSSDK.S3" Version="4.0.11.3" />
     <PackageVersion Include="AWSSDK.SecurityToken" Version="4.0.4.1" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.24.0" />
   </ItemGroup>
 
   <ItemGroup Label="Observability">

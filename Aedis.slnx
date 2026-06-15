@@ -32,11 +32,13 @@
     <Project Path="src/Aedis.Security.Abstractions/Aedis.Security.Abstractions.csproj" />
     <Project Path="src/Aedis.Security.Keycloak/Aedis.Security.Keycloak.csproj" />
     <Project Path="src/Aedis.Storage.Abstractions/Aedis.Storage.Abstractions.csproj" />
+    <Project Path="src/Aedis.Storage.AzureBlob/Aedis.Storage.AzureBlob.csproj" />
     <Project Path="src/Aedis.Storage.S3/Aedis.Storage.S3.csproj" />
     <Project Path="src/Aedis.Templates/Aedis.Templates.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Aedis.Architecture.Tests/Aedis.Architecture.Tests.csproj" />
+    <Project Path="tests/Aedis.Storage.AzureBlob.Tests/Aedis.Storage.AzureBlob.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.S3.Tests/Aedis.Storage.S3.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.Tests/Aedis.Storage.Tests.csproj" />
   </Folder>
