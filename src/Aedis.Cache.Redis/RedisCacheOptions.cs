@@ -1,0 +1,36 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace Aedis.Cache.Redis;
+
+/// <summary>
+///     Opções de conexão do provider Redis do Aedis. Lidas da seção <c>REDIS</c> da configuração.
+///     Suporta instância única ou Sentinel (via <see cref="SentinelMasterName" />).
+/// </summary>
+public sealed class RedisCacheOptions
+{
+    public const string SectionName = "REDIS";
+
+    /// <summary>Endpoint do Redis no formato <c>host:porta</c>.</summary>
+    [Required]
+    public required string EndPoint { get; set; }
+
+    /// <summary>Usuário (ACL do Redis 6+). Opcional.</summary>
+    public string? User { get; set; }
+
+    /// <summary>Senha de autenticação.</summary>
+    public required string Password { get; set; }
+
+    /// <summary>Habilita TLS na conexão.</summary>
+    [Required]
+    public required bool UseSsl { get; set; }
+
+    /// <summary>Nome do master quando usando Redis Sentinel. Opcional.</summary>
+    public string? SentinelMasterName { get; set; }
+
+    /// <summary>
+    ///     Identidade desta instância para eleição de líder (valor gravado no lock). Quando nulo, usa
+    ///     <see cref="Environment.MachineName" /> — em Kubernetes, único por pod. Defina explicitamente
+    ///     quando precisar de uma identidade estável independente do host.
+    /// </summary>
+    public string? InstanceId { get; set; }
+}
