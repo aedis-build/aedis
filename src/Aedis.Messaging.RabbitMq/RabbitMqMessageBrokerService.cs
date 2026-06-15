@@ -3,6 +3,7 @@ using Aedis.Messaging.Abstractions.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace Aedis.Messaging.RabbitMq;
 
@@ -47,9 +48,54 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         }, cancellationToken);
     }
 
-    public Task SubscribeAsync<T>(string queue, string exchange, string routingKey,
+    public async Task SubscribeAsync<T>(string queue, string exchange, string routingKey,
         IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
         where T : class, IMessage {
-        throw new NotImplementedException("O consumo (subscribe) será adicionado na fatia 3 do RabbitMq.");
+        ArgumentNullException.ThrowIfNull(handler);
+        ArgumentNullException.ThrowIfNull(retryOptions);
+
+        var connection = await GetConnectionAsync();
+        var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+        await CreateOrGetExchangeAsync(exchange, channel, cancellationToken);
+        await CreateOrGetQueueAsync(queue, exchange, routingKey, channel, cancellationToken);
+        await channel.BasicQosAsync(0, _options.PrefetchCount, false, cancellationToken);
+
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        consumer.ReceivedAsync += (_, eventArgs) => HandleDeliveryAsync(channel, queue, handler, retryOptions, eventArgs,
+            cancellationToken);
+
+        await channel.BasicConsumeAsync(queue, false, consumer, cancellationToken);
+        _logger.LogDebug("Consumer registrado na fila {Queue} (exchange {Exchange}, routingKey {RoutingKey})",
+            queue, exchange, routingKey);
+
+        try {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+        catch (OperationCanceledException) {
+            // shutdown gracioso
+        }
+        finally {
+            await channel.CloseAsync(CancellationToken.None);
+        }
+    }
+
+    private async Task HandleDeliveryAsync<T>(IChannel channel, string queue, IMessageHandler<T> handler,
+        ConsumerRetryOptions retryOptions, BasicDeliverEventArgs eventArgs, CancellationToken cancellationToken)
+        where T : class, IMessage {
+        try {
+            var serializer = _serializers.ResolveForContentType(eventArgs.BasicProperties.ContentType);
+            if (serializer.Deserialize(eventArgs.Body, typeof(T)) is T message)
+                await handler.HandleAsync(message, cancellationToken);
+
+            await channel.BasicAckAsync(eventArgs.DeliveryTag, false, cancellationToken);
+        }
+        catch (OperationCanceledException) {
+            await channel.BasicNackAsync(eventArgs.DeliveryTag, false, true, CancellationToken.None);
+        }
+        catch (Exception ex) {
+            _logger.LogError(ex, "Erro ao processar mensagem da fila {Queue}", queue);
+            // Com DLQ habilitada, descarta (vai para a dead-letter se configurada); senão, requeue para nova tentativa.
+            await channel.BasicNackAsync(eventArgs.DeliveryTag, false, !retryOptions.EnableDeadLetter, cancellationToken);
+        }
     }
 }
