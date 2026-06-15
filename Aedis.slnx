@@ -38,6 +38,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Aedis.Architecture.Tests/Aedis.Architecture.Tests.csproj" />
+    <Project Path="tests/Aedis.Diagnostics.Tests/Aedis.Diagnostics.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.RabbitMq.Tests/Aedis.Messaging.RabbitMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.Tests/Aedis.Messaging.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.AzureBlob.Tests/Aedis.Storage.AzureBlob.Tests.csproj" />
