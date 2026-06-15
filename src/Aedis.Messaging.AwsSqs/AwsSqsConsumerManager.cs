@@ -1,0 +1,165 @@
+using System.Collections.Concurrent;
+using System.Text;
+using Aedis.Messaging.Abstractions;
+using Aedis.Messaging.Abstractions.Serialization;
+using Amazon.SQS;
+using Amazon.SQS.Model;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Aedis.Messaging.AwsSqs;
+
+/// <summary>
+///     Consumers SQS com long-polling: um loop por fila que recebe lotes, processa em paralelo e dá ACK
+///     (DeleteMessage) no sucesso. Em falha, a mensagem não é apagada e volta após o visibility timeout;
+///     ao exceder o maxReceiveCount do RedrivePolicy, o próprio SQS a move para a DLQ.
+/// </summary>
+public sealed class AwsSqsConsumerManager(
+    IAwsPubSubFactory factory,
+    IOptions<AwsSqsOptions> options,
+    ILogger<AwsSqsConsumerManager> logger,
+    MessageSerializerResolver serializers)
+{
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _consumers = new();
+    private readonly AwsSqsOptions _options = options.Value;
+
+    public async Task StartConsumerAsync<T>(string queueName, string exchange, string routingKey,
+        IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
+        where T : class, IMessage {
+        var name = factory.NormalizeName(queueName);
+
+        if (_consumers.ContainsKey(name)) {
+            logger.LogWarning("Consumer da fila '{QueueName}' já está em execução.", name);
+            return;
+        }
+
+        var sqsClient = await factory.GetSqsClientAsync(cancellationToken);
+        var queueUrl = (await sqsClient.GetQueueUrlAsync(name, cancellationToken)).QueueUrl;
+
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _consumers[name] = cts;
+
+        _ = Task.Run(async () => {
+            try {
+                await ProcessLoopAsync(queueUrl, handler, cts.Token);
+            }
+            catch (Exception ex) {
+                logger.LogError(ex, "Erro fatal no loop do consumer da fila '{QueueName}'.", name);
+            }
+            finally {
+                _consumers.TryRemove(name, out _);
+            }
+        }, cts.Token);
+
+        logger.LogDebug("Consumer iniciado para a fila '{QueueName}'.", name);
+    }
+
+    public Task StopConsumerAsync(string queueName, CancellationToken cancellationToken = default) {
+        var name = factory.NormalizeName(queueName);
+        if (_consumers.TryRemove(name, out var cts)) {
+            cts.Cancel();
+            cts.Dispose();
+            logger.LogDebug("Consumer da fila '{QueueName}' parado.", name);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<bool> IsConsumerHealthyAsync(string queueName, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_consumers.ContainsKey(factory.NormalizeName(queueName)));
+
+    private async Task ProcessLoopAsync<T>(string queueUrl, IMessageHandler<T> handler, CancellationToken ct)
+        where T : class, IMessage {
+        var sqsClient = await factory.GetSqsClientAsync(ct);
+        logger.LogDebug("Loop de consumo iniciado para '{QueueUrl}' (long-polling {Wait}s).",
+            queueUrl, _options.WaitTimeSeconds);
+
+        while (!ct.IsCancellationRequested)
+            try {
+                var response = await sqsClient.ReceiveMessageAsync(new ReceiveMessageRequest {
+                    QueueUrl = queueUrl,
+                    MaxNumberOfMessages = _options.MaxNumberOfMessages,
+                    WaitTimeSeconds = _options.WaitTimeSeconds,
+                    MessageAttributeNames = ["All"],
+                    MessageSystemAttributeNames = ["ApproximateReceiveCount"]
+                }, ct);
+
+                if (response.Messages is null or { Count: 0 })
+                    continue;
+
+                var parallelOptions = new ParallelOptions {
+                    MaxDegreeOfParallelism = _options.MaxNumberOfMessages,
+                    CancellationToken = ct
+                };
+
+                await Parallel.ForEachAsync(response.Messages, parallelOptions,
+                    async (message, token) => await ProcessOneAsync(message, queueUrl, handler, sqsClient, token));
+            }
+            catch (OperationCanceledException) {
+                break;
+            }
+            catch (Exception ex) {
+                logger.LogError(ex, "Erro no loop de consumo de '{QueueUrl}'.", queueUrl);
+                await Task.Delay(TimeSpan.FromSeconds(5), ct);
+            }
+
+        logger.LogDebug("Loop de consumo encerrado para '{QueueUrl}'.", queueUrl);
+    }
+
+    private async Task ProcessOneAsync<T>(Message sqsMessage, string queueUrl, IMessageHandler<T> handler,
+        IAmazonSQS sqsClient, CancellationToken ct) where T : class, IMessage {
+        try {
+            var message = Deserialize<T>(sqsMessage);
+            if (message is null) {
+                logger.LogWarning("Falha ao desserializar a mensagem {MessageId} — será reentregue.",
+                    sqsMessage.MessageId);
+                return; // sem delete → visibility timeout → redrive → DLQ
+            }
+
+            await handler.HandleAsync(message, ct);
+            await sqsClient.DeleteMessageAsync(queueUrl, sqsMessage.ReceiptHandle, ct);
+            logger.LogDebug("Mensagem {MessageId} processada e removida da fila.", sqsMessage.MessageId);
+        }
+        catch (Exception ex) {
+            // Sem delete: a mensagem reaparece após o visibility timeout; o RedrivePolicy a leva à DLQ.
+            logger.LogWarning(ex, "Falha ao processar a mensagem {MessageId} — será reentregue.",
+                sqsMessage.MessageId);
+        }
+    }
+
+    private T? Deserialize<T>(Message sqsMessage) where T : class, IMessage {
+        var (rawMessage, contentType) = ExtractPayload(sqsMessage);
+        var bytes = AwsPubSubEnvelopeParser.TryFromBase64(rawMessage) ?? Encoding.UTF8.GetBytes(rawMessage);
+
+        if (typeof(IRawMessage).IsAssignableFrom(typeof(T))) {
+            var instance = Activator.CreateInstance<T>();
+            var correlationId = ReadAttribute(sqsMessage, "CorrelationId") ?? string.Empty;
+            ((IRawMessage)instance).FromRaw(bytes, correlationId);
+            return instance;
+        }
+
+        var serializer = serializers.ResolveForContentType(contentType);
+        return serializer.Deserialize(bytes, typeof(T)) as T;
+    }
+
+    /// <summary>
+    ///     Extrai o payload e o content-type: se for envelope do SNS, usa a mensagem interna; senão usa o
+    ///     corpo direto (ex.: webhook externo). O content-type vem do atributo da mensagem.
+    /// </summary>
+    private static (string raw, string? contentType) ExtractPayload(Message sqsMessage) {
+        var attrContentType = ReadAttribute(sqsMessage, "ContentType");
+
+        if (AwsPubSubEnvelopeParser.IsSnsEnvelope(sqsMessage.Body)) {
+            var envelope = AwsPubSubEnvelopeParser.Parse(sqsMessage.Body);
+            return (envelope.Message, envelope.ContentType ?? attrContentType);
+        }
+
+        return (sqsMessage.Body, attrContentType);
+    }
+
+    private static string? ReadAttribute(Message sqsMessage, string name) =>
+        sqsMessage.MessageAttributes is not null
+        && sqsMessage.MessageAttributes.TryGetValue(name, out var value)
+            ? value.StringValue
+            : null;
+}
