@@ -1,30 +1,39 @@
 using Aedis.Core.Extensions;
-using Aedis.Exceptions;
 using Aedis.Messaging.Abstractions;
 using Aedis.Messaging.Abstractions.Serialization;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 
 namespace Aedis.Messaging.RabbitMq;
 
 /// <summary>
 ///     Broker RabbitMQ. Publica mensagens serializadas pela estratégia adequada
-///     (<see cref="MessageSerializerResolver" />) e consome com ack/nack, retry e dead-letter.
+///     (<see cref="MessageSerializerResolver" />) e consome via <see cref="RabbitMqConsumerManager" />,
+///     que gerencia o ciclo de vida independente de cada consumer com retry/dead-letter.
 /// </summary>
 public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerService
 {
+    private readonly RabbitMqConsumerManager _consumerManager;
+    private readonly IHostApplicationLifetime? _lifetime;
     private readonly ILogger<RabbitMqMessageBrokerService> _logger;
     private readonly MessageSerializerResolver _serializers;
+    private int _consecutiveUnhealthyChecks;
 
     public RabbitMqMessageBrokerService(
         IOptions<RabbitMqOptions> options,
         ILogger<RabbitMqMessageBrokerService> logger,
-        MessageSerializerResolver? serializers = null)
+        RabbitMqConsumerManager? consumerManager = null,
+        MessageSerializerResolver? serializers = null,
+        IHostApplicationLifetime? lifetime = null)
         : base(options, logger) {
         _logger = logger;
         _serializers = serializers ?? MessageSerializerResolver.CreateDefault();
+        _consumerManager = consumerManager
+                           ?? new RabbitMqConsumerManager(NullLogger<RabbitMqConsumerManager>.Instance, options, _serializers);
+        _lifetime = lifetime;
     }
 
     public Task PublishAsync<T>(string exchange, string routingKey, T message,
@@ -44,7 +53,6 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
             };
 
             await channel.BasicPublishAsync(exchange, routingKey, false, props, body, cancellationToken);
-
             _logger.LogDebug("Mensagem {EventName} publicada em {Exchange}/{RoutingKey} ({ContentType})",
                 message.EventName, exchange, routingKey, serializer.ContentType);
         }, cancellationToken);
@@ -74,100 +82,80 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         var connection = await GetConnectionAsync();
         var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
 
-        var queueName = await DeclareTopologyAsync(channel, queue, exchange, routingKey, retryOptions, cancellationToken);
-        await channel.BasicQosAsync(0, _options.PrefetchCount, false, cancellationToken);
-
-        var consumer = new AsyncEventingBasicConsumer(channel);
-        consumer.ReceivedAsync += (_, eventArgs) =>
-            HandleDeliveryAsync(channel, queueName, handler, retryOptions, eventArgs, cancellationToken);
-
-        await channel.BasicConsumeAsync(queueName, false, consumer, cancellationToken);
-        _logger.LogDebug("Consumer registrado na fila {Queue} (exchange {Exchange}, routingKey {RoutingKey}, DLQ={Dlq})",
-            queueName, exchange, routingKey, retryOptions.EnableDeadLetter);
-
         try {
-            await Task.Delay(Timeout.Infinite, cancellationToken);
+            await CreateOrGetExchangeAsync(exchange, channel, cancellationToken);
+            await CreateOrGetQueueAsync(queue, exchange, routingKey, channel, cancellationToken);
+
+            var queueName = queue.Sanitize().ToLowerInvariant();
+            if (retryOptions.EnableDeadLetter)
+                await EnsureFinalDeadLetterQueueAsync(queueName, channel, cancellationToken);
+
+            var consumerId = await _consumerManager.StartConsumerAsync(channel, queueName, exchange, routingKey,
+                handler, retryOptions, cancellationToken);
+
+            await KeepConsumerAliveAsync(consumerId, cancellationToken);
         }
         catch (OperationCanceledException) {
             // shutdown gracioso
         }
         finally {
-            await channel.CloseAsync(CancellationToken.None);
+            if (channel.IsOpen) await channel.CloseAsync(CancellationToken.None);
         }
+    }
+
+    public override async ValueTask DisposeAsync() {
+        await _consumerManager.DisposeAsync();
+        await base.DisposeAsync();
     }
 
     /// <summary>
-    ///     Declara exchange + fila (quorum). Com dead-letter habilitado, declara também a DLX/DLQ e
-    ///     configura a fila com <c>x-dead-letter-exchange</c> e <c>x-delivery-limit</c> (auto-DLQ após MaxRetries).
+    ///     Declara a DLQ final (<c>{fila}.dlq</c>) ligada ao exchange <c>default.dlq</c>, destino das
+    ///     mensagens que excedem o limite de tentativas ou falham permanentemente.
     /// </summary>
-    private async Task<string> DeclareTopologyAsync(IChannel channel, string queue, string exchange, string routingKey,
-        ConsumerRetryOptions retryOptions, CancellationToken cancellationToken) {
-        var exchangeName = exchange.ToLowerInvariant();
-        var queueName = queue.Sanitize().ToLowerInvariant();
+    private async Task EnsureFinalDeadLetterQueueAsync(string queueName, IChannel channel,
+        CancellationToken cancellationToken) {
+        const string dlqExchange = "default.dlq";
+        var dlqName = $"{queueName}.dlq";
 
-        await CreateOrGetExchangeAsync(exchange, channel, cancellationToken);
-
-        var queueArgs = new Dictionary<string, object?> { ["x-queue-type"] = "quorum" };
-
-        if (retryOptions.EnableDeadLetter) {
-            var dlx = $"{exchangeName}.dlx";
-            var dlq = $"{queueName}.dlq";
-
-            await channel.ExchangeDeclareAsync(dlx, ExchangeType.Fanout, true, cancellationToken: cancellationToken);
-            await channel.QueueDeclareAsync(dlq, true, false, false,
-                new Dictionary<string, object?> { ["x-queue-type"] = "quorum" }, cancellationToken: cancellationToken);
-            await channel.QueueBindAsync(dlq, dlx, string.Empty, cancellationToken: cancellationToken);
-
-            queueArgs["x-dead-letter-exchange"] = dlx;
-            queueArgs["x-delivery-limit"] = retryOptions.MaxRetries;
-        }
-
-        await channel.QueueDeclareAsync(queueName, true, false, false, queueArgs, cancellationToken: cancellationToken);
-        await channel.QueueBindAsync(queueName, exchangeName, routingKey, cancellationToken: cancellationToken);
-
-        return queueName;
+        await channel.ExchangeDeclareAsync(dlqExchange, ExchangeType.Direct, true, cancellationToken: cancellationToken);
+        await channel.QueueDeclareAsync(dlqName, true, false, false,
+            new Dictionary<string, object?> { ["x-queue-type"] = "quorum" }, cancellationToken: cancellationToken);
+        await channel.QueueBindAsync(dlqName, dlqExchange, dlqName, cancellationToken: cancellationToken);
     }
 
-    private async Task HandleDeliveryAsync<T>(IChannel channel, string queue, IMessageHandler<T> handler,
-        ConsumerRetryOptions retryOptions, BasicDeliverEventArgs eventArgs, CancellationToken cancellationToken)
-        where T : class, IMessage {
+    /// <summary>
+    ///     Mantém o consumer vivo: verifica a saúde a cada 60s e reinicia consumers não saudáveis.
+    ///     Após falhas prolongadas, encerra a aplicação para que o orquestrador a reinicie (self-heal).
+    /// </summary>
+    private async Task KeepConsumerAliveAsync(string consumerId, CancellationToken cancellationToken) {
         try {
-            if (Materialize<T>(eventArgs) is T message)
-                await handler.HandleAsync(message, cancellationToken);
+            while (!cancellationToken.IsCancellationRequested) {
+                if (!await _consumerManager.IsConsumerHealthyAsync(consumerId)) {
+                    _logger.LogWarning("Consumer {ConsumerId} não está saudável; tentando reiniciar...", consumerId);
+                    await _consumerManager.RestartUnhealthyConsumersAsync(cancellationToken);
 
-            await channel.BasicAckAsync(eventArgs.DeliveryTag, false, cancellationToken);
+                    if (++_consecutiveUnhealthyChecks >= 5) {
+                        _logger.LogError(
+                            "Consumer {ConsumerId} permaneceu não saudável. Encerrando a aplicação para reinício.",
+                            consumerId);
+                        _lifetime?.StopApplication();
+                    }
+                }
+                else {
+                    _consecutiveUnhealthyChecks = 0;
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
+            }
         }
         catch (OperationCanceledException) {
-            await channel.BasicNackAsync(eventArgs.DeliveryTag, false, true, CancellationToken.None);
-        }
-        catch (PermanentFailureException ex) {
-            _logger.LogError(ex, "Falha permanente ao processar mensagem da fila {Queue}.", queue);
-            // Sem requeue: vai direto para a DLQ (se habilitada) ou é descartada com ACK.
-            if (ex.SendToDeadLetterQueue && retryOptions.EnableDeadLetter)
-                await channel.BasicNackAsync(eventArgs.DeliveryTag, false, false, cancellationToken);
-            else
-                await channel.BasicAckAsync(eventArgs.DeliveryTag, false, cancellationToken);
+            // shutdown solicitado
         }
         catch (Exception ex) {
-            _logger.LogError(ex, "Erro ao processar mensagem da fila {Queue}. Reenfileirando para nova tentativa.", queue);
-            // Requeue: o x-delivery-limit do quorum envia para a DLQ após MaxRetries.
-            await channel.BasicNackAsync(eventArgs.DeliveryTag, false, true, cancellationToken);
+            _logger.LogError(ex, "Erro no laço de keep-alive do consumer {ConsumerId}.", consumerId);
         }
-    }
-
-    /// <summary>
-    ///     Reconstrói a mensagem do corpo recebido: se <typeparamref name="T" /> é <see cref="IRawMessage" />,
-    ///     chama <c>FromRaw</c> (inverso simétrico de <c>ToData</c>); caso contrário, desserializa pelo
-    ///     content-type via <see cref="MessageSerializerResolver" />.
-    /// </summary>
-    private object? Materialize<T>(BasicDeliverEventArgs eventArgs) where T : class, IMessage {
-        if (typeof(IRawMessage).IsAssignableFrom(typeof(T))) {
-            var raw = (IRawMessage)Activator.CreateInstance(typeof(T))!;
-            raw.FromRaw(eventArgs.Body.ToArray(), eventArgs.BasicProperties.CorrelationId ?? string.Empty);
-            return raw;
+        finally {
+            await _consumerManager.StopConsumerAsync(consumerId, CancellationToken.None);
         }
-
-        var serializer = _serializers.ResolveForContentType(eventArgs.BasicProperties.ContentType);
-        return serializer.Deserialize(eventArgs.Body, typeof(T));
     }
 }
