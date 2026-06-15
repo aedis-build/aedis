@@ -1,3 +1,5 @@
+using Aedis.Core.Extensions;
+using Aedis.Exceptions;
 using Aedis.Messaging.Abstractions;
 using Aedis.Messaging.Abstractions.Serialization;
 using Microsoft.Extensions.Logging;
@@ -9,7 +11,7 @@ namespace Aedis.Messaging.RabbitMq;
 
 /// <summary>
 ///     Broker RabbitMQ. Publica mensagens serializadas pela estratégia adequada
-///     (<see cref="MessageSerializerResolver" />). O consumo (subscribe) é adicionado na próxima fatia.
+///     (<see cref="MessageSerializerResolver" />) e consome com ack/nack, retry e dead-letter.
 /// </summary>
 public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerService
 {
@@ -56,17 +58,17 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
 
         var connection = await GetConnectionAsync();
         var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
-        await CreateOrGetExchangeAsync(exchange, channel, cancellationToken);
-        await CreateOrGetQueueAsync(queue, exchange, routingKey, channel, cancellationToken);
+
+        var queueName = await DeclareTopologyAsync(channel, queue, exchange, routingKey, retryOptions, cancellationToken);
         await channel.BasicQosAsync(0, _options.PrefetchCount, false, cancellationToken);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
-        consumer.ReceivedAsync += (_, eventArgs) => HandleDeliveryAsync(channel, queue, handler, retryOptions, eventArgs,
-            cancellationToken);
+        consumer.ReceivedAsync += (_, eventArgs) =>
+            HandleDeliveryAsync(channel, queueName, handler, retryOptions, eventArgs, cancellationToken);
 
-        await channel.BasicConsumeAsync(queue, false, consumer, cancellationToken);
-        _logger.LogDebug("Consumer registrado na fila {Queue} (exchange {Exchange}, routingKey {RoutingKey})",
-            queue, exchange, routingKey);
+        await channel.BasicConsumeAsync(queueName, false, consumer, cancellationToken);
+        _logger.LogDebug("Consumer registrado na fila {Queue} (exchange {Exchange}, routingKey {RoutingKey}, DLQ={Dlq})",
+            queueName, exchange, routingKey, retryOptions.EnableDeadLetter);
 
         try {
             await Task.Delay(Timeout.Infinite, cancellationToken);
@@ -77,6 +79,38 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         finally {
             await channel.CloseAsync(CancellationToken.None);
         }
+    }
+
+    /// <summary>
+    ///     Declara exchange + fila (quorum). Com dead-letter habilitado, declara também a DLX/DLQ e
+    ///     configura a fila com <c>x-dead-letter-exchange</c> e <c>x-delivery-limit</c> (auto-DLQ após MaxRetries).
+    /// </summary>
+    private async Task<string> DeclareTopologyAsync(IChannel channel, string queue, string exchange, string routingKey,
+        ConsumerRetryOptions retryOptions, CancellationToken cancellationToken) {
+        var exchangeName = exchange.ToLowerInvariant();
+        var queueName = queue.Sanitize().ToLowerInvariant();
+
+        await CreateOrGetExchangeAsync(exchange, channel, cancellationToken);
+
+        var queueArgs = new Dictionary<string, object?> { ["x-queue-type"] = "quorum" };
+
+        if (retryOptions.EnableDeadLetter) {
+            var dlx = $"{exchangeName}.dlx";
+            var dlq = $"{queueName}.dlq";
+
+            await channel.ExchangeDeclareAsync(dlx, ExchangeType.Fanout, true, cancellationToken: cancellationToken);
+            await channel.QueueDeclareAsync(dlq, true, false, false,
+                new Dictionary<string, object?> { ["x-queue-type"] = "quorum" }, cancellationToken: cancellationToken);
+            await channel.QueueBindAsync(dlq, dlx, string.Empty, cancellationToken: cancellationToken);
+
+            queueArgs["x-dead-letter-exchange"] = dlx;
+            queueArgs["x-delivery-limit"] = retryOptions.MaxRetries;
+        }
+
+        await channel.QueueDeclareAsync(queueName, true, false, false, queueArgs, cancellationToken: cancellationToken);
+        await channel.QueueBindAsync(queueName, exchangeName, routingKey, cancellationToken: cancellationToken);
+
+        return queueName;
     }
 
     private async Task HandleDeliveryAsync<T>(IChannel channel, string queue, IMessageHandler<T> handler,
@@ -92,10 +126,18 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         catch (OperationCanceledException) {
             await channel.BasicNackAsync(eventArgs.DeliveryTag, false, true, CancellationToken.None);
         }
+        catch (PermanentFailureException ex) {
+            _logger.LogError(ex, "Falha permanente ao processar mensagem da fila {Queue}.", queue);
+            // Sem requeue: vai direto para a DLQ (se habilitada) ou é descartada com ACK.
+            if (ex.SendToDeadLetterQueue && retryOptions.EnableDeadLetter)
+                await channel.BasicNackAsync(eventArgs.DeliveryTag, false, false, cancellationToken);
+            else
+                await channel.BasicAckAsync(eventArgs.DeliveryTag, false, cancellationToken);
+        }
         catch (Exception ex) {
-            _logger.LogError(ex, "Erro ao processar mensagem da fila {Queue}", queue);
-            // Com DLQ habilitada, descarta (vai para a dead-letter se configurada); senão, requeue para nova tentativa.
-            await channel.BasicNackAsync(eventArgs.DeliveryTag, false, !retryOptions.EnableDeadLetter, cancellationToken);
+            _logger.LogError(ex, "Erro ao processar mensagem da fila {Queue}. Reenfileirando para nova tentativa.", queue);
+            // Requeue: o x-delivery-limit do quorum envia para a DLQ após MaxRetries.
+            await channel.BasicNackAsync(eventArgs.DeliveryTag, false, true, cancellationToken);
         }
     }
 }
