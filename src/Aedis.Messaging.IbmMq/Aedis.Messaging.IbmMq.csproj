@@ -7,11 +7,24 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Messaging.Abstractions\Aedis.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Exceptions\Aedis.Exceptions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Messaging.IbmMq.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="IBMMQDotnetClient" />
+    <!-- Override de seguranca do transitivo (Newtonsoft.Json 11 via IBMMQDotnetClient) -->
     <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
   </ItemGroup>
 
 </Project>

@@ -1,8 +1,8 @@
 namespace Aedis.Messaging.Abstractions;
 
 /// <summary>
-/// Campos MQMD disponíveis após o IBM MQ deserializar uma mensagem recebida.
-/// Campos §5.6.5 do MAPX-OP097-2021 (COA/COD — comprovação de emissão).
+/// Campos do MQMD expostos após o IBM MQ receber uma mensagem. O <c>Feedback</c> traz os
+/// report codes do IBM MQ (COA/COD/Expiry), úteis para mensagens de confirmação.
 /// </summary>
 public record MqMessageMetadata(
     string MsgId,             // BitConverter hex de MQMD.MessageId (24 bytes)
