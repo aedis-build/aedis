@@ -2,6 +2,7 @@ using Aedis.Database.Abstractions;
 using Aedis.Database.Postgres;
 using Aedis.Database.Postgres.Naming;
 using Aedis.Database.Postgres.Queries;
+using Aedis.Domain.Entities;
 using Aedis.Security.Abstractions;
 using Dapper;
 using FluentAssertions;
@@ -199,6 +200,43 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         public DateTimeOffset UpdatedAt { get; set; }
         public string? UpdatedBy { get; set; }
         public string? UpdatedReason { get; set; }
+    }
+
+    [Fact]
+    public async Task AuditableAggregateRoot_da_auditoria_e_soft_delete_por_heranca_sem_boilerplate() {
+        var table = $"calendarios_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($@"CREATE TABLE {table} (
+            id uuid PRIMARY KEY, codigo text, nome text,
+            created_at timestamptz, created_by text, updated_at timestamptz, updated_by text, updated_reason text,
+            is_deleted boolean NOT NULL DEFAULT false, deleted_at timestamptz, deleted_by text)");
+
+        var now = DateTimeOffset.Parse("2026-06-01T12:00:00Z");
+        var repo = _fixture.Repo<CalendarioEscopo>(table, new FakeAudit("bob", now, "ajuste de escopo"));
+
+        var calendario = new CalendarioEscopo { Id = Guid.NewGuid(), Codigo = "C1", Nome = "Escopo" };
+        await repo.SaveAsync(calendario);
+
+        calendario.CreatedBy.Should().Be("bob", "a entidade só herda — o repo carimba");
+        (await _fixture.ScalarAsync<string>($"SELECT created_by FROM {table} WHERE id='{calendario.Id}'"))
+            .Should().Be("bob");
+        (await _fixture.ScalarAsync<string>($"SELECT updated_reason FROM {table} WHERE id='{calendario.Id}'"))
+            .Should().Be("ajuste de escopo");
+
+        // Soft-delete carimba quem/quando deletou.
+        await repo.DeleteAsync(calendario.Id);
+        (await _fixture.ScalarAsync<bool>($"SELECT is_deleted FROM {table} WHERE id='{calendario.Id}'"))
+            .Should().BeTrue();
+        (await _fixture.ScalarAsync<string>($"SELECT deleted_by FROM {table} WHERE id='{calendario.Id}'"))
+            .Should().Be("bob");
+
+        // GetById não retorna entidade soft-deletada (convenção IsDeleted).
+        (await repo.GetByIdAsync(calendario.Id)).Should().BeNull();
+    }
+
+    public sealed class CalendarioEscopo : AuditableAggregateRoot<Guid>
+    {
+        public string Codigo { get; set; } = string.Empty;
+        public string Nome { get; set; } = string.Empty;
     }
 
     private sealed record FakeAudit(string? CurrentActor, DateTimeOffset Now, string? Reason) : IAuditContext;

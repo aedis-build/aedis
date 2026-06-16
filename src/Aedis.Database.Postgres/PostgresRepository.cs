@@ -27,6 +27,8 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     private readonly AuditColumns _auditColumns;
     private readonly PostgresBulkInserter _bulkInserter;
     private readonly PropertyInfo[] _columns;
+    private readonly bool _hasDeletedAt;
+    private readonly bool _hasDeletedBy;
     private readonly bool _hasSoftDelete;
     private readonly PropertyInfo _idProperty;
     private readonly ILogger _logger;
@@ -54,8 +56,13 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             .ToArray();
         _idProperty = _columns.FirstOrDefault(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
                       ?? throw new InvalidOperationException($"A entidade {entityType.Name} não tem propriedade Id.");
-        _hasSoftDelete = _columns.Any(p => p.Name.Equals("IsDeleted", StringComparison.OrdinalIgnoreCase));
+        _hasSoftDelete = HasColumn("IsDeleted");
+        _hasDeletedAt = HasColumn("DeletedAt");
+        _hasDeletedBy = HasColumn("DeletedBy");
     }
+
+    private bool HasColumn(string name) =>
+        _columns.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
     // ---- Read --------------------------------------------------------------------------------------
 
@@ -129,10 +136,29 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
         }, ct);
 
     public async Task DeleteAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
-        var sql = _hasSoftDelete
-            ? $"UPDATE {TableName} SET {Col("IsDeleted")} = true WHERE {Col("Id")} = @Id"
-            : $"DELETE FROM {TableName} WHERE {Col("Id")} = @Id";
-        await unitOfWork.ExecuteAsync(sql, new { Id = id }, ct);
+        if (!_hasSoftDelete) {
+            await unitOfWork.ExecuteAsync($"DELETE FROM {TableName} WHERE {Col("Id")} = @Id", new { Id = id }, ct);
+            return;
+        }
+
+        var sets = new List<string> { $"{Col("IsDeleted")} = true" };
+        var parameters = new DynamicParameters();
+        parameters.Add("@Id", id);
+
+        if (_audit is not null) {
+            if (_hasDeletedAt) {
+                sets.Add($"{Col("DeletedAt")} = @DeletedAt");
+                parameters.Add("@DeletedAt", _audit.Now);
+            }
+
+            if (_hasDeletedBy) {
+                sets.Add($"{Col("DeletedBy")} = @DeletedBy");
+                parameters.Add("@DeletedBy", _audit.CurrentActor);
+            }
+        }
+
+        await unitOfWork.ExecuteAsync(
+            $"UPDATE {TableName} SET {string.Join(", ", sets)} WHERE {Col("Id")} = @Id", parameters, ct);
     }
 
     public Task BulkInsertAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
