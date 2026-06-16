@@ -92,6 +92,52 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
             FluentActions.Invoking(() => SqlIdentifier.Validate(identifier)).Should().Throw<ArgumentException>();
     }
 
+    /// <summary>
+    ///     Reproduz o caso do payhop-cartoes (tabela <c>urs</c>): upsert condicional com guard (só atualiza
+    ///     se o dado de entrada for mais novo — timestamp OU sequencial), preservando <c>created_at</c> e
+    ///     ignorando linhas soft-deleted. O mesmo template dirige Save e BulkInsertChunked.
+    /// </summary>
+    [Fact]
+    public async Task Upsert_condicional_so_atualiza_se_mais_novo_preserva_created_e_ignora_deletado() {
+        var table = $"metrics_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($@"CREATE TABLE {table} (
+            id uuid PRIMARY KEY, value numeric, source_seq bigint,
+            observed_at timestamptz, created_at timestamptz, updated_at timestamptz,
+            is_deleted boolean NOT NULL DEFAULT false)");
+        var repo = new ConditionalMetricRepository(_fixture.Factory, _fixture.Naming, _fixture.OptionsAccessor,
+            _fixture.Inserter, table);
+
+        var id = Guid.NewGuid();
+        var created = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
+        var t0 = DateTimeOffset.Parse("2026-03-01T00:00:00Z");
+
+        // Estado inicial (via Save — mesmo template).
+        await repo.SaveAsync(new Metric { Id = id, Value = 10, SourceSeq = 1, ObservedAt = t0, CreatedAt = created });
+
+        Task<decimal> Value() => _fixture.ScalarAsync<decimal>($"SELECT value FROM {table} WHERE id = '{id}'");
+
+        // (A) Mais NOVO (observed_at maior) → atualiza; created_at preservado.
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 20, SourceSeq = 2, ObservedAt = t0.AddDays(10), CreatedAt = DateTimeOffset.UtcNow }
+        ]);
+        (await Value()).Should().Be(20, "dado mais novo atualiza");
+        (await _fixture.ScalarAsync<DateTime>($"SELECT created_at FROM {table} WHERE id = '{id}'"))
+            .Should().Be(created.UtcDateTime, "created_at é preservado");
+
+        // (B) Mais VELHO (observed_at menor, seq não maior) → guard falha, NÃO atualiza.
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 99, SourceSeq = 1, ObservedAt = t0.AddDays(-10), CreatedAt = created }
+        ]);
+        (await Value()).Should().Be(20, "dado mais velho é ignorado");
+
+        // (C) Soft-deleted → guard (is_deleted=false) falha, NÃO atualiza mesmo sendo mais novo.
+        await _fixture.ExecAsync($"UPDATE {table} SET is_deleted = true WHERE id = '{id}'");
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 77, SourceSeq = 9, ObservedAt = t0.AddDays(99), CreatedAt = created }
+        ]);
+        (await Value()).Should().Be(20, "linha soft-deleted não é atualizada");
+    }
+
     private static Order NewOrder(Guid id, string description, OrderStatus status, int total = 0) => new() {
         Id = id, Description = description, Total = total, Status = status, CreatedOn = new DateOnly(2026, 1, 1)
     };
@@ -105,6 +151,43 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         public decimal Total { get; set; }
         public OrderStatus Status { get; set; }
         public DateOnly CreatedOn { get; set; }
+    }
+
+    public sealed class Metric
+    {
+        public Guid Id { get; set; }
+        public decimal Value { get; set; }
+        public long SourceSeq { get; set; }
+        public DateTimeOffset ObservedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
+    /// <summary>
+    ///     Upsert condicional equivalente ao caso real da tabela <c>urs</c>: só atualiza se o dado de
+    ///     entrada for mais novo (observed_at OU source_seq), preserva <c>created_at</c> e ignora linhas
+    ///     soft-deleted. <c>updated_at = now()</c>. O guard referencia a tabela alvo por <c>TableName</c>.
+    /// </summary>
+    private sealed class ConditionalMetricRepository(IUnitOfWorkFactory factory, NamingStrategyResolver naming,
+        IOptions<DatabaseOptions> options, PostgresBulkInserter inserter, string table)
+        : PostgresRepository<Metric, Guid>(factory, NullLogger<PostgresRepository<Metric, Guid>>.Instance, naming,
+            options, inserter, table)
+    {
+        protected override string? GetOnConflictClause() => $@"
+            ON CONFLICT (id) DO UPDATE SET
+                value       = EXCLUDED.value,
+                source_seq  = EXCLUDED.source_seq,
+                observed_at = EXCLUDED.observed_at,
+                updated_at  = now()
+            WHERE (
+                COALESCE(EXCLUDED.observed_at, 'infinity'::timestamptz)
+                    >= COALESCE({TableName}.observed_at, '-infinity'::timestamptz)
+                OR
+                COALESCE(EXCLUDED.source_seq, 9223372036854775807)
+                    > COALESCE({TableName}.source_seq, -9223372036854775808)
+            )
+            AND {TableName}.is_deleted = false";
     }
 
     /// <summary>Repositório de teste cujo template de upsert vale para Save e bulk.</summary>
@@ -132,6 +215,17 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
                 ["Database:ConnectionString"] = _container.GetConnectionString()
             }).Build();
             _provider = new ServiceCollection().AddLogging().AddAedisPostgres(config).BuildServiceProvider();
+        }
+
+        public IUnitOfWorkFactory Factory => _provider.GetRequiredService<IUnitOfWorkFactory>();
+        public NamingStrategyResolver Naming => _provider.GetRequiredService<NamingStrategyResolver>();
+        public IOptions<DatabaseOptions> OptionsAccessor => _provider.GetRequiredService<IOptions<DatabaseOptions>>();
+        public PostgresBulkInserter Inserter => _provider.GetRequiredService<PostgresBulkInserter>();
+
+        public async Task ExecAsync(string sql) {
+            await using var connection = new NpgsqlConnection(_container.GetConnectionString());
+            await connection.OpenAsync();
+            await connection.ExecuteAsync(sql);
         }
 
         public async Task<string> CreateTableAsync() {
