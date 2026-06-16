@@ -41,6 +41,9 @@ public static class PostgresServiceCollectionExtensions
         services.TryAddScoped(typeof(IReadRepository<,>), typeof(PostgresRepository<,>));
         services.TryAddScoped(typeof(IWriteRepository<,>), typeof(PostgresRepository<,>));
 
+        services.AddHealthChecks()
+            .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"], timeout: TimeSpan.FromSeconds(10));
+
         return services;
     }
 }

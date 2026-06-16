@@ -262,6 +262,26 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
 
     private string Convert(NamingContext context) => _naming.GetStrategy(context).Convert(context);
 
-    private static bool IsCollection(Type type) =>
-        type != typeof(string) && typeof(IEnumerable).IsAssignableFrom(type);
+    private static bool IsCollection(Type type) {
+        if (type == typeof(string) || type == typeof(byte[]))
+            return false; // text / bytea são colunas escalares
+        if (!typeof(IEnumerable).IsAssignableFrom(type))
+            return false;
+
+        // Arrays/listas de tipos simples (string[], int[], Guid[]…) são colunas Postgres (text[]/int[]/…);
+        // coleções de tipos complexos são navegação de agregado e ficam fora das colunas.
+        var element = type.IsArray
+            ? type.GetElementType()
+            : type.IsGenericType
+                ? type.GetGenericArguments().FirstOrDefault()
+                : null;
+        return element is null || !IsSimple(element);
+    }
+
+    private static bool IsSimple(Type type) {
+        type = Nullable.GetUnderlyingType(type) ?? type;
+        return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal)
+               || type == typeof(Guid) || type == typeof(DateTime) || type == typeof(DateTimeOffset)
+               || type == typeof(DateOnly) || type == typeof(TimeOnly);
+    }
 }

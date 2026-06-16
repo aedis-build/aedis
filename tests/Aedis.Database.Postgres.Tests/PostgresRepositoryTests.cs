@@ -138,6 +138,41 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         (await Value()).Should().Be(20, "linha soft-deleted não é atualizada");
     }
 
+    [Fact]
+    public async Task Arrays_postgres_em_save_bulk_e_query_com_operadores_gin() {
+        var table = $"tagged_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($"CREATE TABLE {table} (id uuid PRIMARY KEY, tags text[])");
+        var repo = _fixture.Repo<Tagged>(table);
+
+        await repo.SaveAsync(new Tagged { Id = Guid.NewGuid(), Tags = ["vip", "gold"] });
+        await repo.BulkInsertAsync([
+            new Tagged { Id = Guid.NewGuid(), Tags = ["gold"] },
+            new Tagged { Id = Guid.NewGuid(), Tags = ["silver"] }
+        ]);
+
+        // && (overlap): {vip,gold} casa por "vip"; {silver} casa por "silver"; {gold} fora.
+        (await repo.FindAsync(new TagsOverlap(table, ["vip", "silver"]))).Should().HaveCount(2);
+
+        // = ANY: 'gold' pertence a {vip,gold} e {gold}.
+        (await repo.FindAsync(new TagsEqualsAny(table, "gold"))).Should().HaveCount(2);
+    }
+
+    public sealed class Tagged
+    {
+        public Guid Id { get; set; }
+        public string[] Tags { get; set; } = [];
+    }
+
+    private sealed class TagsOverlap : PostgresCriteria<Tagged>
+    {
+        public TagsOverlap(string table, string[] values) : base(table) => WhereArrayOverlap("tags", values);
+    }
+
+    private sealed class TagsEqualsAny : PostgresCriteria<Tagged>
+    {
+        public TagsEqualsAny(string table, string value) : base(table) => WhereEqualsAny("tags", value);
+    }
+
     private static Order NewOrder(Guid id, string description, OrderStatus status, int total = 0) => new() {
         Id = id, Description = description, Total = total, Status = status, CreatedOn = new DateOnly(2026, 1, 1)
     };
@@ -236,6 +271,14 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
                 $"CREATE TABLE {table} (id uuid PRIMARY KEY, description text, total numeric, status text, created_on date)");
             return table;
         }
+
+        public PostgresRepository<T, Guid> Repo<T>(string table) where T : class => new(
+            _provider.GetRequiredService<IUnitOfWorkFactory>(),
+            NullLogger<PostgresRepository<T, Guid>>.Instance,
+            _provider.GetRequiredService<NamingStrategyResolver>(),
+            _provider.GetRequiredService<IOptions<DatabaseOptions>>(),
+            _provider.GetRequiredService<PostgresBulkInserter>(),
+            table);
 
         public PostgresRepository<Order, Guid> Plain(string table) => new(
             _provider.GetRequiredService<IUnitOfWorkFactory>(),
