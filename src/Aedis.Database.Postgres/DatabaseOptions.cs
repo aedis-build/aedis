@@ -37,4 +37,11 @@ public sealed class DatabaseOptions
     ///     overhead de catálogo e I/O distribuído. Padrão 2.000 linhas.
     /// </summary>
     public int BulkInsertChunkSize { get; set; } = 2_000;
+
+    /// <summary>
+    ///     Ator gravado em CreatedBy/UpdatedBy/DeletedBy quando o <c>IAuditContext</c> não tem usuário
+    ///     logado (<c>CurrentActor == null</c>). Dá visibilidade de "ação não atribuída a um usuário
+    ///     autenticado" em vez de deixar a coluna nula/vazia. Padrão <c>"system"</c> (use ex.: "anonymous").
+    /// </summary>
+    public string DefaultAuditActor { get; set; } = "system";
 }

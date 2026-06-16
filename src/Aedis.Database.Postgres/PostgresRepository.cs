@@ -153,7 +153,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
 
             if (_hasDeletedBy) {
                 sets.Add($"{Col("DeletedBy")} = @DeletedBy");
-                parameters.Add("@DeletedBy", _audit.CurrentActor);
+                parameters.Add("@DeletedBy", _audit.CurrentActor ?? Options.DefaultAuditActor);
             }
         }
 
@@ -273,7 +273,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// </summary>
     private void Stamp(TEntity entity) {
         if (_audit is not null && _auditColumns.HasAny)
-            _auditColumns.Stamp(entity, _audit);
+            _auditColumns.Stamp(entity, _audit, Options.DefaultAuditActor);
     }
 
     /// <summary>Carimba cada entidade de forma preguiçosa (sem materializar antes do inserter).</summary>
@@ -282,7 +282,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             return entities;
 
         return entities.Select(entity => {
-            _auditColumns.Stamp(entity, _audit);
+            _auditColumns.Stamp(entity, _audit, Options.DefaultAuditActor);
             return entity;
         });
     }

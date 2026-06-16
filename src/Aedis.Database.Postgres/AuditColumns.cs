@@ -42,18 +42,21 @@ internal sealed class AuditColumns
 
     public static AuditColumns For(Type type) => Cache.GetOrAdd(type, t => new AuditColumns(t));
 
-    public void Stamp(object entity, IAuditContext audit) {
+    public void Stamp(object entity, IAuditContext audit, string defaultActor) {
+        // Sem usuário logado (CurrentActor == null) → grava um valor visível (ex.: "system") em vez de nulo.
+        var actor = audit.CurrentActor ?? defaultActor;
+
         if (_createdAt is not null && IsUnsetTime(_createdAt.GetValue(entity)))
             SetTime(_createdAt, entity, audit.Now);
 
         if (_createdBy is not null && IsUnsetActor(_createdBy.GetValue(entity)))
-            _createdBy.SetValue(entity, audit.CurrentActor);
+            _createdBy.SetValue(entity, actor);
 
         if (_updatedAt is not null)
             SetTime(_updatedAt, entity, audit.Now);
 
         if (_updatedBy is not null)
-            _updatedBy.SetValue(entity, audit.CurrentActor);
+            _updatedBy.SetValue(entity, actor);
 
         if (_updatedReason is not null && audit.Reason is not null)
             _updatedReason.SetValue(entity, audit.Reason);

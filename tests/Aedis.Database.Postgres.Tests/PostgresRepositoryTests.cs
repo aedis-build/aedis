@@ -191,6 +191,24 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
             .Should().Be(2);
     }
 
+    [Fact]
+    public async Task Sem_usuario_logado_grava_o_ator_default_visivel() {
+        var table = $"audited_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($@"CREATE TABLE {table} (
+            id uuid PRIMARY KEY, name text,
+            created_at timestamptz, created_by text,
+            updated_at timestamptz, updated_by text, updated_reason text)");
+
+        // CurrentActor == null (sem usuário autenticado).
+        var repo = _fixture.Repo<Audited>(table, new FakeAudit(null, DateTimeOffset.UtcNow, null));
+        var entity = new Audited { Id = Guid.NewGuid(), Name = "x" };
+        await repo.SaveAsync(entity);
+
+        entity.CreatedBy.Should().Be("system", "default visível quando não há usuário logado");
+        (await _fixture.ScalarAsync<string>($"SELECT updated_by FROM {table} WHERE id='{entity.Id}'"))
+            .Should().Be("system");
+    }
+
     public sealed class Audited
     {
         public Guid Id { get; set; }
