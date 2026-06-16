@@ -2,16 +2,26 @@
 
   <PropertyGroup>
     <PackageId>Aedis.Database.Postgres</PackageId>
-    <Description>Aedis.Database.Postgres — parte da plataforma Aedis.</Description>
+    <Description>Aedis.Database.Postgres — provider PostgreSQL do Aedis (Npgsql + Dapper), com bulk insert via COPY binário.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Database.Abstractions\Aedis.Database.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Domain\Aedis.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Database.Postgres.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Npgsql" />
     <PackageReference Include="Dapper" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
   </ItemGroup>
 
 </Project>

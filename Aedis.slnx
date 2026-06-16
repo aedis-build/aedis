@@ -42,6 +42,7 @@
     <Project Path="tests/Aedis.Architecture.Tests/Aedis.Architecture.Tests.csproj" />
     <Project Path="tests/Aedis.Cache.Tests/Aedis.Cache.Tests.csproj" />
     <Project Path="tests/Aedis.Cache.Redis.Tests/Aedis.Cache.Redis.Tests.csproj" />
+    <Project Path="tests/Aedis.Database.Postgres.Tests/Aedis.Database.Postgres.Tests.csproj" />
     <Project Path="tests/Aedis.Diagnostics.Tests/Aedis.Diagnostics.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.AwsSqs.Tests/Aedis.Messaging.AwsSqs.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.AzureServiceBus.Tests/Aedis.Messaging.AzureServiceBus.Tests.csproj" />
