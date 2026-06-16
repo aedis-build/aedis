@@ -1,6 +1,7 @@
 using Aedis.Database.Abstractions;
 using Aedis.Database.Postgres;
 using Aedis.Database.Postgres.Naming;
+using Aedis.Database.Postgres.Queries;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -14,9 +15,9 @@ using Xunit;
 namespace Aedis.Database.Postgres.Tests;
 
 /// <summary>
-///     Repositório convention-based contra um PostgreSQL real: upsert (Save), GetById/Exists, busca por
-///     <see cref="ICriteria{TEntity}" />, bulk insert e delete — com enums persistidos como string e
-///     colunas snake_case mapeadas de volta para as propriedades.
+///     Repositório convention-based contra um PostgreSQL real: o template <c>GetOnConflictClause()</c>
+///     dirigindo upsert tanto no Save quanto no bulk, busca via <see cref="ICriteria{TEntity}" />,
+///     <see cref="RawCriteria{TEntity}" /> seguro contra injeção e a guarda <see cref="SqlIdentifier" />.
 /// </summary>
 public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTests.RepoFixture>
 {
@@ -25,57 +26,75 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
     public PostgresRepositoryTests(RepoFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public async Task Save_faz_upsert_e_GetById_reconstroi_a_entidade() {
-        var (repo, _) = await _fixture.NewRepoAsync();
-        var order = new Order {
-            Id = Guid.NewGuid(), Description = "primeira", Total = 10.5m,
-            Status = OrderStatus.Pending, CreatedOn = new DateOnly(2026, 1, 10)
-        };
+    public async Task GetOnConflictClause_dirige_upsert_no_save_e_no_bulk() {
+        var table = await _fixture.CreateTableAsync();
+        var repo = _fixture.Upsert(table);
+        var id = Guid.NewGuid();
 
-        await repo.SaveAsync(order);
-        var loaded = await repo.GetByIdAsync(order.Id);
+        // Save → insert
+        await repo.SaveAsync(NewOrder(id, "v1", OrderStatus.Pending));
+        (await repo.GetByIdAsync(id))!.Description.Should().Be("v1");
 
-        loaded.Should().NotBeNull();
-        loaded!.Description.Should().Be("primeira");
-        loaded.Total.Should().Be(10.5m);
-        loaded.Status.Should().Be(OrderStatus.Pending);
-        loaded.CreatedOn.Should().Be(new DateOnly(2026, 1, 10));
-
-        order.Description = "atualizada";
-        order.Status = OrderStatus.Settled;
-        await repo.SaveAsync(order);
-
-        var updated = await repo.GetByIdAsync(order.Id);
-        updated!.Description.Should().Be("atualizada");
+        // Save de novo (mesmo id) → o template faz upsert, não duplica
+        await repo.SaveAsync(NewOrder(id, "v2", OrderStatus.Settled));
+        var updated = await repo.GetByIdAsync(id);
+        updated!.Description.Should().Be("v2");
         updated.Status.Should().Be(OrderStatus.Settled);
-        (await repo.ExistsAsync(order.Id)).Should().BeTrue();
+
+        // Bulk com os MESMOS ids → o mesmo template dirige o upsert em massa
+        var ids = Enumerable.Range(0, 500).Select(_ => Guid.NewGuid()).ToList();
+        await repo.BulkInsertAsync(ids.Select(i => NewOrder(i, "bulk-1", OrderStatus.Pending)));
+        await repo.BulkInsertAsync(ids.Select(i => NewOrder(i, "bulk-2", OrderStatus.Pending)));
+
+        (await _fixture.CountAsync(table)).Should().Be(501, "upsert no bulk não duplica");
+        (await _fixture.ScalarAsync<long>($"SELECT count(*) FROM {table} WHERE description = 'bulk-2'"))
+            .Should().Be(500);
     }
 
     [Fact]
-    public async Task BulkInsert_e_busca_por_criteria() {
-        var (repo, table) = await _fixture.NewRepoAsync();
-        var orders = Enumerable.Range(0, 1_000).Select(i => new Order {
-            Id = Guid.NewGuid(), Description = $"o-{i}", Total = i, Status = OrderStatus.Pending,
-            CreatedOn = new DateOnly(2026, 1, 1)
-        }).ToList();
+    public async Task BulkInsert_simples_e_busca_por_criteria() {
+        var table = await _fixture.CreateTableAsync();
+        var repo = _fixture.Plain(table);
+        var orders = Enumerable.Range(0, 1_000)
+            .Select(i => NewOrder(Guid.NewGuid(), $"o-{i}", OrderStatus.Pending, i)).ToList();
 
         await repo.BulkInsertAsync(orders);
 
-        var all = await repo.FindAsync(new RawCriteria<Order>($"SELECT * FROM {table}"));
-        all.Should().HaveCount(1_000);
-        (await repo.CountAsync(new RawCriteria<Order>($"SELECT * FROM {table} WHERE total >= 500"))).Should().Be(500);
+        (await repo.FindAsync(new RawCriteria<Order>($"SELECT * FROM {table}"))).Should().HaveCount(1_000);
+        (await repo.CountAsync(new RawCriteria<Order>($"SELECT * FROM {table} WHERE total >= @min",
+            new { min = 500m }))).Should().Be(500);
     }
 
     [Fact]
-    public async Task Delete_remove_a_entidade() {
-        var (repo, _) = await _fixture.NewRepoAsync();
-        var order = new Order { Id = Guid.NewGuid(), Description = "x", Total = 1, Status = OrderStatus.Pending };
+    public async Task RawCriteria_e_seguro_contra_injecao_em_valores() {
+        var table = await _fixture.CreateTableAsync();
+        var repo = _fixture.Plain(table);
+        await repo.SaveAsync(NewOrder(Guid.NewGuid(), "real", OrderStatus.Pending));
 
-        await repo.SaveAsync(order);
-        await repo.DeleteAsync(order.Id);
+        // Payload de injeção entra como VALOR (bind parameter) — é tratado como dado literal, sem efeito.
+        var attack = $"x'; DROP TABLE {table}; --";
+        var result = await repo.FindAsync(
+            new RawCriteria<Order>($"SELECT * FROM {table} WHERE description = @desc", new { desc = attack }));
 
-        (await repo.GetByIdAsync(order.Id)).Should().BeNull();
+        result.Should().BeEmpty("nenhuma linha tem essa descrição literal");
+        (await _fixture.CountAsync(table)).Should().Be(1, "a tabela continua intacta — nada foi dropado");
     }
+
+    [Theory]
+    [InlineData("orders", true)]
+    [InlineData("public.orders", true)]
+    [InlineData("orders; DROP TABLE x", false)]
+    [InlineData("orders--", false)]
+    [InlineData("orders\"", false)]
+    public void SqlIdentifier_aceita_so_identificadores_seguros(string identifier, bool valid) {
+        SqlIdentifier.IsValid(identifier).Should().Be(valid);
+        if (!valid)
+            FluentActions.Invoking(() => SqlIdentifier.Validate(identifier)).Should().Throw<ArgumentException>();
+    }
+
+    private static Order NewOrder(Guid id, string description, OrderStatus status, int total = 0) => new() {
+        Id = id, Description = description, Total = total, Status = status, CreatedOn = new DateOnly(2026, 1, 1)
+    };
 
     public enum OrderStatus { Pending, Settled }
 
@@ -88,9 +107,13 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         public DateOnly CreatedOn { get; set; }
     }
 
-    private sealed class RawCriteria<T>(string sql) : ICriteria<T>
+    /// <summary>Repositório de teste cujo template de upsert vale para Save e bulk.</summary>
+    private sealed class UpsertOrderRepository(IUnitOfWorkFactory factory,
+        NamingStrategyResolver naming, IOptions<DatabaseOptions> options, PostgresBulkInserter inserter, string table)
+        : PostgresRepository<Order, Guid>(factory, NullLogger<PostgresRepository<Order, Guid>>.Instance, naming,
+            options, inserter, table)
     {
-        public (string Sql, object Parameters) Build() => (sql, new { });
+        protected override string? GetOnConflictClause() => BuildUpsertClause("Id");
     }
 
     public sealed class RepoFixture : IAsyncLifetime
@@ -111,21 +134,36 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
             _provider = new ServiceCollection().AddLogging().AddAedisPostgres(config).BuildServiceProvider();
         }
 
-        public async Task<(PostgresRepository<Order, Guid> repo, string table)> NewRepoAsync() {
+        public async Task<string> CreateTableAsync() {
             var table = $"orders_{Guid.NewGuid():N}";
             await using var connection = new NpgsqlConnection(_container.GetConnectionString());
             await connection.OpenAsync();
             await connection.ExecuteAsync(
                 $"CREATE TABLE {table} (id uuid PRIMARY KEY, description text, total numeric, status text, created_on date)");
+            return table;
+        }
 
-            var repo = new PostgresRepository<Order, Guid>(
-                _provider.GetRequiredService<IUnitOfWorkFactory>(),
-                NullLogger<PostgresRepository<Order, Guid>>.Instance,
-                _provider.GetRequiredService<NamingStrategyResolver>(),
-                _provider.GetRequiredService<IOptions<DatabaseOptions>>(),
-                _provider.GetRequiredService<PostgresBulkInserter>(),
-                table);
-            return (repo, table);
+        public PostgresRepository<Order, Guid> Plain(string table) => new(
+            _provider.GetRequiredService<IUnitOfWorkFactory>(),
+            NullLogger<PostgresRepository<Order, Guid>>.Instance,
+            _provider.GetRequiredService<NamingStrategyResolver>(),
+            _provider.GetRequiredService<IOptions<DatabaseOptions>>(),
+            _provider.GetRequiredService<PostgresBulkInserter>(),
+            table);
+
+        public PostgresRepository<Order, Guid> Upsert(string table) => new UpsertOrderRepository(
+            _provider.GetRequiredService<IUnitOfWorkFactory>(),
+            _provider.GetRequiredService<NamingStrategyResolver>(),
+            _provider.GetRequiredService<IOptions<DatabaseOptions>>(),
+            _provider.GetRequiredService<PostgresBulkInserter>(),
+            table);
+
+        public async Task<long> CountAsync(string table) => await ScalarAsync<long>($"SELECT count(*) FROM {table}");
+
+        public async Task<T> ScalarAsync<T>(string sql) {
+            await using var connection = new NpgsqlConnection(_container.GetConnectionString());
+            await connection.OpenAsync();
+            return (await connection.ExecuteScalarAsync<T>(sql))!;
         }
     }
 }

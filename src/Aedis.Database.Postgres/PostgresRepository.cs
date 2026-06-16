@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using Aedis.Database.Abstractions;
 using Aedis.Database.Postgres.Naming;
+using Aedis.Database.Postgres.Queries;
 using Dapper;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -104,14 +105,13 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     public async Task<TEntity> SaveAsync(TEntity entity, IUnitOfWork unitOfWork, CancellationToken ct = default) {
         var columns = string.Join(", ", _columns.Select(p => Col(p.Name)));
         var values = string.Join(", ", _columns.Select(p => "@" + p.Name));
-        var updates = _columns.Where(IsNotId)
-            .Select(p => $"{Col(p.Name)} = EXCLUDED.{Col(p.Name)}").ToArray();
 
-        var conflict = updates.Length == 0
-            ? $"ON CONFLICT ({Col("Id")}) DO NOTHING"
-            : $"ON CONFLICT ({Col("Id")}) DO UPDATE SET {string.Join(", ", updates)}";
+        // Mesmo template method do bulk: a cláusula de upsert é definida uma vez em GetOnConflictClause()
+        // e vale tanto para o Save (INSERT) quanto para BulkInsert/BulkInsertChunked.
+        var conflict = GetOnConflictClause();
+        var sql = $"INSERT INTO {TableName} ({columns}) VALUES ({values})"
+                  + (conflict is null ? string.Empty : " " + conflict);
 
-        var sql = $"INSERT INTO {TableName} ({columns}) VALUES ({values}) {conflict}";
         await unitOfWork.ExecuteAsync(sql, ToParameters(entity, _columns), ct);
         return entity;
     }
@@ -176,11 +176,32 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     }
 
     /// <summary>
-    ///     Cláusula <c>ON CONFLICT</c> aplicada nas operações de bulk insert. Padrão <c>null</c> (insert
-    ///     simples). Sobrescreva para habilitar upsert em massa, ex.:
-    ///     <c>"ON CONFLICT (id) DO UPDATE SET ..."</c>.
+    ///     Template method da cláusula <c>ON CONFLICT</c> — aplicada de forma consistente tanto no
+    ///     <see cref="SaveAsync(TEntity,CancellationToken)" /> (INSERT) quanto nas operações de bulk
+    ///     (<see cref="BulkInsertAsync(IEnumerable{TEntity},CancellationToken)" /> e
+    ///     <see cref="BulkInsertChunkedAsync(IEnumerable{TEntity},CancellationToken)" />). Padrão
+    ///     <c>null</c> (insert simples). Sobrescreva para habilitar upsert, ex.:
+    ///     <c>protected override string? GetOnConflictClause() => BuildUpsertClause("Id");</c> ou com SQL
+    ///     literal: <c>"ON CONFLICT (id) DO UPDATE SET ..."</c>.
     /// </summary>
     protected virtual string? GetOnConflictClause() => null;
+
+    /// <summary>
+    ///     Monta uma cláusula de upsert com base nas propriedades de conflito informadas (convertidas para
+    ///     colunas pela convenção de nomes): <c>ON CONFLICT (cols) DO UPDATE SET &lt;colunas não-chave&gt; =
+    ///     EXCLUDED.…</c>. Quando não há colunas para atualizar, gera <c>DO NOTHING</c>. Os nomes são
+    ///     validados como identificadores SQL, evitando injeção mesmo se vierem de origem dinâmica.
+    /// </summary>
+    protected string BuildUpsertClause(params string[] conflictProperties) {
+        var targets = (conflictProperties.Length > 0 ? conflictProperties : ["Id"])
+            .Select(p => SqlIdentifier.Validate(Col(p)));
+        var sets = _columns.Where(IsNotId).Select(p => $"{Col(p.Name)} = EXCLUDED.{Col(p.Name)}").ToArray();
+
+        var conflictTarget = $"ON CONFLICT ({string.Join(", ", targets)})";
+        return sets.Length == 0
+            ? $"{conflictTarget} DO NOTHING"
+            : $"{conflictTarget} DO UPDATE SET {string.Join(", ", sets)}";
+    }
 
     // ---- Helpers -----------------------------------------------------------------------------------
 
