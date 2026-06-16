@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Messaging">
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.18.2" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
     <PackageVersion Include="IBMMQDotnetClient" Version="9.4.5" />
     <!-- Override de transitivo vulnerável (Newtonsoft.Json 11 via IBMMQDotnetClient) -->
