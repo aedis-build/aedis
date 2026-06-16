@@ -1,0 +1,246 @@
+using System.Collections;
+using System.Reflection;
+using Aedis.Database.Abstractions;
+using Aedis.Database.Postgres.Naming;
+using Dapper;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Aedis.Database.Postgres;
+
+/// <summary>
+///     Repositório PostgreSQL convention-based: mapeia a entidade para tabela/colunas pela
+///     <see cref="DatabaseOptions.NamingConvention" /> (padrão snake_case), usa a propriedade <c>Id</c>
+///     como chave e detecta soft-delete pela presença de uma propriedade <c>IsDeleted</c>. Leituras vão
+///     em sessão somente leitura; escritas em sessão transacional. O <see cref="SaveAsync(TEntity,CancellationToken)" />
+///     é um upsert (<c>INSERT … ON CONFLICT (id) DO UPDATE</c>). Bulk insert delega ao
+///     <see cref="PostgresBulkInserter" /> (COPY binário). Enums são persistidos como string maiúscula,
+///     em paridade com o caminho de bulk.
+/// </summary>
+public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
+    where TEntity : class
+    where TId : notnull
+{
+    private readonly PostgresBulkInserter _bulkInserter;
+    private readonly PropertyInfo[] _columns;
+    private readonly bool _hasSoftDelete;
+    private readonly PropertyInfo _idProperty;
+    private readonly ILogger _logger;
+    private readonly NamingStrategyResolver _naming;
+    private readonly IUnitOfWorkFactory _sessionFactory;
+
+    protected readonly DatabaseOptions Options;
+    protected readonly string TableName;
+
+    public PostgresRepository(IUnitOfWorkFactory sessionFactory, ILogger<PostgresRepository<TEntity, TId>> logger,
+        NamingStrategyResolver naming, IOptions<DatabaseOptions> options, PostgresBulkInserter bulkInserter,
+        string? tableName = null) {
+        _sessionFactory = sessionFactory;
+        _logger = logger;
+        _naming = naming;
+        Options = options.Value;
+        _bulkInserter = bulkInserter;
+
+        var entityType = typeof(TEntity);
+        TableName = tableName ?? Convert(NamingContext.ForTable(Options.NamingConvention, entityType.Name));
+        _columns = entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p is { CanRead: true, CanWrite: true } && !IsCollection(p.PropertyType))
+            .ToArray();
+        _idProperty = _columns.FirstOrDefault(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                      ?? throw new InvalidOperationException($"A entidade {entityType.Name} não tem propriedade Id.");
+        _hasSoftDelete = _columns.Any(p => p.Name.Equals("IsDeleted", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // ---- Read --------------------------------------------------------------------------------------
+
+    public Task<TEntity?> GetByIdAsync(TId id, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => GetByIdAsync(id, uow, c), ct);
+
+    public async Task<TEntity?> GetByIdAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        var sql = $"SELECT {SelectColumns()} FROM {TableName} WHERE {Col("Id")} = @Id{SoftDeleteSuffix()}";
+        return await unitOfWork.QuerySingleOrDefaultAsync<TEntity>(sql, new { Id = id }, ct);
+    }
+
+    public Task<IEnumerable<TEntity>> FindAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => FindAsync(criteria, uow, c), ct);
+
+    public async Task<IEnumerable<TEntity>> FindAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var (sql, parameters) = criteria.Build();
+        return await unitOfWork.QueryAsync<TEntity>(sql, parameters, ct);
+    }
+
+    public Task<int> CountAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => CountAsync(criteria, uow, c), ct);
+
+    public async Task<int> CountAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var (sql, parameters) = criteria.Build();
+        return await unitOfWork.QuerySingleOrDefaultAsync<int>($"SELECT count(*) FROM ({sql}) AS _c", parameters, ct);
+    }
+
+    public Task<bool> ExistsAsync(TId id, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => ExistsAsync(id, uow, c), ct);
+
+    public async Task<bool> ExistsAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        var sql = $"SELECT EXISTS(SELECT 1 FROM {TableName} WHERE {Col("Id")} = @Id{SoftDeleteSuffix()})";
+        return await unitOfWork.QuerySingleOrDefaultAsync<bool>(sql, new { Id = id }, ct);
+    }
+
+    public Task<IEnumerable<TResult>> QueryAsync<TResult>(ICriteria<TResult> criteria, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => QueryAsync(criteria, uow, c), ct);
+
+    public async Task<IEnumerable<TResult>> QueryAsync<TResult>(ICriteria<TResult> criteria, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var (sql, parameters) = criteria.Build();
+        return await unitOfWork.QueryAsync<TResult>(sql, parameters, ct);
+    }
+
+    // ---- Write -------------------------------------------------------------------------------------
+
+    public Task<TEntity> SaveAsync(TEntity entity, CancellationToken ct = default) =>
+        InWriteSessionAsync((uow, c) => SaveAsync(entity, uow, c), ct);
+
+    public async Task<TEntity> SaveAsync(TEntity entity, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        var columns = string.Join(", ", _columns.Select(p => Col(p.Name)));
+        var values = string.Join(", ", _columns.Select(p => "@" + p.Name));
+        var updates = _columns.Where(IsNotId)
+            .Select(p => $"{Col(p.Name)} = EXCLUDED.{Col(p.Name)}").ToArray();
+
+        var conflict = updates.Length == 0
+            ? $"ON CONFLICT ({Col("Id")}) DO NOTHING"
+            : $"ON CONFLICT ({Col("Id")}) DO UPDATE SET {string.Join(", ", updates)}";
+
+        var sql = $"INSERT INTO {TableName} ({columns}) VALUES ({values}) {conflict}";
+        await unitOfWork.ExecuteAsync(sql, ToParameters(entity, _columns), ct);
+        return entity;
+    }
+
+    public Task DeleteAsync(TId id, CancellationToken ct = default) =>
+        InWriteSessionAsync(async (uow, c) => {
+            await DeleteAsync(id, uow, c);
+            return true;
+        }, ct);
+
+    public async Task DeleteAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        var sql = _hasSoftDelete
+            ? $"UPDATE {TableName} SET {Col("IsDeleted")} = true WHERE {Col("Id")} = @Id"
+            : $"DELETE FROM {TableName} WHERE {Col("Id")} = @Id";
+        await unitOfWork.ExecuteAsync(sql, new { Id = id }, ct);
+    }
+
+    public Task BulkInsertAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
+        InWriteSessionAsync(async (uow, c) => {
+            await BulkInsertAsync(entities, uow, c);
+            return true;
+        }, ct);
+
+    public Task BulkInsertAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork, CancellationToken ct = default) =>
+        _bulkInserter.BulkInsertAsync(unitOfWork, TableName, _columns, entities, _naming, Options,
+            GetOnConflictClause(), ct);
+
+    public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
+        InWriteSessionAsync(async (uow, c) => {
+            await BulkInsertChunkedAsync(entities, uow, c);
+            return true;
+        }, ct);
+
+    public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) =>
+        _bulkInserter.BulkInsertChunkedAsync(unitOfWork, TableName, _columns, entities, _naming, Options,
+            Options.BulkInsertChunkSize, GetOnConflictClause(), ct);
+
+    public Task BulkUpdateAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
+        InWriteSessionAsync(async (uow, c) => {
+            await BulkUpdateAsync(entities, uow, c);
+            return true;
+        }, ct);
+
+    public async Task BulkUpdateAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var updateColumns = _columns.Where(IsNotId).ToArray();
+        var setClause = string.Join(", ", updateColumns.Select(p => $"{Col(p.Name)} = @{p.Name}"));
+        var sql = $"UPDATE {TableName} SET {setClause} WHERE {Col("Id")} = @{_idProperty.Name}";
+
+        foreach (var entity in entities)
+            await unitOfWork.ExecuteAsync(sql, ToParameters(entity, [.. updateColumns, _idProperty]), ct);
+    }
+
+    public Task<int> CommandAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
+        InWriteSessionAsync((uow, c) => CommandAsync(criteria, uow, c), ct);
+
+    public async Task<int> CommandAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var (sql, parameters) = criteria.Build();
+        return await unitOfWork.ExecuteAsync(sql, parameters, ct);
+    }
+
+    /// <summary>
+    ///     Cláusula <c>ON CONFLICT</c> aplicada nas operações de bulk insert. Padrão <c>null</c> (insert
+    ///     simples). Sobrescreva para habilitar upsert em massa, ex.:
+    ///     <c>"ON CONFLICT (id) DO UPDATE SET ..."</c>.
+    /// </summary>
+    protected virtual string? GetOnConflictClause() => null;
+
+    // ---- Helpers -----------------------------------------------------------------------------------
+
+    private async Task<T> InReadSessionAsync<T>(Func<IUnitOfWork, CancellationToken, Task<T>> action,
+        CancellationToken ct) {
+        await using var uow = await _sessionFactory.CreateReadSessionAsync(ct);
+        try {
+            var result = await action(uow, ct);
+            await uow.CommitAsync(ct);
+            return result;
+        }
+        catch {
+            await uow.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    private async Task<T> InWriteSessionAsync<T>(Func<IUnitOfWork, CancellationToken, Task<T>> action,
+        CancellationToken ct) {
+        await using var uow = await _sessionFactory.CreateWriteSessionAsync(ct);
+        try {
+            var result = await action(uow, ct);
+            await uow.CommitAsync(ct);
+            return result;
+        }
+        catch {
+            await uow.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    private static DynamicParameters ToParameters(TEntity entity, PropertyInfo[] properties) {
+        var parameters = new DynamicParameters();
+        foreach (var property in properties) {
+            var value = property.GetValue(entity);
+            if (value is not null) {
+                var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                if (type.IsEnum) value = value.ToString()!.ToUpperInvariant();
+            }
+
+            parameters.Add("@" + property.Name, value);
+        }
+
+        return parameters;
+    }
+
+    private string SelectColumns() =>
+        string.Join(", ", _columns.Select(p => {
+            var column = Col(p.Name);
+            return column.Equals(p.Name, StringComparison.Ordinal) ? column : $"{column} AS \"{p.Name}\"";
+        }));
+
+    private string SoftDeleteSuffix() => _hasSoftDelete ? $" AND {Col("IsDeleted")} = false" : string.Empty;
+
+    private bool IsNotId(PropertyInfo property) => property != _idProperty;
+
+    private string Col(string propertyName) => Convert(NamingContext.ForColumn(Options.NamingConvention, propertyName));
+
+    private string Convert(NamingContext context) => _naming.GetStrategy(context).Convert(context);
+
+    private static bool IsCollection(Type type) =>
+        type != typeof(string) && typeof(IEnumerable).IsAssignableFrom(type);
+}

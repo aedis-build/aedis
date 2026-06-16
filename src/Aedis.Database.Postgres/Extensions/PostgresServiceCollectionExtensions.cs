@@ -27,6 +27,7 @@ public static class PostgresServiceCollectionExtensions
 
         SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
         SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
+        DefaultTypeMap.MatchNamesWithUnderscores = true; // mapeia colunas snake_case → propriedades PascalCase
 
         services.AddSingleton<INamingStrategy, SnakeCaseNamingStrategy>();
         services.AddSingleton<INamingStrategy, PascalCaseNamingStrategy>();
@@ -35,6 +36,10 @@ public static class PostgresServiceCollectionExtensions
 
         services.TryAddSingleton<IUnitOfWorkFactory, UnitOfWorkFactory>();
         services.TryAddSingleton<PostgresBulkInserter>();
+
+        services.TryAddScoped(typeof(IRepository<,>), typeof(PostgresRepository<,>));
+        services.TryAddScoped(typeof(IReadRepository<,>), typeof(PostgresRepository<,>));
+        services.TryAddScoped(typeof(IWriteRepository<,>), typeof(PostgresRepository<,>));
 
         return services;
     }
