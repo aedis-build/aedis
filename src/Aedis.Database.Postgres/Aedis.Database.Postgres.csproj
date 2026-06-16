@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Database.Abstractions\Aedis.Database.Abstractions.csproj" />
     <ProjectReference Include="..\Aedis.Domain\Aedis.Domain.csproj" />
+    <ProjectReference Include="..\Aedis.Security.Abstractions\Aedis.Security.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

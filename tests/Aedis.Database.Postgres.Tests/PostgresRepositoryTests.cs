@@ -2,6 +2,7 @@ using Aedis.Database.Abstractions;
 using Aedis.Database.Postgres;
 using Aedis.Database.Postgres.Naming;
 using Aedis.Database.Postgres.Queries;
+using Aedis.Security.Abstractions;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -157,6 +158,51 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         (await repo.FindAsync(new TagsEqualsAny(table, "gold"))).Should().HaveCount(2);
     }
 
+    [Fact]
+    public async Task Auditoria_carimba_created_updated_by_at_e_reason_quando_presentes() {
+        var table = $"audited_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($@"CREATE TABLE {table} (
+            id uuid PRIMARY KEY, name text,
+            created_at timestamptz, created_by text,
+            updated_at timestamptz, updated_by text, updated_reason text)");
+
+        var now = DateTimeOffset.Parse("2026-06-01T12:00:00Z");
+        var audit = new FakeAudit("alice", now, "correcao manual");
+        var repo = _fixture.Repo<Audited>(table, audit);
+
+        // Save de entidade nova (campos de auditoria vazios) → tudo carimbado pelo contexto.
+        var entity = new Audited { Id = Guid.NewGuid(), Name = "x" };
+        await repo.SaveAsync(entity);
+
+        entity.CreatedBy.Should().Be("alice", "o objeto também é carimbado");
+        (await _fixture.ScalarAsync<string>($"SELECT created_by FROM {table} WHERE id='{entity.Id}'"))
+            .Should().Be("alice");
+        (await _fixture.ScalarAsync<DateTime>($"SELECT created_at FROM {table} WHERE id='{entity.Id}'"))
+            .Should().Be(now.UtcDateTime);
+        (await _fixture.ScalarAsync<string>($"SELECT updated_by FROM {table} WHERE id='{entity.Id}'"))
+            .Should().Be("alice");
+        (await _fixture.ScalarAsync<string>($"SELECT updated_reason FROM {table} WHERE id='{entity.Id}'"))
+            .Should().Be("correcao manual");
+
+        // Bulk também carimba cada linha.
+        await repo.BulkInsertAsync([new Audited { Id = Guid.NewGuid(), Name = "b" }]);
+        (await _fixture.ScalarAsync<long>($"SELECT count(*) FROM {table} WHERE created_by = 'alice'"))
+            .Should().Be(2);
+    }
+
+    public sealed class Audited
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public DateTimeOffset CreatedAt { get; set; }
+        public string? CreatedBy { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
+        public string? UpdatedBy { get; set; }
+        public string? UpdatedReason { get; set; }
+    }
+
+    private sealed record FakeAudit(string? CurrentActor, DateTimeOffset Now, string? Reason) : IAuditContext;
+
     public sealed class Tagged
     {
         public Guid Id { get; set; }
@@ -272,13 +318,13 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
             return table;
         }
 
-        public PostgresRepository<T, Guid> Repo<T>(string table) where T : class => new(
+        public PostgresRepository<T, Guid> Repo<T>(string table, IAuditContext? audit = null) where T : class => new(
             _provider.GetRequiredService<IUnitOfWorkFactory>(),
             NullLogger<PostgresRepository<T, Guid>>.Instance,
             _provider.GetRequiredService<NamingStrategyResolver>(),
             _provider.GetRequiredService<IOptions<DatabaseOptions>>(),
             _provider.GetRequiredService<PostgresBulkInserter>(),
-            table);
+            table, audit);
 
         public PostgresRepository<Order, Guid> Plain(string table) => new(
             _provider.GetRequiredService<IUnitOfWorkFactory>(),

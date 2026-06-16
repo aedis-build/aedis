@@ -3,6 +3,7 @@ using System.Reflection;
 using Aedis.Database.Abstractions;
 using Aedis.Database.Postgres.Naming;
 using Aedis.Database.Postgres.Queries;
+using Aedis.Security.Abstractions;
 using Dapper;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,8 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     where TEntity : class
     where TId : notnull
 {
+    private readonly IAuditContext? _audit;
+    private readonly AuditColumns _auditColumns;
     private readonly PostgresBulkInserter _bulkInserter;
     private readonly PropertyInfo[] _columns;
     private readonly bool _hasSoftDelete;
@@ -35,12 +38,14 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
 
     public PostgresRepository(IUnitOfWorkFactory sessionFactory, ILogger<PostgresRepository<TEntity, TId>> logger,
         NamingStrategyResolver naming, IOptions<DatabaseOptions> options, PostgresBulkInserter bulkInserter,
-        string? tableName = null) {
+        string? tableName = null, IAuditContext? auditContext = null) {
         _sessionFactory = sessionFactory;
         _logger = logger;
         _naming = naming;
         Options = options.Value;
         _bulkInserter = bulkInserter;
+        _audit = auditContext;
+        _auditColumns = AuditColumns.For(typeof(TEntity));
 
         var entityType = typeof(TEntity);
         TableName = tableName ?? Convert(NamingContext.ForTable(Options.NamingConvention, entityType.Name));
@@ -103,6 +108,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
         InWriteSessionAsync((uow, c) => SaveAsync(entity, uow, c), ct);
 
     public async Task<TEntity> SaveAsync(TEntity entity, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        Stamp(entity);
         var columns = string.Join(", ", _columns.Select(p => Col(p.Name)));
         var values = string.Join(", ", _columns.Select(p => "@" + p.Name));
 
@@ -136,7 +142,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
         }, ct);
 
     public Task BulkInsertAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork, CancellationToken ct = default) =>
-        _bulkInserter.BulkInsertAsync(unitOfWork, TableName, _columns, entities, _naming, Options,
+        _bulkInserter.BulkInsertAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
             GetOnConflictClause(), ct);
 
     public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
@@ -147,7 +153,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
 
     public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
         CancellationToken ct = default) =>
-        _bulkInserter.BulkInsertChunkedAsync(unitOfWork, TableName, _columns, entities, _naming, Options,
+        _bulkInserter.BulkInsertChunkedAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
             Options.BulkInsertChunkSize, GetOnConflictClause(), ct);
 
     public Task BulkUpdateAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
@@ -162,8 +168,10 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
         var setClause = string.Join(", ", updateColumns.Select(p => $"{Col(p.Name)} = @{p.Name}"));
         var sql = $"UPDATE {TableName} SET {setClause} WHERE {Col("Id")} = @{_idProperty.Name}";
 
-        foreach (var entity in entities)
+        foreach (var entity in entities) {
+            Stamp(entity);
             await unitOfWork.ExecuteAsync(sql, ToParameters(entity, [.. updateColumns, _idProperty]), ct);
+        }
     }
 
     public Task<int> CommandAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
@@ -231,6 +239,26 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             await uow.RollbackAsync(ct);
             throw;
         }
+    }
+
+    /// <summary>
+    ///     Carimba as colunas de auditoria presentes (CreatedAt/By, UpdatedAt/By, UpdatedReason) a partir
+    ///     do <see cref="IAuditContext" />, quando há um contexto registrado. No-op caso contrário.
+    /// </summary>
+    private void Stamp(TEntity entity) {
+        if (_audit is not null && _auditColumns.HasAny)
+            _auditColumns.Stamp(entity, _audit);
+    }
+
+    /// <summary>Carimba cada entidade de forma preguiçosa (sem materializar antes do inserter).</summary>
+    private IEnumerable<TEntity> Stamped(IEnumerable<TEntity> entities) {
+        if (_audit is null || !_auditColumns.HasAny)
+            return entities;
+
+        return entities.Select(entity => {
+            _auditColumns.Stamp(entity, _audit);
+            return entity;
+        });
     }
 
     private static DynamicParameters ToParameters(TEntity entity, PropertyInfo[] properties) {
