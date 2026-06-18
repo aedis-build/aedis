@@ -31,6 +31,7 @@
     <Project Path="src/Aedis.Pdf.Abstractions/Aedis.Pdf.Abstractions.csproj" />
     <Project Path="src/Aedis.Pdf.QuestPdf/Aedis.Pdf.QuestPdf.csproj" />
     <Project Path="src/Aedis.Scheduling.Hangfire/Aedis.Scheduling.Hangfire.csproj" />
+    <Project Path="src/Aedis.Security/Aedis.Security.csproj" />
     <Project Path="src/Aedis.Security.Abstractions/Aedis.Security.Abstractions.csproj" />
     <Project Path="src/Aedis.Security.Keycloak/Aedis.Security.Keycloak.csproj" />
     <Project Path="src/Aedis.Storage.Abstractions/Aedis.Storage.Abstractions.csproj" />
@@ -49,6 +50,7 @@
     <Project Path="tests/Aedis.Messaging.IbmMq.Tests/Aedis.Messaging.IbmMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.RabbitMq.Tests/Aedis.Messaging.RabbitMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.Tests/Aedis.Messaging.Tests.csproj" />
+    <Project Path="tests/Aedis.Security.Tests/Aedis.Security.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.AzureBlob.Tests/Aedis.Storage.AzureBlob.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.S3.Tests/Aedis.Storage.S3.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.Tests/Aedis.Storage.Tests.csproj" />

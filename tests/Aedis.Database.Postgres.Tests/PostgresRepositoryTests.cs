@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using NSubstitute;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -257,6 +258,41 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         public string Nome { get; set; } = string.Empty;
     }
 
+    [Fact]
+    public async Task Cadeia_DI_completa_carimba_o_usuario_logado_automaticamente() {
+        var table = "calendario_escopos"; // convenção: CalendarioEscopo → snake plural
+        await _fixture.ExecAsync($@"CREATE TABLE IF NOT EXISTS {table} (
+            id uuid PRIMARY KEY, codigo text, nome text,
+            created_at timestamptz, created_by text, updated_at timestamptz, updated_by text, updated_reason text,
+            is_deleted boolean NOT NULL DEFAULT false, deleted_at timestamptz, deleted_by text)");
+
+        var user = NSubstitute.Substitute.For<ICurrentUser>();
+        user.IsAuthenticated.Returns(true);
+        user.Id.Returns("joana");
+
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Database:ConnectionString"] = _fixture.ConnectionString
+        }).Build();
+
+        var provider = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton(user)
+            .AddAedisAuditContext()   // ponte ICurrentUser → IAuditContext
+            .AddAedisPostgres(config) // repo recebe o IAuditContext via DI (param opcional)
+            .BuildServiceProvider();
+
+        var id = Guid.NewGuid();
+        using (var scope = provider.CreateScope()) {
+            var repo = scope.ServiceProvider.GetRequiredService<IRepository<CalendarioEscopo, Guid>>();
+            await repo.SaveAsync(new CalendarioEscopo { Id = id, Codigo = "C1", Nome = "Escopo" });
+        }
+
+        (await _fixture.ScalarAsync<string>($"SELECT created_by FROM {table} WHERE id='{id}'"))
+            .Should().Be("joana", "o usuário logado é carimbado automaticamente pela cadeia de DI");
+
+        await _fixture.ExecAsync($"DROP TABLE {table}");
+    }
+
     private sealed record FakeAudit(string? CurrentActor, DateTimeOffset Now, string? Reason) : IAuditContext;
 
     public sealed class Tagged
@@ -353,6 +389,8 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
             }).Build();
             _provider = new ServiceCollection().AddLogging().AddAedisPostgres(config).BuildServiceProvider();
         }
+
+        public string ConnectionString => _container.GetConnectionString();
 
         public IUnitOfWorkFactory Factory => _provider.GetRequiredService<IUnitOfWorkFactory>();
         public NamingStrategyResolver Naming => _provider.GetRequiredService<NamingStrategyResolver>();
