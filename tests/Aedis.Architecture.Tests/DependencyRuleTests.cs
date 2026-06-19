@@ -29,4 +29,15 @@ public class DependencyRuleTests
 
         result.IsSuccessful.Should().BeTrue("o domínio não pode referenciar pacotes de implementação concreta");
     }
+
+    [Fact]
+    public void Messaging_Abstractions_nao_depende_de_provider() {
+        var result = Types.InAssembly(typeof(Aedis.Messaging.Abstractions.IRawMessage).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("IBM.WMQ", "RabbitMQ.Client", "Amazon", "Azure.Messaging.ServiceBus")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.Messaging.Abstractions deve permanecer agnóstica: a semântica de broker desce para o pacote do provider");
+    }
 }

@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Aedis.Core\Aedis.Core.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Domain\Aedis.Domain.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Commands\Aedis.Commands.csproj" />
+    <ProjectReference Include="..\..\src\Aedis.Messaging.Abstractions\Aedis.Messaging.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

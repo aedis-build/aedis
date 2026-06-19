@@ -88,7 +88,7 @@ public sealed class IbmMqPublishConsumeTests : IClassFixture<IbmMqPublishConsume
 
         public void FromRaw(byte[] rawData, string correlationId = "") => Payload = rawData;
 
-        public void FromMqMetadata(MqMessageMetadata metadata) => Metadata = metadata;
+        public void FromProviderMetadata(MqMessageMetadata metadata) => Metadata = metadata;
     }
 
     private sealed class CapturingHandler<T> : IMessageHandler<T> where T : class, IMessage

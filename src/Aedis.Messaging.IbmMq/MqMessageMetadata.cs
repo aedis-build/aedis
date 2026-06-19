@@ -1,8 +1,9 @@
-namespace Aedis.Messaging.Abstractions;
+namespace Aedis.Messaging.IbmMq;
 
 /// <summary>
 ///     Campos do MQMD expostos após o IBM MQ receber uma mensagem. O <c>Feedback</c> traz os
-///     report codes do IBM MQ (COA/COD/Expiry), úteis para mensagens de confirmação.
+///     report codes do IBM MQ (COA/COD/Expiry), úteis para mensagens de confirmação. Tipo específico
+///     deste provider — entregue às mensagens que implementam <see cref="IMqMetadataMessage" />.
 /// </summary>
 /// <param name="MsgId">Hex (BitConverter) de <c>MQMD.MessageId</c> — 24 bytes.</param>
 /// <param name="CorrelationIdHex">

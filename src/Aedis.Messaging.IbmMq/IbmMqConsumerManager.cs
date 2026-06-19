@@ -242,7 +242,7 @@ internal sealed class IbmMqConsumerManager : IAsyncDisposable
                 ((IRawMessage)instance).FromRaw(rawData, rawCorrelationId);
 
                 if (instance is IMqMetadataMessage metadataMessage)
-                    metadataMessage.FromMqMetadata(MqMessageFactory.ReadMetadata(message));
+                    metadataMessage.FromProviderMetadata(MqMessageFactory.ReadMetadata(message));
 
                 return instance;
             }
