@@ -23,6 +23,10 @@ public sealed class AwsSqsConsumerManager(
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _consumers = new();
     private readonly AwsSqsOptions _options = options.Value;
 
+    /// <summary>
+    ///     Inicia um loop de consumo em background para a fila informada (no-op se já houver um ativo para
+    ///     ela). Cada lote recebido é processado em paralelo; a falha de uma mensagem não derruba o loop.
+    /// </summary>
     public async Task StartConsumerAsync<T>(string queueName, string exchange, string routingKey,
         IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
         where T : class, IMessage {
@@ -54,6 +58,7 @@ public sealed class AwsSqsConsumerManager(
         logger.LogDebug("Consumer iniciado para a fila '{QueueName}'.", name);
     }
 
+    /// <summary>Para o loop de consumo da fila (cancela e descarta o token); no-op se não houver consumer ativo.</summary>
     public Task StopConsumerAsync(string queueName, CancellationToken cancellationToken = default) {
         var name = factory.NormalizeName(queueName);
         if (_consumers.TryRemove(name, out var cts)) {
@@ -65,6 +70,7 @@ public sealed class AwsSqsConsumerManager(
         return Task.CompletedTask;
     }
 
+    /// <summary>Indica se há um loop de consumo ativo para a fila informada.</summary>
     public Task<bool> IsConsumerHealthyAsync(string queueName, CancellationToken cancellationToken = default) =>
         Task.FromResult(_consumers.ContainsKey(factory.NormalizeName(queueName)));
 
@@ -106,6 +112,11 @@ public sealed class AwsSqsConsumerManager(
         logger.LogDebug("Loop de consumo encerrado para '{QueueUrl}'.", queueUrl);
     }
 
+    /// <summary>
+    ///     Processa uma mensagem e dá ACK (DeleteMessage) só no sucesso. Em falha de desserialização ou de
+    ///     handler, a mensagem deliberadamente não é apagada: ela reaparece após o visibility timeout e, ao
+    ///     exceder o maxReceiveCount do RedrivePolicy, o próprio SQS a move para a DLQ.
+    /// </summary>
     private async Task ProcessOneAsync<T>(Message sqsMessage, string queueUrl, IMessageHandler<T> handler,
         IAmazonSQS sqsClient, CancellationToken ct) where T : class, IMessage {
         try {
@@ -113,7 +124,7 @@ public sealed class AwsSqsConsumerManager(
             if (message is null) {
                 logger.LogWarning("Falha ao desserializar a mensagem {MessageId} — será reentregue.",
                     sqsMessage.MessageId);
-                return; // sem delete → visibility timeout → redrive → DLQ
+                return;
             }
 
             await handler.HandleAsync(message, ct);
@@ -121,7 +132,6 @@ public sealed class AwsSqsConsumerManager(
             logger.LogDebug("Mensagem {MessageId} processada e removida da fila.", sqsMessage.MessageId);
         }
         catch (Exception ex) {
-            // Sem delete: a mensagem reaparece após o visibility timeout; o RedrivePolicy a leva à DLQ.
             logger.LogWarning(ex, "Falha ao processar a mensagem {MessageId} — será reentregue.",
                 sqsMessage.MessageId);
         }

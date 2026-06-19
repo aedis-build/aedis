@@ -23,6 +23,11 @@ public sealed class AwsSqsAdministrationHelper(
     private readonly ConcurrentDictionary<string, string> _queueArnCache = new();
     private readonly ConcurrentDictionary<string, string> _topicArnCache = new();
 
+    /// <summary>
+    ///     Garante a existência da fila SQS (idempotente) e devolve sua URL. Quando <paramref name="withDlq" />
+    ///     é verdadeiro, provisiona também a DLQ e a vincula via RedrivePolicy. Respeita o sufixo <c>.fifo</c>
+    ///     e os atributos FIFO quando <see cref="AwsSqsOptions.UseFifoQueues" /> está ligado.
+    /// </summary>
     public async Task<string> EnsureQueueExistsAsync(string queueName, bool withDlq = true,
         CancellationToken ct = default) {
         var name = factory.NormalizeName(queueName);
@@ -36,7 +41,6 @@ public sealed class AwsSqsAdministrationHelper(
             return existing.QueueUrl;
         }
         catch (QueueDoesNotExistException) {
-            // será criada abaixo
         }
 
         string? dlqArn = null;
@@ -69,6 +73,10 @@ public sealed class AwsSqsAdministrationHelper(
         return created.QueueUrl;
     }
 
+    /// <summary>
+    ///     Garante a existência do tópico SNS (idempotente na AWS) e devolve seu ARN, com cache. Aplica os
+    ///     atributos FIFO quando o nome termina em <c>.fifo</c>.
+    /// </summary>
     public async Task<string> EnsureTopicExistsAsync(string topicName, CancellationToken ct = default) {
         var name = factory.NormalizeName(topicName);
         if (_options.UseFifoQueues && !name.EndsWith(".fifo"))
@@ -86,13 +94,17 @@ public sealed class AwsSqsAdministrationHelper(
                 ["ContentBasedDeduplication"] = "true"
             };
 
-        var created = await snsClient.CreateTopicAsync(request, ct); // idempotente na AWS
+        var created = await snsClient.CreateTopicAsync(request, ct);
         logger.LogDebug("Tópico SNS '{TopicName}' garantido: {TopicArn}", name, created.TopicArn);
 
         _topicArnCache[name] = created.TopicArn;
         return created.TopicArn;
     }
 
+    /// <summary>
+    ///     Inscreve a fila no tópico SNS (protocolo <c>sqs</c>), aplicando a filter policy opcional, e
+    ///     concede ao SNS a permissão de entregar na fila. Devolve o ARN da inscrição.
+    /// </summary>
     public async Task<string> SubscribeQueueToTopicAsync(string queueArn, string topicArn, string? filterPolicy = null,
         CancellationToken ct = default) {
         var snsClient = await factory.GetSnsClientAsync(ct);
@@ -116,6 +128,7 @@ public sealed class AwsSqsAdministrationHelper(
         return response.SubscriptionArn;
     }
 
+    /// <summary>Resolve o ARN da fila a partir do nome (com cache), consultando seus atributos no SQS.</summary>
     public async Task<string> GetQueueArnAsync(string queueName, CancellationToken ct = default) {
         var name = factory.NormalizeName(queueName);
         if (_queueArnCache.TryGetValue(name, out var cached))
@@ -138,7 +151,6 @@ public sealed class AwsSqsAdministrationHelper(
             return attrs.QueueARN;
         }
         catch (QueueDoesNotExistException) {
-            // será criada
         }
 
         var attributes = new Dictionary<string, string> { ["MessageRetentionPeriod"] = RetentionFourteenDays };

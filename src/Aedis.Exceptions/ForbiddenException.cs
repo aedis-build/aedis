@@ -7,12 +7,14 @@ namespace Aedis.Exceptions;
 /// </summary>
 public class ForbiddenException : Exception
 {
+    /// <summary>Cria a exceção indicando, opcionalmente, o recurso acessado e a permissão exigida.</summary>
     public ForbiddenException(string message, string? resource = null, string? requiredPermission = null)
         : base(message) {
         Resource = resource;
         RequiredPermission = requiredPermission;
     }
 
+    /// <summary>Cria a exceção encadeando a causa original (<paramref name="innerException" />).</summary>
     public ForbiddenException(string message, Exception innerException, string? resource = null,
         string? requiredPermission = null)
         : base(message, innerException) {

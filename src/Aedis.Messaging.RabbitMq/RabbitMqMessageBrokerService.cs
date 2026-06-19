@@ -22,6 +22,11 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
     private readonly MessageSerializerResolver _serializers;
     private int _consecutiveUnhealthyChecks;
 
+    /// <summary>
+    ///     Cria o broker. Em geral é resolvido via DI, mas os parâmetros opcionais permitem injetar um
+    ///     gerenciador de consumers e um resolvedor de serialização próprios (útil em testes); na ausência,
+    ///     usa os padrões. O <paramref name="lifetime" /> habilita o self-heal por encerramento da aplicação.
+    /// </summary>
     public RabbitMqMessageBrokerService(
         IOptions<RabbitMqOptions> options,
         ILogger<RabbitMqMessageBrokerService> logger,
@@ -36,6 +41,7 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         _lifetime = lifetime;
     }
 
+    /// <inheritdoc />
     public Task PublishAsync<T>(string exchange, string routingKey, T message,
         CancellationToken cancellationToken = default)
         where T : class, IMessage {
@@ -58,6 +64,7 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         }, cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task PublishRawAsync(string exchange, string routingKey, ReadOnlyMemory<byte> payload,
         string contentType = "application/octet-stream", string? correlationId = null,
         CancellationToken cancellationToken = default) {
@@ -73,6 +80,7 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
         }, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task SubscribeAsync<T>(string queue, string exchange, string routingKey,
         IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
         where T : class, IMessage {
@@ -96,13 +104,13 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
             await KeepConsumerAliveAsync(consumerId, cancellationToken);
         }
         catch (OperationCanceledException) {
-            // shutdown gracioso
         }
         finally {
             if (channel.IsOpen) await channel.CloseAsync(CancellationToken.None);
         }
     }
 
+    /// <summary>Encerra todos os consumers ativos e, em seguida, libera os recursos da base (conexão e pool).</summary>
     public override async ValueTask DisposeAsync() {
         await _consumerManager.DisposeAsync();
         await base.DisposeAsync();
@@ -149,7 +157,6 @@ public class RabbitMqMessageBrokerService : RabbitMqBaseService, IMessageBrokerS
             }
         }
         catch (OperationCanceledException) {
-            // shutdown solicitado
         }
         catch (Exception ex) {
             _logger.LogError(ex, "Erro no laço de keep-alive do consumer {ConsumerId}.", consumerId);

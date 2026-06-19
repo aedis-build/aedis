@@ -3,22 +3,44 @@ namespace Aedis.Database.Postgres.Queries;
 /// <summary>Operadores de comparação escalar.</summary>
 public enum ComparisonOperator
 {
+    /// <summary>Igualdade (<c>=</c>).</summary>
     Equals,
+
+    /// <summary>Diferença (<c>&lt;&gt;</c>).</summary>
     NotEquals,
+
+    /// <summary>Maior que (<c>&gt;</c>).</summary>
     GreaterThan,
+
+    /// <summary>Maior ou igual (<c>&gt;=</c>).</summary>
     GreaterThanOrEqual,
+
+    /// <summary>Menor que (<c>&lt;</c>).</summary>
     LessThan,
+
+    /// <summary>Menor ou igual (<c>&lt;=</c>).</summary>
     LessThanOrEqual,
+
+    /// <summary>Correspondência por padrão (<c>LIKE</c>).</summary>
     Like,
+
+    /// <summary>Negação de padrão (<c>NOT LIKE</c>).</summary>
     NotLike,
+
+    /// <summary>Teste de nulo (<c>IS NULL</c>).</summary>
     IsNull,
+
+    /// <summary>Teste de não-nulo (<c>IS NOT NULL</c>).</summary>
     IsNotNull
 }
 
 /// <summary>Operador lógico de um grupo de condições.</summary>
 public enum LogicalOperator
 {
+    /// <summary>Une as condições do grupo com <c>AND</c> (todas devem ser verdadeiras).</summary>
     And,
+
+    /// <summary>Une as condições do grupo com <c>OR</c> (ao menos uma deve ser verdadeira).</summary>
     Or
 }
 
@@ -60,11 +82,19 @@ public enum RangeOperator
     Adjacent
 }
 
+/// <summary>Tipo de junção (<c>JOIN</c>) entre a tabela base e uma tabela secundária.</summary>
 public enum JoinType
 {
+    /// <summary>Junção interna (<c>INNER JOIN</c>): só linhas com correspondência em ambos os lados.</summary>
     Inner,
+
+    /// <summary>Junção à esquerda (<c>LEFT JOIN</c>): todas as linhas da esquerda, com nulos à direita sem par.</summary>
     Left,
+
+    /// <summary>Junção à direita (<c>RIGHT JOIN</c>): todas as linhas da direita, com nulos à esquerda sem par.</summary>
     Right,
+
+    /// <summary>Junção cruzada (<c>CROSS JOIN</c>): produto cartesiano, sem condição <c>ON</c>.</summary>
     Cross
 }
 
@@ -75,10 +105,13 @@ internal interface IConditionNode
 
 internal static class ParameterWriter
 {
-    /// <summary>Adiciona o valor como bind parameter (enums viram string) e devolve o nome <c>@pN</c>.</summary>
+    /// <summary>
+    ///     Adiciona o valor como bind parameter e devolve o nome <c>@pN</c>. Enums viram string em
+    ///     MAIÚSCULAS, em paridade com o write path (repositório/COPY), para que a comparação no WHERE case
+    ///     com o valor persistido.
+    /// </summary>
     public static string Add(object? value, ref int index, Dictionary<string, object> parameters) {
         var name = $"p{index++}";
-        // Enums viram string MAIÚSCULA — paridade com o write path (repositório/COPY) para o WHERE casar.
         parameters[name] = value is Enum e ? e.ToString()!.ToUpperInvariant() : value!;
         return "@" + name;
     }

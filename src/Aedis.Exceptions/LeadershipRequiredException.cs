@@ -9,6 +9,7 @@ namespace Aedis.Exceptions;
 /// </summary>
 public class LeadershipRequiredException : MessageBeingProcessedException
 {
+    /// <summary>Cria a exceção para uma mensagem específica, identificando o lock de liderança e a instância que o detém.</summary>
     public LeadershipRequiredException(
         Guid messageId,
         string leaderLockKey,
@@ -20,10 +21,12 @@ public class LeadershipRequiredException : MessageBeingProcessedException
         LeaderLockKey = leaderLockKey;
     }
 
+    /// <summary>Cria a exceção sem mensagem associada (gera um <see cref="Guid" /> novo), útil para jobs/cron sem mensagem de origem.</summary>
     public LeadershipRequiredException(
         string leaderLockKey,
         string processingInstance = "unknown")
         : this(Guid.NewGuid(), leaderLockKey, processingInstance) { }
 
+    /// <summary>Chave do lock de liderança que esta instância não conseguiu adquirir.</summary>
     public string LeaderLockKey { get; }
 }

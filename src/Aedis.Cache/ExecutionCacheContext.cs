@@ -17,6 +17,7 @@ public sealed class ExecutionCacheContext(ICache cache, ILogger<ExecutionCacheCo
 
     private static string LastExecutionKey => $"{ApplicationInfo.Name}:last-execution".ToLowerInvariant();
 
+    /// <inheritdoc />
     public async Task<DateTimeOffset?> GetLastExecution(CancellationToken cancellationToken = default) {
         var lastExecStr = await cache.GetStringAsync(LastExecutionKey, cancellationToken);
 
@@ -26,6 +27,7 @@ public sealed class ExecutionCacheContext(ICache cache, ILogger<ExecutionCacheCo
         return new DateTimeOffset(lastExec, TimeSpan.Zero);
     }
 
+    /// <inheritdoc />
     public async Task<bool> MarkAsProcessedAsync(string value, CancellationToken cancellationToken = default) {
         var wasNewlyMarked = await cache.SetIfNotExistsAsync(
             FormatProcessedKey(value), DateTimeOffset.UtcNow.Ticks.ToString(), TimeSpan.FromDays(7), cancellationToken);
@@ -38,12 +40,17 @@ public sealed class ExecutionCacheContext(ICache cache, ILogger<ExecutionCacheCo
         return wasNewlyMarked;
     }
 
+    /// <inheritdoc />
     public async Task CommitAsync(CancellationToken cancellationToken = default) {
         await cache.SetStringAsync(LastExecutionKey, DateTimeOffset.UtcNow.Ticks.ToString(),
             TimeSpan.FromDays(365), cancellationToken);
         _committed = true;
     }
 
+    /// <summary>
+    ///     Encerra o contexto. Se não houve <see cref="CommitAsync" />, emite um aviso indicando que a janela
+    ///     não avançou (o marcador de última execução não foi salvo). Não lança.
+    /// </summary>
     public ValueTask DisposeAsync() {
         if (!_committed)
             logger.LogWarning("Execução não confirmada (sem commit) — o marcador de última execução não foi salvo.");

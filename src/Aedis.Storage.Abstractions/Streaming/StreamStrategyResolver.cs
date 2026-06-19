@@ -20,6 +20,7 @@ public sealed class StreamStrategyResolver(IEnumerable<IStrategy<StreamContext>>
         ]);
     }
 
+    /// <inheritdoc />
     public async Task ExecuteAsync(StreamContext context, CancellationToken cancellationToken = default) {
         var strategy = _strategies.FirstOrDefault(s => s.CanHandle(context))
                        ?? throw new NotSupportedException($"StreamMode '{context.Mode}' não suportado.");

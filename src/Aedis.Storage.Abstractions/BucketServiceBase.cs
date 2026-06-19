@@ -14,7 +14,6 @@ public abstract class BucketServiceBase<T> : IBucket<T>
 {
     private readonly IStrategyResolver<StreamContext> _streamResolver = StreamStrategyResolver.CreateDefault();
 
-    // ---------- Template methods (lógica comum, agnóstica de provider) ----------
 
     /// <summary>
     ///     Obtém o objeto aplicando a estratégia de stream/memória do <paramref name="mode" />.
@@ -64,7 +63,6 @@ public abstract class BucketServiceBase<T> : IBucket<T>
         await DeleteObjectAsync(sourceKey, cancellationToken);
     }
 
-    // ---------- Passos específicos do provider (preenchidos pela implementação) ----------
 
     /// <summary>
     ///     Abre o objeto para leitura, retornando o stream bruto e o tamanho — ou <c>null</c> se não existir.
@@ -75,14 +73,18 @@ public abstract class BucketServiceBase<T> : IBucket<T>
     protected abstract Task UploadObjectAsync(string key, Stream stream, string contentType,
         long? contentLength, CancellationToken cancellationToken);
 
+    /// <inheritdoc />
     public abstract IAsyncEnumerable<BucketObject> ListObjectsAsync(string? prefix, long offsetTimestamp = 0,
         CancellationToken cancellationToken = default);
 
+    /// <inheritdoc />
     public abstract Task DeleteObjectAsync(string key, CancellationToken cancellationToken = default);
 
+    /// <inheritdoc />
     public abstract Task CopyObjectAsync(string sourceKey, string destinationKey,
         CancellationToken cancellationToken = default);
 
+    /// <inheritdoc />
     public abstract Task<string> GetPreSignedUrlAsync(string key, TimeSpan ttl,
         FileAccess accessType = FileAccess.Read, CancellationToken cancellationToken = default);
 

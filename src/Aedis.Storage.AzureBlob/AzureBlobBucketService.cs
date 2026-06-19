@@ -17,6 +17,11 @@ public abstract class AzureBlobBucketService<T> : BucketServiceBase<T>
     private readonly BlobContainerClient _container;
     private readonly string _prefix;
 
+    /// <summary>
+    ///     Cria o serviço a partir das <see cref="AzureBlobStorageOptions" />, resolvendo o
+    ///     <see cref="BlobContainerClient" /> via ConnectionString e fixando o container e o prefixo desta instância.
+    /// </summary>
+    /// <param name="options">Configuração do container e do acesso Azure (ConnectionString e ContainerName obrigatórios).</param>
     protected AzureBlobBucketService(AzureBlobStorageOptions options) {
         ArgumentNullException.ThrowIfNull(options);
         if (string.IsNullOrWhiteSpace(options.ConnectionString))
@@ -34,6 +39,7 @@ public abstract class AzureBlobBucketService<T> : BucketServiceBase<T>
         _prefix = (prefix ?? string.Empty).Trim('/');
     }
 
+    /// <inheritdoc />
     protected override async Task<ObjectContent?> OpenObjectAsync(string key, CancellationToken cancellationToken) {
         var blob = _container.GetBlobClient(ResolveKey(key));
         try {
@@ -45,6 +51,7 @@ public abstract class AzureBlobBucketService<T> : BucketServiceBase<T>
         }
     }
 
+    /// <inheritdoc />
     protected override async Task UploadObjectAsync(string key, Stream stream, string contentType,
         long? contentLength, CancellationToken cancellationToken) {
         var blob = _container.GetBlobClient(ResolveKey(key));
@@ -54,6 +61,7 @@ public abstract class AzureBlobBucketService<T> : BucketServiceBase<T>
         await blob.UploadAsync(stream, options, cancellationToken);
     }
 
+    /// <inheritdoc />
     public override async IAsyncEnumerable<BucketObject> ListObjectsAsync(string? prefix, long offsetTimestamp = 0,
         [EnumeratorCancellation] CancellationToken cancellationToken = default) {
         var fullPrefix = Combine(_prefix, prefix);
@@ -70,10 +78,12 @@ public abstract class AzureBlobBucketService<T> : BucketServiceBase<T>
         }
     }
 
+    /// <inheritdoc />
     public override Task DeleteObjectAsync(string key, CancellationToken cancellationToken = default) {
         return _container.GetBlobClient(ResolveKey(key)).DeleteIfExistsAsync(cancellationToken: cancellationToken);
     }
 
+    /// <inheritdoc />
     public override async Task CopyObjectAsync(string sourceKey, string destinationKey,
         CancellationToken cancellationToken = default) {
         var src = ResolveKey(sourceKey);
@@ -85,6 +95,7 @@ public abstract class AzureBlobBucketService<T> : BucketServiceBase<T>
         await destination.StartCopyFromUriAsync(source.Uri, new BlobCopyFromUriOptions(), cancellationToken);
     }
 
+    /// <inheritdoc />
     public override Task<string> GetPreSignedUrlAsync(string key, TimeSpan ttl,
         FileAccess accessType = FileAccess.Read, CancellationToken cancellationToken = default) {
         var resolved = ResolveKey(key);

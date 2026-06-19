@@ -9,7 +9,9 @@ namespace Aedis.Cache;
 /// </summary>
 public sealed class BatchCheckpoint(int checkpoint, IAsyncDisposable lockHandle) : IBatchCheckpoint
 {
+    /// <inheritdoc />
     public int Checkpoint { get; } = checkpoint;
 
+    /// <summary>Libera o lock de liderança do lote ao descartar o checkpoint.</summary>
     public ValueTask DisposeAsync() => lockHandle.DisposeAsync();
 }

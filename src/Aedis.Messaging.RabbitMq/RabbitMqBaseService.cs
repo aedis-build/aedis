@@ -20,12 +20,17 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
     private readonly Timer _connectionHealthTimer;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly ILogger<RabbitMqBaseService> _logger;
+    /// <summary>Configuração de conexão ao broker usada pelas subclasses.</summary>
     protected readonly RabbitMqOptions _options;
 
     private IConnection? _connection;
     private volatile bool _isConnectionHealthy = true;
     internal int ChannelCount;
 
+    /// <summary>
+    ///     Configura o pool de canais e o semáforo de concorrência a partir das opções e inicia um timer de
+    ///     verificação de saúde da conexão (a cada 30s) que tenta reconectar quando ela cai.
+    /// </summary>
     protected RabbitMqBaseService(IOptions<RabbitMqOptions> options, ILogger<RabbitMqBaseService> logger) {
         _options = options.Value;
         _logger = logger;
@@ -38,8 +43,10 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
             new Timer(CheckConnectionHealth, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
 
+    /// <summary>Indica se a última verificação considerou a conexão com o broker saudável.</summary>
     public bool IsConnectionHealthy => _isConnectionHealthy;
 
+    /// <summary>Encerra o timer de saúde, a conexão e os primitivos de sincronização. Classes derivadas devem chamar a base.</summary>
     public virtual async ValueTask DisposeAsync() {
         await _connectionHealthTimer.DisposeAsync();
         if (_connection is not null) await _connection.DisposeAsync();
@@ -48,6 +55,10 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    ///     Devolve a conexão compartilhada com o broker, criando-a sob lock na primeira chamada (ou após queda).
+    ///     Reaproveita a conexão aberta nas chamadas seguintes.
+    /// </summary>
     public Task<IConnection> GetConnectionAsync() {
         return CreateOrGetConnectionAsync();
     }
@@ -83,6 +94,10 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
     private IChannel GetChannelFromPool() => _channelPool.Get();
     private void ReturnChannelToPool(IChannel channel) => _channelPool.Return(channel);
 
+    /// <summary>
+    ///     Declara (de forma idempotente) o exchange durável. O tipo é inferido do sufixo do nome
+    ///     (<c>.fanout</c>/<c>.direct</c>, senão <c>topic</c>) e o nome é normalizado para minúsculas.
+    /// </summary>
     protected Task CreateOrGetExchangeAsync(string exchange, IChannel channel, CancellationToken cancellationToken) {
         return channel.ExchangeDeclareAsync(exchange.ToLowerInvariant(), ResolveExchangeType(exchange), true,
             cancellationToken: cancellationToken);
@@ -94,6 +109,10 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
             cancellationToken: cancellationToken);
     }
 
+    /// <summary>
+    ///     Declara (idempotente) a fila quorum durável e, quando exchange e routing key são informados, a vincula
+    ///     ao exchange. O nome é sanitizado e normalizado para minúsculas.
+    /// </summary>
     protected async Task CreateOrGetQueueAsync(string queue, string? exchange, string? routingKey, IChannel channel,
         CancellationToken cancellationToken) {
         var sanitizedQueue = queue.Sanitize().ToLowerInvariant();
@@ -112,6 +131,10 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
         await Task.WhenAll(createOrGetQueue, bindQueue);
     }
 
+    /// <summary>
+    ///     Executa uma ação que precisa de um canal, tomando-o emprestado do pool sob controle do semáforo e
+    ///     devolvendo-o ao final. Aguarda com backoff progressivo quando não há canal disponível.
+    /// </summary>
     protected Task ExecuteWithChannelAsync(Func<IChannel, Task> action, CancellationToken cancellationToken) {
         return ExecuteWithChannelInternalAsync<object?>(async channel => {
             await action(channel);
@@ -119,6 +142,10 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
         }, cancellationToken);
     }
 
+    /// <summary>
+    ///     Variante de <see cref="ExecuteWithChannelAsync(Func{IChannel,Task},CancellationToken)" /> que retorna
+    ///     o resultado produzido pela ação sobre o canal.
+    /// </summary>
     protected Task<T?> ExecuteWithChannelAsync<T>(Func<IChannel, Task<T?>> action, CancellationToken cancellationToken) {
         return ExecuteWithChannelInternalAsync<T>(
             channel => action(channel).ContinueWith(t => (object?)t.Result, cancellationToken), cancellationToken);

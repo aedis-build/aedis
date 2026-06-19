@@ -16,6 +16,7 @@ internal sealed class RedisLock(IDatabase redisDb, string key, string value, ILo
     private readonly Stopwatch _timer = Stopwatch.StartNew();
     private bool _disposed;
 
+    /// <summary>Libera o lock (idempotente), apenas se esta instância ainda o detém. Não lança em erro de rede.</summary>
     public async ValueTask DisposeAsync() {
         await ReleaseAsync(CancellationToken.None).ConfigureAwait(false);
     }

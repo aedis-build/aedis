@@ -10,10 +10,15 @@ public interface IAggregateRoot;
 public abstract class EntityBase<TId> : IEquatable<EntityBase<TId>>
     where TId : notnull
 {
+    /// <summary>Identidade da entidade. Valor default indica entidade transiente (ainda não persistida).</summary>
     public TId Id { get; set; } = default!;
 
     private bool IsTransient => EqualityComparer<TId>.Default.Equals(Id, default!);
 
+    /// <summary>
+    ///     Compara por identidade: igual quando os tipos concretos coincidem e os <see cref="Id" /> são iguais.
+    ///     Entidades transientes (ou comparadas a si mesmas por referência) seguem a regra de referência.
+    /// </summary>
     public bool Equals(EntityBase<TId>? other) {
         if (other is null || other.GetType() != GetType()) return false;
         if (ReferenceEquals(this, other)) return true;
@@ -21,8 +26,13 @@ public abstract class EntityBase<TId> : IEquatable<EntityBase<TId>>
         return EqualityComparer<TId>.Default.Equals(Id, other.Id);
     }
 
+    /// <inheritdoc />
     public override bool Equals(object? obj) => Equals(obj as EntityBase<TId>);
 
+    /// <summary>
+    ///     Hash baseado no <see cref="Id" /> para entidades persistidas; entidades transientes usam o hash de
+    ///     referência, mantendo consistência com <see cref="Equals(EntityBase{TId})" />.
+    /// </summary>
     public override int GetHashCode() => IsTransient ? base.GetHashCode() : Id.GetHashCode();
 }
 

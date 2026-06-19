@@ -15,6 +15,7 @@ public class ContextStrategyResolver<TContext, TStrategy> : IStrategyResolver<TC
     private readonly ILogger<ContextStrategyResolver<TContext, TStrategy>>? _logger;
     private readonly IEnumerable<TStrategy> _strategies;
 
+    /// <summary>Inicializa o resolver com as estratégias candidatas e um logger opcional.</summary>
     public ContextStrategyResolver(
         IEnumerable<TStrategy> strategies,
         ILogger<ContextStrategyResolver<TContext, TStrategy>>? logger = null) {
@@ -22,6 +23,10 @@ public class ContextStrategyResolver<TContext, TStrategy> : IStrategyResolver<TC
         _logger = logger;
     }
 
+    /// <summary>
+    ///     Seleciona a primeira estratégia cujo <c>CanHandle</c> aceita o contexto e a executa. Lança
+    ///     <see cref="NotSupportedException" /> quando nenhuma estratégia trata o contexto.
+    /// </summary>
     public async Task ExecuteAsync(TContext context, CancellationToken cancellationToken = default) {
         var strategy = _strategies.FirstOrDefault(s => s.CanHandle(context));
 
@@ -53,6 +58,7 @@ public class ContextStrategyResolver<TContext, TStrategy> : IStrategyResolver<TC
 /// <typeparam name="TContext">Tipo do contexto</typeparam>
 public class ContextStrategyResolver<TContext> : ContextStrategyResolver<TContext, IStrategy<TContext>>
 {
+    /// <summary>Inicializa o resolver com as estratégias <see cref="IStrategy{TContext}" /> e um logger opcional.</summary>
     public ContextStrategyResolver(
         IEnumerable<IStrategy<TContext>> strategies,
         ILogger<ContextStrategyResolver<TContext, IStrategy<TContext>>>? logger = null)

@@ -17,6 +17,10 @@ public sealed class IbmMqMessageBrokerService : IbmMqBaseService, IMessageBroker
     private readonly IbmMqConsumerManager _consumerManager;
     private readonly MessageSerializerResolver _serializers;
 
+    /// <summary>
+    ///     Cria o broker IBM MQ com o resolvedor de serializadores (usa o default quando ausente) e prepara o
+    ///     gerenciador de consumidores. A conexão é estabelecida no primeiro publish/subscribe.
+    /// </summary>
     public IbmMqMessageBrokerService(IOptions<IbmMqOptions> options, ILogger<IbmMqMessageBrokerService> logger,
         MessageSerializerResolver? serializers = null, ILoggerFactory? loggerFactory = null)
         : base(options, logger) {
@@ -25,6 +29,10 @@ public sealed class IbmMqMessageBrokerService : IbmMqBaseService, IMessageBroker
         _consumerManager = new IbmMqConsumerManager(consumerLogger, options.Value, _serializers);
     }
 
+    /// <summary>
+    ///     Publica uma mensagem tipada: serializa o payload, monta o MQMD a partir das opções e faz PUT na
+    ///     fila resolvida (routing key, ou exchange quando a routing key é vazia), sob syncpoint quando ligado.
+    /// </summary>
     public Task PublishAsync<T>(string exchange, string routingKey, T message,
         CancellationToken cancellationToken = default)
         where T : class, IMessage {
@@ -56,6 +64,10 @@ public sealed class IbmMqMessageBrokerService : IbmMqBaseService, IMessageBroker
         }, cancellationToken);
     }
 
+    /// <summary>
+    ///     Publica um payload bruto (bytes) sem serializador, montando o MQMD a partir das opções e fazendo
+    ///     PUT na fila resolvida, sob syncpoint quando ligado.
+    /// </summary>
     public Task PublishRawAsync(string exchange, string routingKey, ReadOnlyMemory<byte> payload,
         string contentType = "application/octet-stream", string? correlationId = null,
         CancellationToken cancellationToken = default) {
@@ -83,6 +95,10 @@ public sealed class IbmMqMessageBrokerService : IbmMqBaseService, IMessageBroker
         }, cancellationToken);
     }
 
+    /// <summary>
+    ///     Assina uma fila (usa o exchange quando <paramref name="queue" /> é vazio), inicia o consumer e o
+    ///     mantém vivo (reinicia os não saudáveis no intervalo configurado). Bloqueia até o cancelamento.
+    /// </summary>
     public async Task SubscribeAsync<T>(string queue, string exchange, string routingKey,
         IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
         where T : class, IMessage {
@@ -116,6 +132,7 @@ public sealed class IbmMqMessageBrokerService : IbmMqBaseService, IMessageBroker
         }
     }
 
+    /// <summary>Encerra todos os consumidores e descarta a conexão da base.</summary>
     public override async ValueTask DisposeAsync() {
         await _consumerManager.DisposeAsync();
         await base.DisposeAsync();

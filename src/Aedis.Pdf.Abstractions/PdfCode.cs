@@ -3,7 +3,10 @@ namespace Aedis.Pdf.Abstractions;
 /// <summary>Tipo de código gráfico a renderizar no documento.</summary>
 public enum PdfCodeKind
 {
+    /// <summary>Código QR bidimensional.</summary>
     QrCode,
+
+    /// <summary>Código de barras unidimensional.</summary>
     Barcode
 }
 

@@ -34,17 +34,14 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         var repo = _fixture.Upsert(table);
         var id = Guid.NewGuid();
 
-        // Save → insert
         await repo.SaveAsync(NewOrder(id, "v1", OrderStatus.Pending));
         (await repo.GetByIdAsync(id))!.Description.Should().Be("v1");
 
-        // Save de novo (mesmo id) → o template faz upsert, não duplica
         await repo.SaveAsync(NewOrder(id, "v2", OrderStatus.Settled));
         var updated = await repo.GetByIdAsync(id);
         updated!.Description.Should().Be("v2");
         updated.Status.Should().Be(OrderStatus.Settled);
 
-        // Bulk com os MESMOS ids → o mesmo template dirige o upsert em massa
         var ids = Enumerable.Range(0, 500).Select(_ => Guid.NewGuid()).ToList();
         await repo.BulkInsertAsync(ids.Select(i => NewOrder(i, "bulk-1", OrderStatus.Pending)));
         await repo.BulkInsertAsync(ids.Select(i => NewOrder(i, "bulk-2", OrderStatus.Pending)));
@@ -74,7 +71,6 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         var repo = _fixture.Plain(table);
         await repo.SaveAsync(NewOrder(Guid.NewGuid(), "real", OrderStatus.Pending));
 
-        // Payload de injeção entra como VALOR (bind parameter) — é tratado como dado literal, sem efeito.
         var attack = $"x'; DROP TABLE {table}; --";
         var result = await repo.FindAsync(
             new RawCriteria<Order>($"SELECT * FROM {table} WHERE description = @desc", new { desc = attack }));
@@ -96,7 +92,7 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
     }
 
     /// <summary>
-    ///     Reproduz o caso do payhop-cartoes (tabela <c>urs</c>): upsert condicional com guard (só atualiza
+    ///     Upsert condicional com guard (só atualiza
     ///     se o dado de entrada for mais novo — timestamp OU sequencial), preservando <c>created_at</c> e
     ///     ignorando linhas soft-deleted. O mesmo template dirige Save e BulkInsertChunked.
     /// </summary>
@@ -114,12 +110,10 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         var created = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
         var t0 = DateTimeOffset.Parse("2026-03-01T00:00:00Z");
 
-        // Estado inicial (via Save — mesmo template).
         await repo.SaveAsync(new Metric { Id = id, Value = 10, SourceSeq = 1, ObservedAt = t0, CreatedAt = created });
 
         Task<decimal> Value() => _fixture.ScalarAsync<decimal>($"SELECT value FROM {table} WHERE id = '{id}'");
 
-        // (A) Mais NOVO (observed_at maior) → atualiza; created_at preservado.
         await repo.BulkInsertChunkedAsync([
             new Metric { Id = id, Value = 20, SourceSeq = 2, ObservedAt = t0.AddDays(10), CreatedAt = DateTimeOffset.UtcNow }
         ]);
@@ -127,13 +121,11 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         (await _fixture.ScalarAsync<DateTime>($"SELECT created_at FROM {table} WHERE id = '{id}'"))
             .Should().Be(created.UtcDateTime, "created_at é preservado");
 
-        // (B) Mais VELHO (observed_at menor, seq não maior) → guard falha, NÃO atualiza.
         await repo.BulkInsertChunkedAsync([
             new Metric { Id = id, Value = 99, SourceSeq = 1, ObservedAt = t0.AddDays(-10), CreatedAt = created }
         ]);
         (await Value()).Should().Be(20, "dado mais velho é ignorado");
 
-        // (C) Soft-deleted → guard (is_deleted=false) falha, NÃO atualiza mesmo sendo mais novo.
         await _fixture.ExecAsync($"UPDATE {table} SET is_deleted = true WHERE id = '{id}'");
         await repo.BulkInsertChunkedAsync([
             new Metric { Id = id, Value = 77, SourceSeq = 9, ObservedAt = t0.AddDays(99), CreatedAt = created }
@@ -153,10 +145,8 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
             new Tagged { Id = Guid.NewGuid(), Tags = ["silver"] }
         ]);
 
-        // && (overlap): {vip,gold} casa por "vip"; {silver} casa por "silver"; {gold} fora.
         (await repo.FindAsync(new TagsOverlap(table, ["vip", "silver"]))).Should().HaveCount(2);
 
-        // = ANY: 'gold' pertence a {vip,gold} e {gold}.
         (await repo.FindAsync(new TagsEqualsAny(table, "gold"))).Should().HaveCount(2);
     }
 
@@ -172,7 +162,6 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         var audit = new FakeAudit("alice", now, "correcao manual");
         var repo = _fixture.Repo<Audited>(table, audit);
 
-        // Save de entidade nova (campos de auditoria vazios) → tudo carimbado pelo contexto.
         var entity = new Audited { Id = Guid.NewGuid(), Name = "x" };
         await repo.SaveAsync(entity);
 
@@ -186,7 +175,6 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         (await _fixture.ScalarAsync<string>($"SELECT updated_reason FROM {table} WHERE id='{entity.Id}'"))
             .Should().Be("correcao manual");
 
-        // Bulk também carimba cada linha.
         await repo.BulkInsertAsync([new Audited { Id = Guid.NewGuid(), Name = "b" }]);
         (await _fixture.ScalarAsync<long>($"SELECT count(*) FROM {table} WHERE created_by = 'alice'"))
             .Should().Be(2);
@@ -200,7 +188,6 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
             created_at timestamptz, created_by text,
             updated_at timestamptz, updated_by text, updated_reason text)");
 
-        // CurrentActor == null (sem usuário autenticado).
         var repo = _fixture.Repo<Audited>(table, new FakeAudit(null, DateTimeOffset.UtcNow, null));
         var entity = new Audited { Id = Guid.NewGuid(), Name = "x" };
         await repo.SaveAsync(entity);
@@ -241,14 +228,12 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         (await _fixture.ScalarAsync<string>($"SELECT updated_reason FROM {table} WHERE id='{calendario.Id}'"))
             .Should().Be("ajuste de escopo");
 
-        // Soft-delete carimba quem/quando deletou.
         await repo.DeleteAsync(calendario.Id);
         (await _fixture.ScalarAsync<bool>($"SELECT is_deleted FROM {table} WHERE id='{calendario.Id}'"))
             .Should().BeTrue();
         (await _fixture.ScalarAsync<string>($"SELECT deleted_by FROM {table} WHERE id='{calendario.Id}'"))
             .Should().Be("bob");
 
-        // GetById não retorna entidade soft-deletada (convenção IsDeleted).
         (await repo.GetByIdAsync(calendario.Id)).Should().BeNull();
     }
 
@@ -260,13 +245,13 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
 
     /// <summary>
     ///     Contrato: herdar de AuditableAggregateRoot é o opt-in; criar as colunas na migration é
-    ///     responsabilidade do app. Sem schema generator — se faltar uma coluna, o Save falha na hora com
-    ///     erro explícito do PostgreSQL (42703 undefined_column), em vez de qualquer DDL automático.
+    ///     responsabilidade do app. Sem schema generator — se faltar uma coluna (aqui, a tabela é criada
+    ///     sem <c>updated_reason</c>, que o AuditableAggregateRoot possui), o Save falha na hora com erro
+    ///     explícito do PostgreSQL (42703 undefined_column), em vez de qualquer DDL automático.
     /// </summary>
     [Fact]
     public async Task Coluna_de_auditoria_ausente_no_schema_falha_claro_no_save() {
         var table = $"incompleto_{Guid.NewGuid():N}";
-        // Tabela SEM a coluna updated_reason (que o AuditableAggregateRoot possui).
         await _fixture.ExecAsync($@"CREATE TABLE {table} (
             id uuid PRIMARY KEY, codigo text, nome text,
             created_at timestamptz, created_by text, updated_at timestamptz, updated_by text,
@@ -283,7 +268,7 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
 
     [Fact]
     public async Task Cadeia_DI_completa_carimba_o_usuario_logado_automaticamente() {
-        var table = "calendario_escopos"; // convenção: CalendarioEscopo → snake plural
+        var table = "calendario_escopos";
         await _fixture.ExecAsync($@"CREATE TABLE IF NOT EXISTS {table} (
             id uuid PRIMARY KEY, codigo text, nome text,
             created_at timestamptz, created_by text, updated_at timestamptz, updated_by text, updated_reason text,
@@ -300,8 +285,8 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         var provider = new ServiceCollection()
             .AddLogging()
             .AddSingleton(user)
-            .AddAedisAuditContext()   // ponte ICurrentUser → IAuditContext
-            .AddAedisPostgres(config) // repo recebe o IAuditContext via DI (param opcional)
+            .AddAedisAuditContext()
+            .AddAedisPostgres(config)
             .BuildServiceProvider();
 
         var id = Guid.NewGuid();

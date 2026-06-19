@@ -93,7 +93,7 @@ public sealed class MessageSerializationTests
     [InlineData("application/x-msgpack", typeof(MessagePackMessageSerializer))]
     [InlineData("text/plain", typeof(PlainTextMessageSerializer))]
     [InlineData("application/octet-stream", typeof(RawBytesMessageSerializer))]
-    [InlineData("desconhecido/xyz", typeof(JsonMessageSerializer))] // fallback
+    [InlineData("desconhecido/xyz", typeof(JsonMessageSerializer))]
     public void Resolver_escolhe_a_estrategia_por_content_type(string contentType, Type expectedSerializer) {
         var resolved = MessageSerializerResolver.CreateDefault().ResolveForContentType(contentType);
 

@@ -37,7 +37,7 @@ public sealed class HangfireIntegrationTests : IAsyncLifetime
         var provider = new ServiceCollection()
             .AddLogging()
             .AddSingleton(signal)
-            .AddAedisHangfire(config) // prepara o schema no Postgres
+            .AddAedisHangfire(config)
             .AddCronJob<SignalingProcessor>()
             .BuildServiceProvider();
 

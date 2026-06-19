@@ -54,7 +54,6 @@ public sealed class PostgresBulkInserterTests : IClassFixture<PostgresBulkInsert
             await uow.CommitAsync();
         }
 
-        // Reinsere os mesmos ids com novo valor — deve atualizar, não duplicar.
         var second = ids.Select((id, i) => BulkItem.WithId(id, i, "v2")).ToList();
         await using (var uow = await _fixture.Factory.CreateWriteSessionAsync()) {
             await _fixture.Inserter.BulkInsertChunkedAsync(uow, table, Props, second, _fixture.Naming,

@@ -5,9 +5,16 @@ using Aedis.Domain.Saga.Abstractions;
 namespace Aedis.Domain.Saga;
 
 /// <summary>
-///     Orquestrador de saga que gerencia execução sequencial de steps
-///     e compensação automática em caso de falha.
+///     Orquestrador de saga que executa steps sequencialmente e, ao primeiro erro, compensa em ordem
+///     reversa (LIFO) as steps já concluídas. Use adicionando steps via <see cref="AddStep" /> e chamando
+///     <see cref="ExecuteAsync" />; em sucesso, chame <see cref="CompleteAsync" /> para evitar a
+///     auto-compensação disparada no descarte. Opcionalmente persiste o progresso num
+///     <see cref="ISagaStateStore" />.
 /// </summary>
+/// <remarks>
+///     A contagem de steps executadas é sempre capturada antes de compensar, pois a compensação esvazia a
+///     stack interna. O orquestrador é de uso único: uma instância não pode ser reexecutada.
+/// </remarks>
 /// <typeparam name="TContext">Tipo do contexto da saga</typeparam>
 public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISagaContext
 {
@@ -21,6 +28,14 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
     private bool _isCompleted;
     private bool _isExecuted;
 
+    /// <summary>
+    ///     Cria a saga com seu <paramref name="logger" />, um <paramref name="sagaId" /> (gerado quando omitido)
+    ///     e um <paramref name="stateStore" /> opcional para persistir o progresso. A instância é de uso único:
+    ///     adicione steps e chame <see cref="ExecuteAsync" /> uma vez.
+    /// </summary>
+    /// <param name="logger">Logger usado em toda a execução, compensação e descarte.</param>
+    /// <param name="sagaId">Identificador da execução; quando nulo, um novo <see cref="Guid" /> é gerado.</param>
+    /// <param name="stateStore">Armazenamento opcional para persistir início, conclusão de steps e compensação.</param>
     public SagaOrchestrator(
         ILogger<SagaOrchestrator<TContext>> logger,
         Guid? sagaId = null,
@@ -30,8 +45,14 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
         _stateStore = stateStore;
     }
 
+    /// <summary>Identificador único desta execução de saga, usado em logs e na persistência de estado.</summary>
     public Guid SagaId { get; }
 
+    /// <summary>
+    ///     Adiciona uma step ao final da sequência. Só pode ser chamado antes de <see cref="ExecuteAsync" />;
+    ///     adicionar steps após o início da execução lança <see cref="InvalidOperationException" />. Retorna a
+    ///     própria saga para encadeamento fluente.
+    /// </summary>
     public ISaga<TContext> AddStep(ISagaStep<TContext> step) {
         if (step == null) throw new ArgumentNullException(nameof(step));
 
@@ -48,6 +69,12 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
         return this;
     }
 
+    /// <summary>
+    ///     Executa as steps na ordem em que foram adicionadas. Se uma step falha (ou lança), compensa todas as
+    ///     já executadas em ordem reversa antes de propagar a falha como <see cref="SagaExecutionException" />.
+    ///     Só pode ser chamado uma vez e exige ao menos uma step. Em sucesso, lembre-se de chamar
+    ///     <see cref="CompleteAsync" /> para suprimir a auto-compensação no descarte.
+    /// </summary>
     public async Task<SagaExecutionResult> ExecuteAsync(TContext context, CancellationToken ct = default) {
         if (_isExecuted) throw new InvalidOperationException("Saga has already been executed");
 
@@ -75,15 +102,13 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
                     var errorMsg = $"Step {step.StepName} failed: {result.ErrorMessage}";
                     _logger.LogError(result.Exception, errorMsg);
 
-                    // Guarda contagem antes de compensar (compensação vai esvaziar a stack)
                     var stepsExecutedCount = _executedSteps.Count;
 
-                    // Compensa todas as steps já executadas antes de lançar exceção
                     var compensatedCount = await CompensateExecutedStepsAsync(context, ct);
 
                     _executionResult = SagaExecutionResult.Failed(
                         errorMsg,
-                        stepsExecutedCount, // Contagem antes da compensação
+                        stepsExecutedCount,
                         compensatedCount,
                         result.Exception);
 
@@ -117,11 +142,9 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
             return _executionResult;
         }
         catch (SagaExecutionException) {
-            // Re-throw SagaExecutionException (já compensou antes de lançar)
             throw;
         }
         catch (Exception ex) {
-            // Guarda contagem antes de compensar (compensação vai esvaziar a stack)
             var stepsExecutedCount = _executedSteps.Count;
 
             _logger.LogError(
@@ -130,12 +153,11 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
                 SagaId,
                 stepsExecutedCount);
 
-            // Compensa steps executadas em caso de exceção inesperada
             var compensatedCount = await CompensateExecutedStepsAsync(context, ct);
 
             _executionResult = SagaExecutionResult.Failed(
                 ex.Message,
-                stepsExecutedCount, // Contagem antes da compensação
+                stepsExecutedCount,
                 compensatedCount,
                 ex);
 
@@ -145,6 +167,11 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
         }
     }
 
+    /// <summary>
+    ///     Marca a saga como concluída com sucesso, impedindo a auto-compensação no descarte. Deve ser chamado
+    ///     após um <see cref="ExecuteAsync" /> bem-sucedido; é idempotente (chamadas repetidas apenas logam um
+    ///     aviso) e exige que a saga já tenha sido executada.
+    /// </summary>
     public async Task CompleteAsync(CancellationToken ct = default) {
         if (!_isExecuted) throw new InvalidOperationException("Cannot complete saga before execution");
 
@@ -160,6 +187,11 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
         if (_stateStore != null) await _stateStore.MarkAsCompletedAsync(SagaId, ct);
     }
 
+    /// <summary>
+    ///     Rede de segurança: se a saga foi executada mas não recebeu <see cref="CompleteAsync" />, dispara a
+    ///     compensação automática durante o descarte. Falhas na compensação são logadas como críticas e nunca
+    ///     propagadas a partir do descarte.
+    /// </summary>
     public async ValueTask DisposeAsync() {
         if (_disposed) return;
 
@@ -194,8 +226,9 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
     }
 
     /// <summary>
-    ///     Compensa todas as steps já executadas na ordem reversa (LIFO).
-    ///     Chamado automaticamente quando uma step falha.
+    ///     Compensa todas as steps já executadas na ordem reversa (LIFO). Chamado automaticamente quando uma
+    ///     step falha. Se a compensação de uma step lança, o erro é logado como crítico e a compensação das
+    ///     demais continua, para maximizar a reversão antes de exigir intervenção manual.
     /// </summary>
     private async Task<int> CompensateExecutedStepsAsync(TContext context, CancellationToken ct) {
         var compensatedCount = 0;
@@ -233,7 +266,6 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
                     "CRITICAL: Compensation failed for step {StepName} in Saga {SagaId}. Manual intervention required!",
                     step.StepName,
                     SagaId);
-                // Continua compensando outras steps mesmo se uma falhar
             }
         }
 
@@ -260,8 +292,6 @@ public class SagaOrchestrator<TContext> : ISaga<TContext> where TContext : ISaga
                 SagaId,
                 _executedSteps.Count);
 
-        // Não podemos compensar sem contexto
-        // A compensação já deve ter sido feita no ExecuteAsync
         return Task.FromResult(0);
     }
 }

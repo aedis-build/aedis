@@ -8,6 +8,7 @@ public sealed class LogTypeEnricher(string logType) : ILogEventEnricher
 {
     private readonly LogEventProperty _property = new("LogType", new ScalarValue(logType));
 
+    /// <inheritdoc />
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory) =>
         logEvent.AddPropertyIfAbsent(_property);
 }

@@ -12,6 +12,7 @@ public sealed class ServiceBusHealthCheck(
     ServiceBusMessageBrokerService broker)
     : IHealthCheck
 {
+    /// <summary>Reporta <c>Healthy</c> se a conexão do broker está saudável e aberta; senão <c>Unhealthy</c>.</summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         try {

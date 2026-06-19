@@ -25,7 +25,18 @@ public static class AedisSerilog
         return loggerConfiguration.CreateLogger();
     }
 
-    /// <summary>Aplica a configuração padrão do Aedis a um <see cref="LoggerConfiguration" /> existente.</summary>
+    /// <summary>
+    ///     Aplica a configuração padrão do Aedis a um <see cref="LoggerConfiguration" /> existente: níveis
+    ///     mínimos (com overrides de ruído do ASP.NET Core e os configurados na seção <c>Serilog:MinimumLevel</c>),
+    ///     filtro de ruído (<c>/health</c>, <c>/favicon.ico</c>) e enriquecimento de cada evento.
+    /// </summary>
+    /// <remarks>
+    ///     Estratégia de sinks por desenho de entrega durável: escreve SEMPRE no Console em JSON compacto
+    ///     (<see cref="CompactJsonFormatter" />) no stdout — a rede de segurança coletada pelo agente da
+    ///     plataforma, que nunca se perde — e adiciona o sink OTLP em lote apenas quando há endpoint
+    ///     configurado. O enriquecimento <c>application</c> usa a mesma tag das métricas
+    ///     (<see cref="ApplicationInfo.Name" />), permitindo filtrar logs e métricas pelo mesmo serviço.
+    /// </remarks>
     public static void Configure(LoggerConfiguration loggerConfiguration, IConfiguration configuration) {
         loggerConfiguration
             .MinimumLevel.Information()
@@ -38,9 +49,9 @@ public static class AedisSerilog
         loggerConfiguration
             .Filter.ByExcluding(IsNoise)
             .Enrich.With(new LogTypeEnricher("Application"))
-            .Enrich.WithProperty("application", ApplicationInfo.Name) // mesma tag das métricas — filtra por serviço
+            .Enrich.WithProperty("application", ApplicationInfo.Name)
             .Enrich.FromLogContext()
-            .WriteTo.Console(new CompactJsonFormatter()); // JSON compacto no stdout — sempre (entrega durável)
+            .WriteTo.Console(new CompactJsonFormatter());
 
         ConfigureOpenTelemetrySink(loggerConfiguration, configuration);
     }
@@ -70,7 +81,13 @@ public static class AedisSerilog
                || path.Equals("/favicon.ico", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Sink OTLP de logs — opt-in via <c>Telemetry:OtlpEndpoint</c> (em lote, para entrega ao backend).</summary>
+    /// <summary>
+    ///     Sink OTLP de logs — opt-in via <c>Telemetry:OtlpEndpoint</c> (em lote, para entrega ao backend).
+    /// </summary>
+    /// <remarks>
+    ///     O lote com fila grande agrega eventos para throughput e absorve picos sem bloquear o produtor
+    ///     nem perder eventos: agrega até 1.000 por lote, esvazia a cada 2s e tolera até 100.000 enfileirados.
+    /// </remarks>
     private static void ConfigureOpenTelemetrySink(LoggerConfiguration loggerConfiguration,
         IConfiguration configuration) {
         var telemetry = configuration.GetSection("Telemetry");
@@ -87,7 +104,6 @@ public static class AedisSerilog
             if (!string.IsNullOrWhiteSpace(apiKey))
                 options.Headers = new Dictionary<string, string> { ["api-key"] = apiKey };
 
-            // Lote + fila grande: agrega para throughput e absorve picos sem bloquear nem perder eventos.
             options.BatchingOptions.BatchSizeLimit = 1_000;
             options.BatchingOptions.BufferingTimeLimit = TimeSpan.FromSeconds(2);
             options.BatchingOptions.QueueLimit = 100_000;

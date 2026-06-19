@@ -6,6 +6,7 @@ namespace Aedis.Exceptions;
 /// </summary>
 public class ExternalServiceException : Exception
 {
+    /// <summary>Cria a exceção descrevendo a falha no serviço externo, com código de erro, status HTTP e corpo da resposta opcionais.</summary>
     public ExternalServiceException(
         string serviceName,
         string message,
@@ -19,6 +20,7 @@ public class ExternalServiceException : Exception
         ResponseBody = responseBody;
     }
 
+    /// <summary>Cria a exceção encadeando a causa original (<paramref name="innerException" />), preservando o stack trace subjacente.</summary>
     public ExternalServiceException(
         string serviceName,
         string message,
@@ -33,13 +35,28 @@ public class ExternalServiceException : Exception
         ResponseBody = responseBody;
     }
 
+    /// <summary>Nome do serviço externo que falhou (ex.: "PaymentGateway").</summary>
     public string ServiceName { get; }
+
+    /// <summary>Código de erro retornado pelo serviço, quando disponível.</summary>
     public string? ErrorCode { get; }
+
+    /// <summary>Status HTTP da resposta, quando aplicável; orienta a decisão de requeue.</summary>
     public int? StatusCode { get; }
+
+    /// <summary>Corpo bruto da resposta, preservado para diagnóstico.</summary>
     public string? ResponseBody { get; }
+
+    /// <summary>Dados extras anexados ao erro para contexto e logging.</summary>
     public Dictionary<string, object> ErrorData { get; } = new();
 
+    /// <summary>
+    ///     Indica se a mensagem deve ser recolocada na fila. Verdadeiro quando não há status (falha de
+    ///     conexão presumida transitória) ou quando o status é transitório (401, 408, 429 e qualquer 5xx).
+    /// </summary>
     public bool ShouldRequeue => IsRetryableStatusCode();
+
+    /// <summary>Indica se a mensagem deve ir para a dead-letter queue — o oposto de <see cref="ShouldRequeue" />.</summary>
     public bool SendToDeadLetterQueue => !ShouldRequeue;
 
     private bool IsRetryableStatusCode() {
@@ -58,6 +75,7 @@ public class ExternalServiceException : Exception
         };
     }
 
+    /// <summary>Anexa um par chave/valor a <see cref="ErrorData" /> para enriquecer o contexto do erro.</summary>
     public void AddErrorData(string key, object value) {
         ErrorData[key] = value;
     }

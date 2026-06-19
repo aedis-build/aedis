@@ -7,6 +7,7 @@ namespace Aedis.Messaging.AzureServiceBus;
 /// </summary>
 public sealed class ServiceBusOptions
 {
+    /// <summary>Nome da seção de configuração de onde as opções são lidas (<c>ServiceBus</c>).</summary>
     public const string SectionName = "ServiceBus";
 
     /// <summary>Connection string do namespace do Azure Service Bus.</summary>

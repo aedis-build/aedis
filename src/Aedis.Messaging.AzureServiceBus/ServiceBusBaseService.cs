@@ -15,11 +15,16 @@ public abstract class ServiceBusBaseService : IAsyncDisposable
     private readonly Timer _connectionHealthTimer;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly ILogger _logger;
+    /// <summary>Configuração de conexão ao Service Bus usada pelas subclasses.</summary>
     protected readonly ServiceBusOptions _options;
 
     private ServiceBusClient? _client;
     private volatile bool _isConnectionHealthy = true;
 
+    /// <summary>
+    ///     Prepara o serviço e arma o monitor periódico de saúde da conexão (a cada 30s); o
+    ///     <see cref="ServiceBusClient" /> é criado de forma preguiçosa no primeiro uso.
+    /// </summary>
     protected ServiceBusBaseService(IOptions<ServiceBusOptions> options, ILogger logger) {
         _options = options.Value;
         _logger = logger;
@@ -27,8 +32,13 @@ public abstract class ServiceBusBaseService : IAsyncDisposable
             TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
 
+    /// <summary>Estado de saúde da conexão, atualizado pelo monitor periódico. Consumido pelo health check.</summary>
     public bool IsConnectionHealthy => _isConnectionHealthy;
 
+    /// <summary>
+    ///     Devolve o <see cref="ServiceBusClient" /> compartilhado, criando-o de forma preguiçosa e
+    ///     thread-safe e reaproveitando-o enquanto não estiver fechado. Configura o retry exponencial.
+    /// </summary>
     public async Task<ServiceBusClient> GetClientAsync() {
         if (_client is { IsClosed: false })
             return _client;
@@ -62,6 +72,7 @@ public abstract class ServiceBusBaseService : IAsyncDisposable
     /// <summary>Normaliza o nome (minúsculas, espaços e underscores viram hífen) para o Service Bus.</summary>
     public static string NormalizeName(string name) => name.ToLowerInvariant().Replace(' ', '-').Replace('_', '-');
 
+    /// <summary>Para o monitor de saúde, descarta o cliente e libera o semáforo de conexão.</summary>
     public virtual async ValueTask DisposeAsync() {
         await _connectionHealthTimer.DisposeAsync();
 

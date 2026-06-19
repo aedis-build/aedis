@@ -8,6 +8,7 @@ namespace Aedis.Observability.Otlp;
 /// </summary>
 public sealed class TelemetryOptions
 {
+    /// <summary>Nome da seção de configuração (<c>Telemetry</c>) de onde estas opções são lidas.</summary>
     public const string SectionName = "Telemetry";
 
     /// <summary>Endpoint OTLP (ex.: <c>http://otel-collector:4317</c>). Vazio = nenhum exporter OTLP.</summary>

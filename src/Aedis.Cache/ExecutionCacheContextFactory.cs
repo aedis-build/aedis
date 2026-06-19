@@ -10,5 +10,6 @@ namespace Aedis.Cache;
 public sealed class ExecutionCacheContextFactory(ICache cache, ILogger<ExecutionCacheContext> logger)
     : IExecutionCacheContextFactory
 {
+    /// <inheritdoc />
     public IExecutionCacheContext Create() => new ExecutionCacheContext(cache, logger);
 }

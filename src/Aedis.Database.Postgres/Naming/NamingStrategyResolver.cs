@@ -10,8 +10,18 @@ namespace Aedis.Database.Postgres.Naming;
 /// </summary>
 public sealed class NamingStrategyResolver : StrategyResolver<NamingContext>
 {
+    /// <summary>
+    ///     Cria o resolver a partir das <see cref="INamingStrategy" /> registradas (uma por convenção),
+    ///     tipicamente injetadas pelo contêiner de DI.
+    /// </summary>
+    /// <param name="strategies">Estratégias de nomes disponíveis para resolução.</param>
     public NamingStrategyResolver(IEnumerable<INamingStrategy> strategies) : base(strategies) { }
 
+    /// <summary>
+    ///     Retorna a <see cref="INamingStrategy" /> que sabe lidar com o contexto (via
+    ///     <see cref="INamingStrategy.CanHandle" />), já tipada para dispensar cast. Lança
+    ///     <see cref="InvalidOperationException" /> quando nenhuma estratégia atende à convenção.
+    /// </summary>
     public new INamingStrategy GetStrategy(NamingContext context) {
         var strategy = Strategies.Cast<INamingStrategy>().FirstOrDefault(s => s.CanHandle(context))
                        ?? throw new InvalidOperationException(

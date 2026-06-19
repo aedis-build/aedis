@@ -7,5 +7,9 @@ namespace Aedis.Messaging.Abstractions;
 /// </summary>
 public interface IMqMetadataMessage : IRawMessage
 {
+    /// <summary>
+    ///     Recebe os metadados do MQMD lidos pelo consumer IBM MQ após a leitura da mensagem, permitindo
+    ///     reagir a report codes (COA/COD/Expiry) e demais campos do cabeçalho.
+    /// </summary>
     void FromMqMetadata(MqMessageMetadata metadata);
 }

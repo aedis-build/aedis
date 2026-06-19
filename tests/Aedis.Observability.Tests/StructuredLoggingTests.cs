@@ -9,7 +9,7 @@ using Xunit;
 namespace Aedis.Observability.Tests;
 
 /// <summary>
-///     O log padrão do Aedis é estruturado (JSON compacto) e "bem legal" como no Payhop: cada evento
+///     O log padrão do Aedis é estruturado (JSON compacto): cada evento
 ///     carrega <c>application</c> (mesma identidade das métricas), <c>LogType</c> e os campos nomeados do
 ///     template, prontos para filtrar/correlacionar no backend.
 /// </summary>

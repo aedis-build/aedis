@@ -102,13 +102,14 @@ public class BusinessException : Exception
     }
 
     /// <summary>
-    ///     Mapeia ViolationType para status code padrão.
+    ///     Mapeia ViolationType para status code padrão. Conflito → 409, pré-condição → 412; as demais
+    ///     violações de negócio também usam 412 como padrão.
     /// </summary>
     private static int MapViolationTypeToDefaultStatusCode(ViolationType violationType) {
         return violationType switch {
             ViolationType.ConflictError => 409,
             ViolationType.PreconditionFailed => 412,
-            _ => 412 // Default para regras de negócio
+            _ => 412
         };
     }
 }

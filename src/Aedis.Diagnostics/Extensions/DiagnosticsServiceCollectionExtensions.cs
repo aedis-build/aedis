@@ -15,6 +15,15 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// </summary>
 public static class DiagnosticsServiceCollectionExtensions
 {
+    /// <summary>
+    ///     Registra os diagnósticos do Aedis no contêiner: health checks de processo, o
+    ///     <see cref="IDisposableRegistry" /> e o serviço de desligamento gracioso. Chame uma vez na
+    ///     composição da aplicação; use <paramref name="configure" /> para ajustar o
+    ///     <see cref="GracefulShutdownOptions" /> (ex.: o atraso de drenagem).
+    /// </summary>
+    /// <param name="services">Coleção de serviços a configurar.</param>
+    /// <param name="configure">Configuração opcional das opções de desligamento gracioso.</param>
+    /// <returns>A mesma <paramref name="services" />, para encadeamento.</returns>
     public static IServiceCollection AddAedisDiagnostics(this IServiceCollection services,
         Action<GracefulShutdownOptions>? configure = null) {
         services.TryAddSingleton<ShutdownHealthCheck>();

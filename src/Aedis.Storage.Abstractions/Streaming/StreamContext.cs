@@ -8,11 +8,13 @@ namespace Aedis.Storage.Abstractions.Streaming;
 /// </summary>
 public sealed class StreamContext
 {
+    /// <summary>Modo de tratamento desejado, que seleciona a estratégia a aplicar.</summary>
     public StreamMode Mode { get; set; }
 
     /// <summary>Stream bruto do objeto, fornecido pelo provider (ex.: corpo da resposta do download).</summary>
     public Stream SourceStream { get; set; } = null!;
 
+    /// <summary>Tamanho em bytes do conteúdo, usado para decidir entre memória e spool em arquivo.</summary>
     public long ContentLength { get; set; }
 
     /// <summary>Stream resultante após a estratégia de tratamento de memória.</summary>

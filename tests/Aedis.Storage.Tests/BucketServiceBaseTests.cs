@@ -42,7 +42,6 @@ public sealed class BucketServiceBaseTests
     public async Task Get_aplica_o_tratamento_de_memoria_da_plataforma() {
         await _sut.PutObjectAsync("k.txt", StreamOf("pequeno"));
 
-        // O provider só abre o stream bruto; a base aplica a estratégia Memory.
         var result = await _sut.GetObjectAsync("k.txt", StreamMode.Memory);
 
         result.Should().BeOfType<MemoryStream>();

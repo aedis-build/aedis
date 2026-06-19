@@ -10,14 +10,22 @@ namespace Aedis.Exceptions;
 /// </summary>
 public abstract class PermanentFailureException : Exception
 {
+    /// <summary>Cria a exceção com a mensagem que descreve a falha permanente.</summary>
     protected PermanentFailureException(string message) : base(message) { }
 
+    /// <summary>Cria a exceção encadeando a causa original (<paramref name="innerException" />).</summary>
     protected PermanentFailureException(string message, Exception innerException) : base(message, innerException) { }
 
+    /// <summary>Sempre falso por padrão: erros permanentes não são recolocados na fila.</summary>
     public virtual bool ShouldRequeue => false;
+
+    /// <summary>Verdadeiro por padrão: a mensagem segue para a DLQ quando habilitada.</summary>
     public virtual bool SendToDeadLetterQueue => true;
+
+    /// <summary>Dados extras anexados ao erro para contexto e logging.</summary>
     public Dictionary<string, object> ErrorData { get; } = new();
 
+    /// <summary>Anexa um par chave/valor a <see cref="ErrorData" /> para enriquecer o contexto do erro.</summary>
     public void AddErrorData(string key, object value) {
         ErrorData[key] = value;
     }

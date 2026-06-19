@@ -20,6 +20,11 @@ public abstract class S3BucketService<T> : BucketServiceBase<T>, IDisposable
     private readonly string _prefix;
     private readonly IAmazonS3 _s3;
 
+    /// <summary>
+    ///     Cria o serviço a partir das <see cref="S3StorageOptions" />, montando o cliente <see cref="IAmazonS3" />
+    ///     (credenciais, ServiceURL ou região) e fixando o bucket e o prefixo desta instância.
+    /// </summary>
+    /// <param name="options">Configuração do bucket e do acesso AWS (BucketName obrigatório).</param>
     protected S3BucketService(S3StorageOptions options) {
         ArgumentNullException.ThrowIfNull(options);
         if (string.IsNullOrWhiteSpace(options.BucketName))
@@ -39,11 +44,13 @@ public abstract class S3BucketService<T> : BucketServiceBase<T>, IDisposable
         _prefix = (prefix ?? string.Empty).Trim('/');
     }
 
+    /// <summary>Libera o cliente <see cref="IAmazonS3" /> subjacente.</summary>
     public void Dispose() {
         _s3.Dispose();
         GC.SuppressFinalize(this);
     }
 
+    /// <inheritdoc />
     protected override async Task<ObjectContent?> OpenObjectAsync(string key, CancellationToken cancellationToken) {
         try {
             var response = await _s3.GetObjectAsync(
@@ -55,6 +62,7 @@ public abstract class S3BucketService<T> : BucketServiceBase<T>, IDisposable
         }
     }
 
+    /// <inheritdoc />
     protected override async Task UploadObjectAsync(string key, Stream stream, string contentType,
         long? contentLength, CancellationToken cancellationToken) {
         using var transfer = new TransferUtility(_s3);
@@ -70,6 +78,7 @@ public abstract class S3BucketService<T> : BucketServiceBase<T>, IDisposable
         await transfer.UploadAsync(request, cancellationToken);
     }
 
+    /// <inheritdoc />
     public override async IAsyncEnumerable<BucketObject> ListObjectsAsync(string? prefix, long offsetTimestamp = 0,
         [EnumeratorCancellation] CancellationToken cancellationToken = default) {
         var fullPrefix = Combine(_prefix, prefix);
@@ -96,11 +105,13 @@ public abstract class S3BucketService<T> : BucketServiceBase<T>, IDisposable
         } while (token is not null);
     }
 
+    /// <inheritdoc />
     public override Task DeleteObjectAsync(string key, CancellationToken cancellationToken = default) {
         return _s3.DeleteObjectAsync(new DeleteObjectRequest { BucketName = _bucket, Key = ResolveKey(key) },
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public override async Task CopyObjectAsync(string sourceKey, string destinationKey,
         CancellationToken cancellationToken = default) {
         var src = ResolveKey(sourceKey);
@@ -114,6 +125,7 @@ public abstract class S3BucketService<T> : BucketServiceBase<T>, IDisposable
         }, cancellationToken);
     }
 
+    /// <inheritdoc />
     public override Task<string> GetPreSignedUrlAsync(string key, TimeSpan ttl,
         FileAccess accessType = FileAccess.Read, CancellationToken cancellationToken = default) {
         var request = new GetPreSignedUrlRequest {

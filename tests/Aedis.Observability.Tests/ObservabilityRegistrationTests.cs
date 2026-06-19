@@ -45,7 +45,7 @@ public sealed class ObservabilityRegistrationTests
         var template = new MessageTemplateParser().Parse("teste");
         var logEvent = new LogEvent(DateTimeOffset.Now, LogEventLevel.Information, null, template, []);
 
-        enricher.Enrich(logEvent, null!); // o enricher usa uma propriedade pré-construída; ignora a factory
+        enricher.Enrich(logEvent, null!);
 
         logEvent.Properties.Should().ContainKey("LogType");
         logEvent.Properties["LogType"].ToString().Should().Contain("Event");

@@ -9,6 +9,7 @@ namespace Aedis.Messaging.AwsSqs;
 /// </summary>
 public sealed class AwsSqsOptions
 {
+    /// <summary>Nome da seção de configuração de onde as opções são lidas (<c>Aws</c>).</summary>
     public const string SectionName = "Aws";
 
     /// <summary>Região AWS (ex.: "sa-east-1"). Sem valor, usa a região do ambiente.</summary>

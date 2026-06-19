@@ -13,11 +13,20 @@ public class CommandExecutor : ICommandExecutor
     private readonly ILogger<CommandExecutor> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
 
+    /// <summary>
+    ///     Inicializa o executor com a fábrica de escopos (usada para resolver o handler num escopo próprio
+    ///     por comando) e o logger.
+    /// </summary>
     public CommandExecutor(IServiceScopeFactory scopeFactory, ILogger<CommandExecutor> logger) {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    ///     Abre um escopo de DI, resolve o <c>ICommandHandler</c> registrado para o tipo concreto do comando e
+    ///     delega a execução. Lança <see cref="InvalidOperationException" /> quando não há handler registrado
+    ///     para o par comando/resultado.
+    /// </summary>
     public async Task<TResult> ExecuteAsync<TResult>(
         ICommand<TResult> command,
         CancellationToken cancellationToken = default) {

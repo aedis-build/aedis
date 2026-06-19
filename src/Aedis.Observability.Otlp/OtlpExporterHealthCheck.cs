@@ -10,6 +10,10 @@ namespace Aedis.Observability.Otlp;
 public sealed class OtlpExporterHealthCheck(IOptions<TelemetryOptions> options, IHttpClientFactory httpClientFactory)
     : IHealthCheck
 {
+    /// <summary>
+    ///     Sonda o endpoint OTLP com um POST vazio (apenas cabeçalhos) e reporta <c>Healthy</c> se acessível,
+    ///     <c>Unhealthy</c> em timeout ou erro de rede. Retorna <c>Healthy</c> quando não há endpoint configurado.
+    /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         var endpoint = options.Value.OtlpEndpoint;

@@ -7,12 +7,14 @@ namespace Aedis.Exceptions;
 /// </summary>
 public class BusinessScheduleException : RetryableException
 {
+    /// <summary>Cria a exceção informando a janela de agendamento e o horário da tentativa, sem prazo de retry explícito.</summary>
     public BusinessScheduleException(string message, string scheduleWindow, DateTimeOffset currentTime)
         : base(message) {
         ScheduleWindow = scheduleWindow;
         CurrentTime = currentTime;
     }
 
+    /// <summary>Cria a exceção definindo também o <paramref name="retryAfter" /> — atraso sugerido antes da próxima tentativa.</summary>
     public BusinessScheduleException(string message, string scheduleWindow, DateTimeOffset currentTime,
         TimeSpan retryAfter)
         : base(message, retryAfter) {

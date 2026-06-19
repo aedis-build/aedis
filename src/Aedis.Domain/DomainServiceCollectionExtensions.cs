@@ -4,13 +4,15 @@ using Aedis.Domain.Saga.Abstractions;
 
 namespace Aedis.Domain;
 
-// Nota: a persistência de estado de saga em banco (ISagaStateStore → DatabaseSagaStateStore)
-// é glue de infraestrutura e será fornecida por um pacote Tier 3 (ver MIGRATION.md).
-// Em Tier 1 o Saga opera apenas em memória por padrão.
-
 /// <summary>
-///     Opções de configuração para Saga Pattern
+///     Opções de configuração do Saga Pattern (timeout padrão, verbosidade de log), consumidas pelo
+///     <see cref="SagaBuilder" /> ao registrar sagas no container de DI.
 /// </summary>
+/// <remarks>
+///     A persistência de estado de saga em banco (<c>ISagaStateStore → DatabaseSagaStateStore</c>) é glue de
+///     infraestrutura e será fornecida por um pacote Tier 3 (ver MIGRATION.md). Em Tier 1 o Saga opera apenas
+///     em memória por padrão.
+/// </remarks>
 public class SagaOptions
 {
     /// <summary>
@@ -25,16 +27,25 @@ public class SagaOptions
 }
 
 /// <summary>
-///     Builder para configuração fluente de Saga
+///     Builder fluente que registra steps de saga no container e ajusta as <see cref="SagaOptions" />.
+///     Obtido durante a configuração do DI; encadeie <see cref="AddStep{TStep, TContext}" /> e
+///     <see cref="WithTimeout" /> para compor a saga.
 /// </summary>
 public class SagaBuilder
 {
+    /// <summary>
+    ///     Inicializa o builder com a coleção de serviços alvo e as opções a serem ajustadas; ambas
+    ///     obrigatórias.
+    /// </summary>
     public SagaBuilder(IServiceCollection services, SagaOptions options) {
         Services = services ?? throw new ArgumentNullException(nameof(services));
         Options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
+    /// <summary>Coleção de serviços onde as steps de saga são registradas.</summary>
     public IServiceCollection Services { get; }
+
+    /// <summary>Opções de saga sendo configuradas por este builder.</summary>
     public SagaOptions Options { get; }
 
     /// <summary>

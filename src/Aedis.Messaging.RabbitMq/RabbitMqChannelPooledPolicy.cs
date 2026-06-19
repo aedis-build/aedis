@@ -17,6 +17,10 @@ public class RabbitMqChannelPooledPolicy : IPooledObjectPolicy<IChannel>
     private readonly ILogger _logger;
     private readonly RabbitMqOptions _options;
 
+    /// <summary>
+    ///     Cria a política e aquece a conexão subjacente (resolvida de forma síncrona no construtor) para que o
+    ///     pool possa criar canais sem latência adicional na primeira aquisição.
+    /// </summary>
     public RabbitMqChannelPooledPolicy(RabbitMqBaseService baseService, ILogger logger, RabbitMqOptions options) {
         _baseService = baseService;
         _logger = logger;
@@ -30,6 +34,10 @@ public class RabbitMqChannelPooledPolicy : IPooledObjectPolicy<IChannel>
         };
     }
 
+    /// <summary>
+    ///     Cria um novo canal sobre a conexão, aplica o QoS/prefetch configurado e registra o handler de
+    ///     mensagens devolvidas (basic.return). Invocado pelo pool quando não há canal ocioso.
+    /// </summary>
     public IChannel Create() {
         var connection = _cachedConnectionTask.GetAwaiter().GetResult();
         var channel = connection.CreateChannelAsync().GetAwaiter().GetResult();
@@ -42,6 +50,10 @@ public class RabbitMqChannelPooledPolicy : IPooledObjectPolicy<IChannel>
         return channel;
     }
 
+    /// <summary>
+    ///     Decide se o canal volta ao pool: mantém-no se ainda estiver aberto; caso contrário, descarta-o,
+    ///     atualizando a contagem de canais. Retorna <c>true</c> quando o canal é reaproveitado.
+    /// </summary>
     public bool Return(IChannel obj) {
         if (obj.IsOpen) {
             _logger.LogDebug("Canal retornado ao pool.");

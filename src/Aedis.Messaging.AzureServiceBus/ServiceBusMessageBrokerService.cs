@@ -22,6 +22,11 @@ public sealed class ServiceBusMessageBrokerService : ServiceBusBaseService, IMes
     private readonly MessageSerializerResolver _serializers;
     private int _consecutiveUnhealthy;
 
+    /// <summary>
+    ///     Cria o broker Azure Service Bus com o admin helper de auto-provisionamento (opcional), o lifetime da
+    ///     aplicação (para encerrar em insalubridade persistente), o resolvedor de serializadores (default
+    ///     quando ausente) e o gerenciador de consumidores.
+    /// </summary>
     public ServiceBusMessageBrokerService(IOptions<ServiceBusOptions> options,
         ILogger<ServiceBusMessageBrokerService> logger, ServiceBusAdministrationHelper? adminHelper = null,
         IHostApplicationLifetime? lifetime = null, MessageSerializerResolver? serializers = null,
@@ -35,6 +40,10 @@ public sealed class ServiceBusMessageBrokerService : ServiceBusBaseService, IMes
         _consumerManager = new ServiceBusConsumerManager(consumerLogger, options, _serializers);
     }
 
+    /// <summary>
+    ///     Publica uma mensagem tipada: serializa o payload e envia para o tópico (exchange não vazio) ou
+    ///     fila (exchange vazio, usando o routing key como entidade), com o routing key no <c>Subject</c>.
+    /// </summary>
     public async Task PublishAsync<T>(string exchange, string routingKey, T message,
         CancellationToken cancellationToken = default) where T : class, IMessage {
         ArgumentNullException.ThrowIfNull(message);
@@ -45,6 +54,10 @@ public sealed class ServiceBusMessageBrokerService : ServiceBusBaseService, IMes
             message.CorrelationId, cancellationToken);
     }
 
+    /// <summary>
+    ///     Publica um payload bruto (bytes) sem passar por serializador, preservando o content-type
+    ///     informado. Gera um CorrelationId quando não informado.
+    /// </summary>
     public async Task PublishRawAsync(string exchange, string routingKey, ReadOnlyMemory<byte> payload,
         string contentType = "application/octet-stream", string? correlationId = null,
         CancellationToken cancellationToken = default) {
@@ -52,6 +65,11 @@ public sealed class ServiceBusMessageBrokerService : ServiceBusBaseService, IMes
             cancellationToken);
     }
 
+    /// <summary>
+    ///     Assina uma fila ou subscription de tópico, auto-provisionando os recursos quando o admin helper
+    ///     está disponível, e mantém o consumer vivo (reinicia os não saudáveis; encerra a aplicação se a
+    ///     insalubridade persistir). Bloqueia até o cancelamento.
+    /// </summary>
     public async Task SubscribeAsync<T>(string queue, string exchange, string routingKey,
         IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
         where T : class, IMessage {
@@ -75,6 +93,7 @@ public sealed class ServiceBusMessageBrokerService : ServiceBusBaseService, IMes
         await KeepConsumerAliveAsync(consumerId, cancellationToken);
     }
 
+    /// <summary>Encerra todos os consumidores e descarta a conexão da base.</summary>
     public override async ValueTask DisposeAsync() {
         await _consumerManager.DisposeAsync();
         await base.DisposeAsync();

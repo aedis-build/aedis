@@ -42,7 +42,6 @@ public sealed class StreamStrategyTests
 
     [Fact]
     public async Task Memory_acima_do_threshold_faz_spool_para_arquivo() {
-        // ContentLength forçado acima do limite — a estratégia de TempFile deve assumir.
         var ctx = Context(StreamMode.Memory, MemoryStreamStrategy.MemoryThreshold + 1);
 
         await StreamStrategyResolver.CreateDefault().ExecuteAsync(ctx);

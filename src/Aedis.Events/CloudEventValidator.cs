@@ -7,11 +7,17 @@ namespace Aedis.Events;
 /// </summary>
 public static class CloudEventValidator
 {
-    // source: URI-reference em forma de caminho — um ou mais segments, ex.: "/orders", "/orders/payments".
+    /// <summary>
+    ///     Valida <c>source</c> como URI-reference em forma de caminho — um ou mais segments, ex.: "/orders",
+    ///     "/orders/payments".
+    /// </summary>
     private static readonly Regex SourcePattern =
         new(@"^/[a-z0-9-]+(?:/[a-z0-9-]+)*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    // type: convenção reverse-DNS recomendada pelo CloudEvents, ex.: "com.acme.order.created".
+    /// <summary>
+    ///     Valida <c>type</c> na convenção reverse-DNS recomendada pelo CloudEvents, ex.:
+    ///     "com.acme.order.created".
+    /// </summary>
     private static readonly Regex TypePattern = new(@"^[a-z0-9]+(?:\.[a-z0-9]+)+$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
@@ -25,37 +31,29 @@ public static class CloudEventValidator
 
         var errors = new List<string>();
 
-        // Validar specversion
         if (string.IsNullOrWhiteSpace(cloudEvent.SpecVersion))
             errors.Add("specversion is required");
         else if (cloudEvent.SpecVersion != "1.0")
             errors.Add($"specversion must be '1.0', got '{cloudEvent.SpecVersion}'");
 
-        // Validar id (Guid não pode ser Guid.Empty)
         if (cloudEvent.Id == Guid.Empty) errors.Add("id is required and cannot be Guid.Empty");
 
-        // Validar source
         if (string.IsNullOrWhiteSpace(cloudEvent.Source))
             errors.Add("source is required");
         else if (!SourcePattern.IsMatch(cloudEvent.Source))
             errors.Add($"source must be a path like '/<service>', got '{cloudEvent.Source}'");
 
-        // Validar type
         if (string.IsNullOrWhiteSpace(cloudEvent.Type))
             errors.Add("type is required");
         else if (!TypePattern.IsMatch(cloudEvent.Type))
             errors.Add($"type must follow reverse-DNS '<org>.<domain>.<event>', got '{cloudEvent.Type}'");
 
-        // Validar time
         if (cloudEvent.Time == default) errors.Add("time is required");
 
-        // Validar datacontenttype
         if (string.IsNullOrWhiteSpace(cloudEvent.DataContentType))
             errors.Add("datacontenttype is required");
         else if (cloudEvent.DataContentType != "application/json")
             errors.Add($"datacontenttype must be 'application/json', got '{cloudEvent.DataContentType}'");
-
-        // subject e data são opcionais, não validamos aqui
 
         return errors.Count == 0
             ? ValidationResult.Success()

@@ -13,6 +13,11 @@ namespace Aedis.Domain.Saga;
 /// </summary>
 public abstract class SagaContext : ISagaContext
 {
+    /// <summary>
+    ///     Inicializa o contexto com o nome lógico da saga e, opcionalmente, um id (gerado quando omitido).
+    ///     Carimba <see cref="StartedAt" /> e popula <see cref="Metadata" /> com dados de observability
+    ///     (máquina, processo, instante de criação).
+    /// </summary>
     protected SagaContext(
         string sagaType,
         Guid? sagaId = null) {
@@ -28,13 +33,18 @@ public abstract class SagaContext : ISagaContext
         };
     }
 
+    /// <inheritdoc />
     public Guid SagaId { get; }
 
+    /// <inheritdoc />
     public string SagaType { get; }
 
+    /// <inheritdoc />
     public IDictionary<string, object> SharedData { get; }
 
+    /// <inheritdoc />
     public IDictionary<string, string> Metadata { get; }
 
+    /// <inheritdoc />
     public DateTimeOffset StartedAt { get; }
 }

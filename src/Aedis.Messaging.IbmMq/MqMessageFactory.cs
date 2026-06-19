@@ -50,11 +50,14 @@ internal static class MqMessageFactory
         Feedback: message.Feedback,
         MessageType: message.MessageType);
 
-    /// <summary>Traduz a lista de ativação em um bitmask MQRO_* (0/MQRO_NONE quando nada está ativo).</summary>
+    /// <summary>
+    ///     Traduz a lista de ativação em um bitmask MQRO_* (0/MQRO_NONE quando nada está ativo). A variante
+    ///     <c>WithData</c> já implica a simples (COA_WITH_DATA cobre COA; idem COD), então só uma é pedida
+    ///     para não duplicar o report.
+    /// </summary>
     internal static int BuildReportFlags(MqReportOptions reports) {
         var flags = MQC.MQRO_NONE;
 
-        // COA_WITH_DATA já implica COA; idem para COD — evita pedir os dois e duplicar o report.
         if (reports.CoaWithData) flags |= MQC.MQRO_COA_WITH_DATA;
         else if (reports.Coa) flags |= MQC.MQRO_COA;
 

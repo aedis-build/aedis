@@ -34,12 +34,20 @@ public sealed class RawCriteria<TEntity> : ICriteria<TEntity>
     private readonly object _parameters;
     private readonly string _sql;
 
+    /// <summary>
+    ///     Cria o critério a partir do texto SQL e do objeto de parâmetros (anônimo ou dicionário) entregue
+    ///     ao Dapper como bind parameters. Quando <paramref name="parameters" /> é nulo, usa um objeto vazio.
+    /// </summary>
+    /// <param name="sql">SQL bruto a executar; valores devem entrar como parâmetros (<c>@nome</c>).</param>
+    /// <param name="parameters">Valores nomeados ligados ao SQL; nunca concatenados no texto.</param>
     public RawCriteria(string sql, object? parameters = null) {
         _sql = sql ?? throw new ArgumentNullException(nameof(sql));
         _parameters = parameters ?? new { };
     }
 
+    /// <inheritdoc />
     public bool IsDistinct { get; init; }
 
+    /// <inheritdoc />
     public (string Sql, object Parameters) Build() => (_sql, _parameters);
 }

@@ -10,11 +10,14 @@ namespace Aedis.Database.Postgres.Naming;
 /// </summary>
 public sealed partial class SnakeCaseNamingStrategy : INamingStrategy
 {
+    /// <inheritdoc />
     public bool CanHandle(NamingContext context) => context.Convention == NamingConvention.SnakeCase;
 
+    /// <inheritdoc />
     public Task ExecuteAsync(NamingContext context, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
+    /// <inheritdoc />
     public string Convert(NamingContext context) => context.Operation switch {
         NamingOperation.TableName => Pluralize(ToSnakeCase(context.Input)),
         NamingOperation.ColumnName => ToSnakeCase(context.Input),
@@ -23,6 +26,7 @@ public sealed partial class SnakeCaseNamingStrategy : INamingStrategy
         _ => ToSnakeCase(context.Input)
     };
 
+    /// <inheritdoc />
     public bool Validate(NamingContext context, out string? errorMessage) {
         if (SnakeCasePattern().IsMatch(context.Input)) {
             errorMessage = null;
@@ -83,11 +87,14 @@ public sealed partial class SnakeCaseNamingStrategy : INamingStrategy
 /// <summary>Estratégia <c>PascalCase</c> — tabelas pluralizadas, colunas e demais nomes em PascalCase.</summary>
 public sealed class PascalCaseNamingStrategy : INamingStrategy
 {
+    /// <inheritdoc />
     public bool CanHandle(NamingContext context) => context.Convention == NamingConvention.PascalCase;
 
+    /// <inheritdoc />
     public Task ExecuteAsync(NamingContext context, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
+    /// <inheritdoc />
     public string Convert(NamingContext context) {
         var pascal = ToPascalCase(context.Input);
         return context.Operation switch {
@@ -96,6 +103,7 @@ public sealed class PascalCaseNamingStrategy : INamingStrategy
         };
     }
 
+    /// <inheritdoc />
     public bool Validate(NamingContext context, out string? errorMessage) {
         errorMessage = null;
         return true;
@@ -114,11 +122,14 @@ public sealed class PascalCaseNamingStrategy : INamingStrategy
 /// <summary>Estratégia <c>camelCase</c> — como PascalCase, mas com a primeira letra minúscula.</summary>
 public sealed class CamelCaseNamingStrategy : INamingStrategy
 {
+    /// <inheritdoc />
     public bool CanHandle(NamingContext context) => context.Convention == NamingConvention.CamelCase;
 
+    /// <inheritdoc />
     public Task ExecuteAsync(NamingContext context, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
+    /// <inheritdoc />
     public string Convert(NamingContext context) {
         var pascal = PascalCaseNamingStrategy.ToPascalCase(context.Input);
         var camel = string.IsNullOrEmpty(pascal) ? pascal : char.ToLowerInvariant(pascal[0]) + pascal[1..];
@@ -128,6 +139,7 @@ public sealed class CamelCaseNamingStrategy : INamingStrategy
         };
     }
 
+    /// <inheritdoc />
     public bool Validate(NamingContext context, out string? errorMessage) {
         errorMessage = null;
         return true;

@@ -15,12 +15,17 @@ public sealed class RedisHealthCheck : IHealthCheck
     private readonly ILogger<RedisHealthCheck> _logger;
     private readonly RedisCacheOptions _options;
 
+    /// <summary>Recebe a instância singleton de <see cref="RedisCache" /> para reutilizar a conexão já aberta na verificação.</summary>
     public RedisHealthCheck(IOptions<RedisCacheOptions> options, ILogger<RedisHealthCheck> logger, RedisCache cache) {
         _options = options.Value;
         _logger = logger;
         _cache = cache;
     }
 
+    /// <summary>
+    ///     Executa um PING na conexão Redis ativa e classifica o resultado: <c>Healthy</c> em resposta rápida,
+    ///     <c>Degraded</c> acima de 1s de latência e <c>Unhealthy</c> se o PING falhar.
+    /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         try {

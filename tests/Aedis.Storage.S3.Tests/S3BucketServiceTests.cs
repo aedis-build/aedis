@@ -64,7 +64,7 @@ public sealed class S3BucketServiceTests
         var keys = new List<string>();
         await foreach (var obj in _sut.ListObjectsAsync(null)) keys.Add(obj.FilePath);
 
-        keys.Should().ContainSingle().Which.Should().Be("a.txt"); // "folder/" (pseudo-dir) é ignorado
+        keys.Should().ContainSingle().Which.Should().Be("a.txt");
     }
 
     [Fact]

@@ -10,14 +10,17 @@ namespace Aedis.Exceptions;
 /// </summary>
 public abstract class SkippableMessageException : Exception
 {
+    /// <summary>Cria a exceção com a mensagem e o <paramref name="reason" /> que classifica o descarte (ex.: "duplicate", "expired").</summary>
     protected SkippableMessageException(string message, string reason) : base(message) {
         Reason = reason;
     }
 
+    /// <summary>Cria a exceção encadeando a causa original (<paramref name="innerException" />).</summary>
     protected SkippableMessageException(string message, string reason, Exception innerException)
         : base(message, innerException) {
         Reason = reason;
     }
 
+    /// <summary>Motivo do descarte da mensagem, usado para classificação e logging (ex.: "duplicate", "expired").</summary>
     public string Reason { get; }
 }

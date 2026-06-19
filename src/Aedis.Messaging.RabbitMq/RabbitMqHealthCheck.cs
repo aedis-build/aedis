@@ -13,6 +13,7 @@ public class RabbitMqHealthCheck : IHealthCheck
     private readonly RabbitMqMessageBrokerService _broker;
     private readonly RabbitMqOptions _options;
 
+    /// <summary>Cria o health check ligado ao broker existente, de onde reaproveita a conexão durante a verificação.</summary>
     public RabbitMqHealthCheck(
         IOptions<RabbitMqOptions> options,
         ILogger<RabbitMqHealthCheck> logger,
@@ -22,6 +23,11 @@ public class RabbitMqHealthCheck : IHealthCheck
         _broker = broker;
     }
 
+    /// <summary>
+    ///     Reporta a saúde do RabbitMQ: consulta o flag de saúde do broker e confirma que a conexão está aberta,
+    ///     retornando <see cref="HealthCheckResult.Unhealthy(string,Exception,System.Collections.Generic.IReadOnlyDictionary{string,object})" />
+    ///     se a conexão estiver caída ou ocorrer exceção.
+    /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         try {

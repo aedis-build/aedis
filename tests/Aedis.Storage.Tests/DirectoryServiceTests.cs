@@ -26,7 +26,6 @@ public sealed class DirectoryServiceTests : IDisposable
             if (Directory.Exists(_baseDir)) Directory.Delete(_baseDir, true);
         }
         catch {
-            // best-effort cleanup
         }
     }
 

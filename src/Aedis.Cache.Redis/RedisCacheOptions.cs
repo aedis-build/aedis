@@ -8,6 +8,7 @@ namespace Aedis.Cache.Redis;
 /// </summary>
 public sealed class RedisCacheOptions
 {
+    /// <summary>Nome da seção de configuração de onde estas opções são lidas (<c>REDIS</c>).</summary>
     public const string SectionName = "REDIS";
 
     /// <summary>Endpoint do Redis no formato <c>host:porta</c>.</summary>

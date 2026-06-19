@@ -19,6 +19,11 @@ public abstract class BaseMetrics<TMetrics> : IDisposable, IAsyncDisposable
     private readonly Meter _meter;
     private bool _disposed;
 
+    /// <summary>
+    ///     Cria o <see cref="Meter" /> da instância (nome explícito ou o namespace de <typeparamref name="TMetrics" />)
+    ///     via <paramref name="meterFactory" /> e dispara <see cref="ConfigureMetrics" /> para a derivada
+    ///     registrar seus instrumentos. Captura o nome da aplicação para a tag <c>application</c>.
+    /// </summary>
     protected BaseMetrics(IMeterFactory meterFactory, string? meterName = null) {
         ApplicationName = ApplicationInfo.Name;
         _meter = meterFactory.Create(meterName ?? typeof(TMetrics).Namespace ?? "Aedis.Application");
@@ -27,11 +32,13 @@ public abstract class BaseMetrics<TMetrics> : IDisposable, IAsyncDisposable
 
     private string ApplicationName { get; }
 
+    /// <summary>Descarta o <see cref="Meter" /> e limpa o estado dos counters. Idempotente.</summary>
     public void Dispose() {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>Versão assíncrona do descarte; usa <see cref="DisposeAsyncCore" />. Idempotente.</summary>
     public async ValueTask DisposeAsync() {
         if (_disposed) return;
         await DisposeAsyncCore().ConfigureAwait(false);
@@ -79,8 +86,13 @@ public abstract class BaseMetrics<TMetrics> : IDisposable, IAsyncDisposable
         histogram.Record(value, tagArray);
     }
 
+    /// <summary>Compõe a chave interna de estado de um counter concatenando os valores das tags com <c>|</c>.</summary>
     protected static string BuildKey(params string[] values) => string.Join("|", values);
 
+    /// <summary>
+    ///     Descarte central (padrão Dispose): quando <paramref name="disposing" /> é <c>true</c>, libera o
+    ///     <see cref="Meter" /> e limpa o estado dos counters. Idempotente; sobrescreva para liberar recursos da derivada.
+    /// </summary>
     protected virtual void Dispose(bool disposing) {
         if (_disposed) return;
         if (disposing) {
@@ -91,6 +103,10 @@ public abstract class BaseMetrics<TMetrics> : IDisposable, IAsyncDisposable
         _disposed = true;
     }
 
+    /// <summary>
+    ///     Núcleo do descarte assíncrono: libera o <see cref="Meter" /> e limpa o estado dos counters.
+    ///     Sobrescreva para liberar recursos assíncronos da derivada antes do descarte da base.
+    /// </summary>
     protected virtual ValueTask DisposeAsyncCore() {
         _meter.Dispose();
         _counterStates.Clear();

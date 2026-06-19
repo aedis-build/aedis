@@ -22,6 +22,11 @@ public sealed class HangfireMetricsFilter : JobFilterAttribute, IElectStateFilte
     private static readonly Histogram<double> DurationHistogram =
         Meter.CreateHistogram<double>("hangfire.job.duration_ms", "ms", "Duração da execução do job Hangfire");
 
+    /// <summary>
+    ///     Chamado pelo Hangfire na eleição do estado final do job. Incrementa o contador de sucesso e registra
+    ///     a latência quando o estado é <c>Succeeded</c>, ou incrementa o contador de falha (com o tipo da
+    ///     exceção) quando é <c>Failed</c>. Cada métrica é rotulada com o nome do job.
+    /// </summary>
     public void OnStateElection(ElectStateContext context) {
         var jobName = context.BackgroundJob.Job.Type.Name;
 

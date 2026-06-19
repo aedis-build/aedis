@@ -16,6 +16,7 @@ public sealed class CurrentUserAuditContext(ICurrentUser? currentUser = null) : 
         ? currentUser.Id ?? currentUser.Name
         : null;
 
+    /// <summary>Instante atual em UTC, usado para carimbar CreatedAt/UpdatedAt.</summary>
     public DateTimeOffset Now => DateTimeOffset.UtcNow;
 
     /// <summary>

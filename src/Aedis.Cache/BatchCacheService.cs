@@ -14,6 +14,7 @@ public sealed class BatchCacheService(ICache cache, ILogger<BatchCacheService> l
 {
     private static readonly TimeSpan DefaultTtl = TimeSpan.FromHours(8);
 
+    /// <inheritdoc />
     public async Task<IBatchCheckpoint?> GetCheckpointAsync(string batchId, TimeSpan expiration,
         CancellationToken cancellationToken = default) {
         var lockHandle = await cache.IsLeaderAsync(batchId, expiration, cancellationToken);
@@ -33,6 +34,7 @@ public sealed class BatchCacheService(ICache cache, ILogger<BatchCacheService> l
         return new BatchCheckpoint(checkpoint, lockHandle);
     }
 
+    /// <inheritdoc />
     public Task UpdateCheckpointAsync(string batchId, int line, CancellationToken cancellationToken = default) {
         return cache.SetStringAsync(FormatCheckpointKey(batchId), line.ToString(), DefaultTtl, cancellationToken);
     }
@@ -54,6 +56,7 @@ public sealed class BatchCacheService(ICache cache, ILogger<BatchCacheService> l
         return wasNewlyMarked;
     }
 
+    /// <inheritdoc />
     public async Task IncrementProgressAsync(string batchId, CancellationToken cancellationToken = default) {
         await cache.IncrementAsync(FormatProgressKey(batchId), DefaultTtl, cancellationToken);
     }

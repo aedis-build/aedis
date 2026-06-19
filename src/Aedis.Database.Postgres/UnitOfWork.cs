@@ -17,8 +17,10 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
     private bool _disposed;
     private DbTransaction? _transaction;
 
+    /// <inheritdoc />
     public bool IsReadOnly { get; } = isReadOnly;
 
+    /// <inheritdoc />
     public async Task<T?> QuerySingleOrDefaultAsync<T>(string sql, object? parameters = null,
         CancellationToken ct = default) {
         EnsureOpen();
@@ -26,6 +28,7 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
             new CommandDefinition(sql, parameters, _transaction, cancellationToken: ct));
     }
 
+    /// <inheritdoc />
     public async Task<IEnumerable<T>> QueryAsync<T>(string sql, object? parameters = null,
         CancellationToken ct = default) {
         EnsureOpen();
@@ -33,6 +36,7 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
             new CommandDefinition(sql, parameters, _transaction, cancellationToken: ct));
     }
 
+    /// <inheritdoc />
     public async Task<int> ExecuteAsync(string sql, object? parameters = null, CancellationToken ct = default) {
         if (IsReadOnly)
             throw new InvalidOperationException("Não é possível executar escrita em uma sessão somente leitura.");
@@ -42,6 +46,7 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
             new CommandDefinition(sql, parameters, _transaction, cancellationToken: ct));
     }
 
+    /// <inheritdoc />
     public async Task<DbTransaction> BeginTransactionAsync(CancellationToken ct = default) {
         if (_transaction != null)
             throw new InvalidOperationException("Transação já iniciada.");
@@ -52,6 +57,7 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
         return _transaction;
     }
 
+    /// <inheritdoc />
     public async Task CommitAsync(CancellationToken ct = default) {
         if (_transaction is null) return;
         await _transaction.CommitAsync(ct);
@@ -60,6 +66,7 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
         logger.LogDebug("Transação confirmada.");
     }
 
+    /// <inheritdoc />
     public async Task RollbackAsync(CancellationToken ct = default) {
         if (_transaction is null) return;
         await _transaction.RollbackAsync(ct);
@@ -68,6 +75,7 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
         logger.LogDebug("Transação revertida.");
     }
 
+    /// <inheritdoc />
     public bool HasActiveTransaction() => _transaction != null;
 
     /// <summary>Expõe a conexão subjacente para operações específicas do provider (ex.: PostgreSQL COPY).</summary>
@@ -76,6 +84,7 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
         return _connection;
     }
 
+    /// <inheritdoc />
     public async ValueTask DisposeAsync() {
         if (_disposed) return;
 

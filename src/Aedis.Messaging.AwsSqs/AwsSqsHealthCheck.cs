@@ -16,6 +16,7 @@ public sealed class AwsSqsHealthCheck(
 {
     private readonly AwsSqsOptions _options = options.Value;
 
+    /// <summary>Reporta <c>Healthy</c> se os clientes SQS (e SNS, quando aplicável) inicializam; senão <c>Unhealthy</c>.</summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         try {

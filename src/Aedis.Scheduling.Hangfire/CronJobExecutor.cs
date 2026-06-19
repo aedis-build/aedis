@@ -17,6 +17,11 @@ namespace Aedis.Scheduling.Hangfire;
 public sealed class CronJobExecutor<TProcessor>(IServiceScopeFactory scopeFactory)
     where TProcessor : class, ICronJobProcessor
 {
+    /// <summary>
+    ///     Ponto de entrada invocado pelo Hangfire a cada disparo do job. Abre um escopo de DI novo, resolve o
+    ///     <typeparamref name="TProcessor" /> e delega para o <c>ProcessAsync</c>. Os atributos garantem que
+    ///     disparos concorrentes sejam descartados e que não haja retry automático.
+    /// </summary>
     [SkipConcurrentExecution]
     [AutomaticRetry(Attempts = 0)]
     public async Task RunAsync(CancellationToken cancellationToken = default) {

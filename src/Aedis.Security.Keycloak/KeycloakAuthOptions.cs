@@ -5,6 +5,7 @@ namespace Aedis.Security.Keycloak;
 /// </summary>
 public sealed class KeycloakAuthOptions
 {
+    /// <summary>Nome da seção de configuração de onde estas opções são lidas (<c>"Auth"</c>).</summary>
     public const string SectionName = "Auth";
 
     /// <summary>URL do realm (issuer), ex.: <c>https://auth.exemplo.com/realms/dev</c>. Valida <c>iss</c> e descobre o JWKS.</summary>

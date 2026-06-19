@@ -36,17 +36,27 @@ public abstract class PostgresCriteria<TEntity> : ICriteria<TEntity>
     private int? _offset;
     private string? _select;
 
+    /// <summary>
+    ///     Inicializa o builder para uma tabela, opcionalmente com um alias usado nas colunas e joins.
+    /// </summary>
+    /// <param name="tableName">Nome da tabela-alvo do FROM.</param>
+    /// <param name="tableAlias">Alias da tabela; quando nulo, as colunas não são prefixadas.</param>
     protected PostgresCriteria(string tableName, string? tableAlias = null) {
         TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
         TableAlias = tableAlias;
         _stack.Push(_root);
     }
 
+    /// <summary>Nome da tabela-alvo, base do FROM.</summary>
     protected string TableName { get; }
+
+    /// <summary>Alias da tabela; quando presente, prefixa colunas e cláusulas de join.</summary>
     protected string? TableAlias { get; }
 
+    /// <inheritdoc />
     public bool IsDistinct => _distinct;
 
+    /// <inheritdoc />
     public (string Sql, object Parameters) Build() {
         var parameters = new Dictionary<string, object>();
         var parameterIndex = 0;
@@ -71,63 +81,88 @@ public abstract class PostgresCriteria<TEntity> : ICriteria<TEntity>
         return (sql.ToString(), parameters);
     }
 
-    // ---- Projeção -----------------------------------------------------------------------------------
 
+    /// <summary>Define a lista de colunas projetadas no <c>SELECT</c> (substitui o <c>*</c> padrão).</summary>
     public PostgresCriteria<TEntity> Select(string columns) {
         _select = columns;
         return this;
     }
 
+    /// <summary>Ativa <c>SELECT DISTINCT</c>, eliminando linhas duplicadas do resultado.</summary>
     public PostgresCriteria<TEntity> Distinct() {
         _distinct = true;
         return this;
     }
 
-    // ---- Condições escalares ------------------------------------------------------------------------
 
+    /// <summary>
+    ///     Adiciona ao <c>WHERE</c> uma condição de comparação <c>coluna op valor</c> com o operador
+    ///     informado. O valor entra como bind parameter; para <c>IsNull</c>/<c>IsNotNull</c>, omita o valor.
+    /// </summary>
     public PostgresCriteria<TEntity> Where(string column, ComparisonOperator op, object? value = null) =>
         Add(new SimpleCondition(column, op, value));
 
+    /// <summary>Adiciona uma condição de igualdade (<c>coluna = valor</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereEquals(string column, object value) =>
         Where(column, ComparisonOperator.Equals, value);
 
+    /// <summary>Adiciona uma condição de diferença (<c>coluna &lt;&gt; valor</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereNotEquals(string column, object value) =>
         Where(column, ComparisonOperator.NotEquals, value);
 
+    /// <summary>Adiciona uma condição "maior que" (<c>coluna &gt; valor</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereGreaterThan(string column, object value) =>
         Where(column, ComparisonOperator.GreaterThan, value);
 
+    /// <summary>Adiciona uma condição "maior ou igual" (<c>coluna &gt;= valor</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereGreaterThanOrEqual(string column, object value) =>
         Where(column, ComparisonOperator.GreaterThanOrEqual, value);
 
+    /// <summary>Adiciona uma condição "menor que" (<c>coluna &lt; valor</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereLessThan(string column, object value) =>
         Where(column, ComparisonOperator.LessThan, value);
 
+    /// <summary>Adiciona uma condição "menor ou igual" (<c>coluna &lt;= valor</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereLessThanOrEqual(string column, object value) =>
         Where(column, ComparisonOperator.LessThanOrEqual, value);
 
+    /// <summary>
+    ///     Adiciona uma condição de correspondência por padrão (<c>coluna LIKE padrão</c>) ao <c>WHERE</c>;
+    ///     use <c>%</c> e <c>_</c> como curingas.
+    /// </summary>
     public PostgresCriteria<TEntity> WhereLike(string column, string pattern) =>
         Where(column, ComparisonOperator.Like, pattern);
 
+    /// <summary>Adiciona a negação de um padrão (<c>coluna NOT LIKE padrão</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereNotLike(string column, string pattern) =>
         Where(column, ComparisonOperator.NotLike, pattern);
 
+    /// <summary>Adiciona uma verificação de nulo (<c>coluna IS NULL</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereIsNull(string column) =>
         Where(column, ComparisonOperator.IsNull);
 
+    /// <summary>Adiciona uma verificação de não-nulo (<c>coluna IS NOT NULL</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereIsNotNull(string column) =>
         Where(column, ComparisonOperator.IsNotNull);
 
+    /// <summary>
+    ///     Adiciona uma condição de pertencimento (<c>coluna IN (…)</c>) ao <c>WHERE</c>; cada valor entra
+    ///     como bind parameter. Lista vazia gera <c>1=0</c> (nenhum resultado).
+    /// </summary>
     public PostgresCriteria<TEntity> WhereIn<T>(string column, IEnumerable<T> values) =>
         Add(new InCondition(column, false, values.Cast<object>().ToList()));
 
+    /// <summary>
+    ///     Adiciona uma condição de exclusão (<c>coluna NOT IN (…)</c>) ao <c>WHERE</c>. Lista vazia gera
+    ///     <c>1=1</c> (não filtra nada).
+    /// </summary>
     public PostgresCriteria<TEntity> WhereNotIn<T>(string column, IEnumerable<T> values) =>
         Add(new InCondition(column, true, values.Cast<object>().ToList()));
 
+    /// <summary>Adiciona um intervalo fechado (<c>coluna BETWEEN baixo AND alto</c>) ao <c>WHERE</c>.</summary>
     public PostgresCriteria<TEntity> WhereBetween(string column, object low, object high) =>
         Add(new BetweenCondition(column, low, high));
 
-    // ---- Condições de array (GIN) -------------------------------------------------------------------
 
     /// <summary><c>coluna @&gt; @valor</c> — o array da coluna contém todos os elementos.</summary>
     public PostgresCriteria<TEntity> WhereArrayContains(string column, object values) =>
@@ -145,7 +180,6 @@ public abstract class PostgresCriteria<TEntity> : ICriteria<TEntity>
     public PostgresCriteria<TEntity> WhereEqualsAny(string column, object value) =>
         Add(new ArrayCondition(column, ArrayOperator.EqualsAny, value));
 
-    // ---- Condições de range (GiST) ------------------------------------------------------------------
 
     /// <summary>
     ///     Compara o range <c>[startColumn, endColumn]</c> com <c>[rangeStart, rangeEnd]</c> via operador
@@ -155,17 +189,22 @@ public abstract class PostgresCriteria<TEntity> : ICriteria<TEntity>
         object rangeStart, object rangeEnd, string inclusivity = "[]") =>
         Add(new RangeCondition(startColumn, endColumn, op, rangeStart, rangeEnd, inclusivity));
 
+    /// <summary>
+    ///     Atalho para <see cref="WhereRange" /> com <see cref="RangeOperator.Overlaps" />: adiciona uma
+    ///     condição de sobreposição entre o range das colunas e o range informado.
+    /// </summary>
     public PostgresCriteria<TEntity> WhereRangeOverlaps(string startColumn, string endColumn,
         object rangeStart, object rangeEnd, string inclusivity = "[]") =>
         WhereRange(startColumn, endColumn, RangeOperator.Overlaps, rangeStart, rangeEnd, inclusivity);
 
-    // ---- Lógica e grupos ----------------------------------------------------------------------------
 
+    /// <summary>Define como <c>AND</c> o operador lógico que une as condições do grupo atual.</summary>
     public PostgresCriteria<TEntity> And() {
         _stack.Peek().Operator = LogicalOperator.And;
         return this;
     }
 
+    /// <summary>Define como <c>OR</c> o operador lógico que une as condições do grupo atual.</summary>
     public PostgresCriteria<TEntity> Or() {
         _stack.Peek().Operator = LogicalOperator.Or;
         return this;
@@ -185,37 +224,43 @@ public abstract class PostgresCriteria<TEntity> : ICriteria<TEntity>
         return this;
     }
 
-    // ---- Joins --------------------------------------------------------------------------------------
 
+    /// <summary>Adiciona um <c>INNER JOIN</c> à tabela informada com a condição <c>ON</c> e alias opcional.</summary>
     public PostgresCriteria<TEntity> InnerJoin(string tableName, string onCondition, string? alias = null) =>
         AddJoin(JoinType.Inner, tableName, onCondition, alias);
 
+    /// <summary>Adiciona um <c>LEFT JOIN</c> à tabela informada com a condição <c>ON</c> e alias opcional.</summary>
     public PostgresCriteria<TEntity> LeftJoin(string tableName, string onCondition, string? alias = null) =>
         AddJoin(JoinType.Left, tableName, onCondition, alias);
 
+    /// <summary>Adiciona um <c>RIGHT JOIN</c> à tabela informada com a condição <c>ON</c> e alias opcional.</summary>
     public PostgresCriteria<TEntity> RightJoin(string tableName, string onCondition, string? alias = null) =>
         AddJoin(JoinType.Right, tableName, onCondition, alias);
 
+    /// <summary>Adiciona um <c>CROSS JOIN</c> (produto cartesiano) à tabela informada, com alias opcional.</summary>
     public PostgresCriteria<TEntity> CrossJoin(string tableName, string? alias = null) =>
         AddJoin(JoinType.Cross, tableName, null, alias);
 
-    // ---- Ordenação e paginação ----------------------------------------------------------------------
 
+    /// <summary>Acrescenta a coluna ao <c>ORDER BY</c> em ordem ascendente (<c>ASC</c>).</summary>
     public PostgresCriteria<TEntity> OrderBy(string column) {
         _orderBy.Add($"{column} ASC");
         return this;
     }
 
+    /// <summary>Acrescenta a coluna ao <c>ORDER BY</c> em ordem descendente (<c>DESC</c>).</summary>
     public PostgresCriteria<TEntity> OrderByDescending(string column) {
         _orderBy.Add($"{column} DESC");
         return this;
     }
 
+    /// <summary>Define o <c>LIMIT</c>: número máximo de linhas retornadas.</summary>
     public PostgresCriteria<TEntity> Limit(int count) {
         _limit = count;
         return this;
     }
 
+    /// <summary>Define o <c>OFFSET</c>: quantidade de linhas iniciais a pular.</summary>
     public PostgresCriteria<TEntity> Offset(int count) {
         _offset = count;
         return this;

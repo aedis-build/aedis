@@ -26,6 +26,10 @@ public static class AwsPubSubEnvelopeParser
         }
     }
 
+    /// <summary>
+    ///     Extrai do envelope SNS a mensagem interna (crua, sem decodificar) e o content-type lido dos
+    ///     <c>MessageAttributes</c>. Use após <see cref="IsSnsEnvelope" /> confirmar que o corpo é um envelope.
+    /// </summary>
     public static SnsSqsEnvelope Parse(string sqsBody) {
         using var doc = JsonDocument.Parse(sqsBody);
         var root = doc.RootElement;

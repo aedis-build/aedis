@@ -17,7 +17,8 @@ public static class PostgresServiceCollectionExtensions
     ///     Registra a <see cref="IUnitOfWorkFactory" /> (sessões de escrita/leitura), as estratégias de
     ///     nomes e seu resolver, os type handlers de <see cref="DateOnly" />/<see cref="TimeOnly" /> do
     ///     Dapper e o motor de bulk insert via COPY (<see cref="PostgresBulkInserter" />). Lê as opções da
-    ///     seção <c>Database</c>.
+    ///     seção <c>Database</c>. Também habilita o casamento de nomes com underscores no Dapper, para mapear
+    ///     colunas <c>snake_case</c> em propriedades PascalCase.
     /// </summary>
     public static IServiceCollection AddAedisPostgres(this IServiceCollection services,
         IConfiguration configuration) {
@@ -27,7 +28,7 @@ public static class PostgresServiceCollectionExtensions
 
         SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
         SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
-        DefaultTypeMap.MatchNamesWithUnderscores = true; // mapeia colunas snake_case → propriedades PascalCase
+        DefaultTypeMap.MatchNamesWithUnderscores = true;
 
         services.AddSingleton<INamingStrategy, SnakeCaseNamingStrategy>();
         services.AddSingleton<INamingStrategy, PascalCaseNamingStrategy>();

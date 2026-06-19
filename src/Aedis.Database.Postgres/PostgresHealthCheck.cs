@@ -20,6 +20,10 @@ public sealed class PostgresHealthCheck : IHealthCheck
 
     private (DateTime At, HealthCheckResult Result)? _cached;
 
+    /// <summary>Cria o health check com a fábrica de sessões, as opções (que definem o TTL do cache) e o logger.</summary>
+    /// <param name="factory">Fábrica usada para abrir a sessão de leitura sondada pelo <c>SELECT 1</c>.</param>
+    /// <param name="options">Opções do provider; fornece o <see cref="DatabaseOptions.HealthCheckCacheTtl" />.</param>
+    /// <param name="logger">Logger para registrar falhas de sondagem.</param>
     public PostgresHealthCheck(IUnitOfWorkFactory factory, IOptions<DatabaseOptions> options,
         ILogger<PostgresHealthCheck> logger) {
         _factory = factory;
@@ -27,6 +31,7 @@ public sealed class PostgresHealthCheck : IHealthCheck
         _logger = logger;
     }
 
+    /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         if (TryGetFresh(out var cached))

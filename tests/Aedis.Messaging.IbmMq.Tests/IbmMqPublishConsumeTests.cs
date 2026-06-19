@@ -65,7 +65,6 @@ public sealed class IbmMqPublishConsumeTests : IClassFixture<IbmMqPublishConsume
             await task;
         }
         catch (OperationCanceledException) {
-            // esperado: o cancelamento encerra o loop do consumer
         }
     }
 

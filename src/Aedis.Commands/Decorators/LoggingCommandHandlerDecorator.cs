@@ -16,6 +16,7 @@ public class LoggingCommandHandlerDecorator<TCommand, TResult> : ICommandHandler
     private readonly ICommandHandler<TCommand, TResult> _inner;
     private readonly ILogger<LoggingCommandHandlerDecorator<TCommand, TResult>> _logger;
 
+    /// <summary>Decora o handler interno com o logger usado para registrar a execução.</summary>
     public LoggingCommandHandlerDecorator(
         ICommandHandler<TCommand, TResult> inner,
         ILogger<LoggingCommandHandlerDecorator<TCommand, TResult>> logger) {
@@ -23,6 +24,10 @@ public class LoggingCommandHandlerDecorator<TCommand, TResult> : ICommandHandler
         _logger = logger;
     }
 
+    /// <summary>
+    ///     Executa o handler interno medindo a duração e registrando início, sucesso (com tempo decorrido) ou
+    ///     falha. Re-lança qualquer exceção após logá-la.
+    /// </summary>
     public async Task<TResult> HandleAsync(TCommand command, CancellationToken cancellationToken = default) {
         var commandName = typeof(TCommand).Name;
         var stopwatch = Stopwatch.StartNew();

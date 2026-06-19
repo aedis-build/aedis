@@ -18,15 +18,20 @@ public sealed class KeycloakCurrentUser(IHttpContextAccessor accessor, IOptions<
 
     private ClaimsPrincipal? Principal => accessor.HttpContext?.User;
 
+    /// <inheritdoc />
     public bool IsAuthenticated => Principal?.Identity?.IsAuthenticated ?? false;
 
+    /// <inheritdoc />
     public string? Id => Find(_options.IdClaimType) ?? Find(ClaimTypes.NameIdentifier);
 
+    /// <inheritdoc />
     public string? Name => Find(_options.NameClaimType) ?? Principal?.Identity?.Name;
 
+    /// <inheritdoc />
     public IReadOnlyCollection<string> Roles =>
         Principal?.FindAll(_options.RoleClaimType).Select(c => c.Value).ToArray() ?? [];
 
+    /// <inheritdoc />
     public string? FindClaim(string type) => Find(type);
 
     private string? Find(string type) => Principal?.FindFirst(type)?.Value;

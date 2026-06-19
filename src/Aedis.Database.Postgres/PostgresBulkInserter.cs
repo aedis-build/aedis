@@ -21,6 +21,13 @@ namespace Aedis.Database.Postgres;
 /// </summary>
 public sealed class PostgresBulkInserter(ILogger<PostgresBulkInserter> logger)
 {
+    /// <summary>
+    ///     Insere (ou faz upsert) todas as entidades em uma única passagem de COPY. Sem
+    ///     <paramref name="onConflictClause" />, faz COPY direto na tabela; com a cláusula, faz COPY para uma
+    ///     tabela temporária e depois <c>INSERT ... SELECT ... ON CONFLICT</c> atômico. Use para cargas que
+    ///     cabem confortavelmente em memória; para volumes muito grandes, prefira
+    ///     <see cref="BulkInsertChunkedAsync{TEntity}" />.
+    /// </summary>
     public async Task BulkInsertAsync<TEntity>(IUnitOfWork unitOfWork, string tableName, PropertyInfo[] properties,
         IEnumerable<TEntity> entities, NamingStrategyResolver namingResolver, DatabaseOptions options,
         string? onConflictClause = null, CancellationToken ct = default) where TEntity : class {
@@ -37,6 +44,13 @@ public sealed class PostgresBulkInserter(ILogger<PostgresBulkInserter> logger)
             await CopyAsync(connection, tableName, columns, properties, list, ct);
     }
 
+    /// <summary>
+    ///     Insere (ou faz upsert) em chunks de <paramref name="chunkSize" /> linhas, para cargas de dezenas
+    ///     de milhões de linhas. No caminho de upsert, cria a tabela temporária <em>uma única vez</em> e a
+    ///     reutiliza com <c>TRUNCATE</c> (O(1)) entre os chunks, amortizando o overhead de catálogo —
+    ///     essencial em PostgreSQL com storage distribuído (ex.: Aurora). Sem
+    ///     <paramref name="onConflictClause" />, faz COPY direto chunk a chunk.
+    /// </summary>
     public async Task BulkInsertChunkedAsync<TEntity>(IUnitOfWork unitOfWork, string tableName,
         PropertyInfo[] properties, IEnumerable<TEntity> entities, NamingStrategyResolver namingResolver,
         DatabaseOptions options, int chunkSize, string? onConflictClause = null, CancellationToken ct = default)
@@ -53,7 +67,6 @@ public sealed class PostgresBulkInserter(ILogger<PostgresBulkInserter> logger)
             return;
         }
 
-        // Tabela temporária criada UMA vez e reutilizada com TRUNCATE entre chunks.
         var tmpTable = $"tmp_{tableName.Replace('.', '_')}_{Guid.NewGuid():N}";
         await unitOfWork.ExecuteAsync($"CREATE TEMP TABLE {tmpTable} (LIKE {tableName}) ON COMMIT DROP", null, ct);
 

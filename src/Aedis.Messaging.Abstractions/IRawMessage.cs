@@ -7,5 +7,9 @@ namespace Aedis.Messaging.Abstractions;
 /// </summary>
 public interface IRawMessage : IMessage
 {
+    /// <summary>
+    ///     Reconstrói a mensagem a partir do payload bruto recebido do broker (e da correlação, quando houver),
+    ///     em vez de desserializar JSON. Inverso simétrico de <see cref="IMessage.ToData" />.
+    /// </summary>
     void FromRaw(byte[] rawData, string correlationId = "");
 }

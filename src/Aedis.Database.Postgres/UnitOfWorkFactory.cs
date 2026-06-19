@@ -18,11 +18,15 @@ public sealed class UnitOfWorkFactory : IUnitOfWorkFactory
     private readonly DatabaseOptions _options;
     private int _readIndex = -1;
 
+    /// <summary>Cria a fábrica a partir das opções do provider e do logger repassado às sessões geradas.</summary>
+    /// <param name="options">Opções do provider PostgreSQL (connection strings, pool, timeouts).</param>
+    /// <param name="sessionLogger">Logger injetado em cada <see cref="UnitOfWork" /> criado.</param>
     public UnitOfWorkFactory(IOptions<DatabaseOptions> options, ILogger<UnitOfWork> sessionLogger) {
         _options = options.Value;
         _sessionLogger = sessionLogger;
     }
 
+    /// <inheritdoc />
     public async Task<IUnitOfWork> CreateWriteSessionAsync(CancellationToken ct = default) {
         var raw = _options.WriteConnectionString ?? _options.ConnectionString
             ?? throw new InvalidOperationException("WriteConnectionString ou ConnectionString deve ser configurado.");
@@ -35,6 +39,7 @@ public sealed class UnitOfWorkFactory : IUnitOfWorkFactory
         return unitOfWork;
     }
 
+    /// <inheritdoc />
     public async Task<IUnitOfWork> CreateReadSessionAsync(CancellationToken ct = default) {
         var raw = NextReadConnectionString() ?? _options.ConnectionString ?? _options.WriteConnectionString
             ?? throw new InvalidOperationException("ConnectionString deve ser configurado.");

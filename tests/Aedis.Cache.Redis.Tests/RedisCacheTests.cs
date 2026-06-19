@@ -14,7 +14,9 @@ namespace Aedis.Cache.Redis.Tests;
 ///     Lock distribuído e operações de cache ponta-a-ponta contra um Redis real (Testcontainers).
 ///     O foco é a segurança da liderança: exclusão mútua entre instâncias e liberação automática do
 ///     lock pelo <see cref="DisposableRegistry" /> no desligamento — o mecanismo do qual o file-manager
-///     depende.
+///     depende. O cenário de desligamento reproduz o handler que registra o handle no registry e o
+///     <c>GracefulShutdownHostedService</c> que, no SIGTERM, chama <c>DisposeAllAsync</c> para liberar o
+///     lock e permitir que o standby assuma, sem lock órfão no cluster.
 /// </summary>
 public sealed class RedisCacheTests : IAsyncLifetime
 {
@@ -24,7 +26,7 @@ public sealed class RedisCacheTests : IAsyncLifetime
     public Task DisposeAsync() => _container.DisposeAsync().AsTask();
 
     private RedisCache CreateCache(string instanceId) {
-        var endpoint = _container.GetConnectionString(); // host:porta
+        var endpoint = _container.GetConnectionString();
         var options = Options.Create(new RedisCacheOptions {
             EndPoint = endpoint,
             Password = string.Empty,
@@ -64,8 +66,6 @@ public sealed class RedisCacheTests : IAsyncLifetime
 
     [Fact]
     public async Task DisposableRegistry_libera_o_lock_no_desligamento_gracioso() {
-        // Cenário do file-manager: o handler registra o handle de liderança no registry; no SIGTERM,
-        // o DisposeAllAsync libera o lock e outra instância pode assumir — sem lock órfão no cluster.
         var registry = new DisposableRegistry();
         var leader = CreateCache("instance-a");
         var standby = CreateCache("instance-b");
@@ -78,12 +78,12 @@ public sealed class RedisCacheTests : IAsyncLifetime
         (await standby.IsLeaderAsync(key, TimeSpan.FromMinutes(5)))
             .Should().BeNull("enquanto o líder está vivo, o standby não assume");
 
-        await registry.DisposeAllAsync(); // simula o GracefulShutdownHostedService no SIGTERM
+        await registry.DisposeAllAsync();
 
         var promoted = await standby.IsLeaderAsync(key, TimeSpan.FromMinutes(5));
         promoted.Should().NotBeNull("o lock foi liberado no desligamento e o standby assume");
 
-        await tracked.DisposeAsync(); // idempotente — não deve lançar
+        await tracked.DisposeAsync();
     }
 
     [Fact]

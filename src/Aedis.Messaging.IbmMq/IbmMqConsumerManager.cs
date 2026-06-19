@@ -129,12 +129,12 @@ internal sealed class IbmMqConsumerManager : IAsyncDisposable
                 try {
                     var message = new MQMessage();
                     queue.Get(message, waitMode ? waitOptions : drainOptions);
-                    waitMode = false; // recebeu — passa a drenar sem esperar
+                    waitMode = false;
 
                     await ProcessMessageAsync(info, message);
                 }
                 catch (MQException ex) when (ex.ReasonCode == MQC.MQRC_NO_MSG_AVAILABLE) {
-                    waitMode = true; // fila vazia — volta a aguardar
+                    waitMode = true;
                 }
                 catch (OperationCanceledException) {
                     break;
@@ -228,8 +228,12 @@ internal sealed class IbmMqConsumerManager : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     Desserializa a mensagem em dois caminhos: o bruto, para tipos <see cref="IRawMessage" /> (preserva
+    ///     o binário e injeta o MQMD via <see cref="IMqMetadataMessage" /> quando suportado); e o estruturado,
+    ///     que resolve o serializador pelo content-type (JSON como fallback). Devolve null em falha.
+    /// </summary>
     private T? Deserialize<T>(MQMessage message) where T : class, IMessage {
-        // Caminho bruto: mensagens que chegam como bytes (IRawMessage) — preserva o binário e injeta o MQMD.
         if (typeof(IRawMessage).IsAssignableFrom(typeof(T))) {
             try {
                 var instance = Activator.CreateInstance<T>();
@@ -248,7 +252,6 @@ internal sealed class IbmMqConsumerManager : IAsyncDisposable
             }
         }
 
-        // Caminho estruturado: desserializa via estratégia (JSON como fallback).
         try {
             var bytes = message.ReadBytes(message.MessageLength);
             var serializer = _serializers.ResolveForContentType(null);

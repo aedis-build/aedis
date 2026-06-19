@@ -17,6 +17,10 @@ public class RetryCommandHandlerDecorator<TCommand, TResult> : ICommandHandler<T
     private readonly ILogger<RetryCommandHandlerDecorator<TCommand, TResult>> _logger;
     private readonly int _maxRetries;
 
+    /// <summary>
+    ///     Decora o handler interno configurando o número máximo de tentativas e o atraso inicial do backoff
+    ///     exponencial (padrão: 3 tentativas, 100 ms).
+    /// </summary>
     public RetryCommandHandlerDecorator(
         ICommandHandler<TCommand, TResult> inner,
         ILogger<RetryCommandHandlerDecorator<TCommand, TResult>> logger,
@@ -28,6 +32,10 @@ public class RetryCommandHandlerDecorator<TCommand, TResult> : ICommandHandler<T
         _initialDelay = initialDelay ?? TimeSpan.FromMilliseconds(100);
     }
 
+    /// <summary>
+    ///     Executa o handler interno, repetindo em caso de exceção com atraso em backoff exponencial até
+    ///     atingir o limite de tentativas; após a última falha, loga e re-lança a exceção.
+    /// </summary>
     public async Task<TResult> HandleAsync(TCommand command, CancellationToken cancellationToken = default) {
         var commandName = typeof(TCommand).Name;
         var attempt = 0;

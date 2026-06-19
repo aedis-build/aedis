@@ -2,8 +2,17 @@ using System.Globalization;
 
 namespace Aedis.Excel.Abstractions;
 
+/// <summary>
+///     Converte um valor de célula em texto de forma determinística e independente de cultura.
+///     Usa formatos ISO para datas/horas e <see cref="CultureInfo.InvariantCulture" /> para qualquer
+///     <see cref="IFormattable" />, evitando que a cultura do servidor altere a saída de números e datas.
+/// </summary>
 internal static class ColumnValueFormatter
 {
+    /// <summary>
+    ///     Formata <paramref name="value" /> como texto: nulo vira string vazia, booleanos viram "true"/"false",
+    ///     datas/horas usam formato ISO invariável e demais tipos formatáveis usam a cultura invariável.
+    /// </summary>
     public static string Format(object? value) => value switch
     {
         null => string.Empty,

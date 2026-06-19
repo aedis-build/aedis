@@ -24,6 +24,11 @@ public sealed class RedisCache : ICache
 
     private IConnectionMultiplexer _connection;
 
+    /// <summary>
+    ///     Abre a conexão multiplexada com o Redis a partir das opções e registra os handlers de
+    ///     falha/restauração. A identidade da instância (usada na eleição de líder) vem de
+    ///     <see cref="RedisCacheOptions.InstanceId" /> ou, na ausência, de <see cref="Environment.MachineName" />.
+    /// </summary>
     public RedisCache(IOptions<RedisCacheOptions> options, ILogger<RedisCache> logger) {
         _options = options.Value;
         _logger = logger;
@@ -35,6 +40,13 @@ public sealed class RedisCache : ICache
     /// <summary>Banco do Redis na conexão ativa (reconecta se necessário). Uso interno/diagnóstico.</summary>
     internal IDatabase Database => EnsureConnection().GetDatabase();
 
+    /// <summary>
+    ///     Tenta eleger esta instância como líder da <paramref name="key" />, adquirindo um lock distribuído
+    ///     que expira em <paramref name="expiration" />. Devolve um handle cujo descarte libera o lock, ou
+    ///     <c>null</c> se outra instância já o detém. Se o lock atual já pertence a esta instância (ex.:
+    ///     re-entrância após falha de rede), devolve um handle em vez de <c>null</c>.
+    /// </summary>
+    /// <returns>Handle de liderança a ser descartado para liberar o lock, ou <c>null</c> se não for líder.</returns>
     public async Task<IAsyncDisposable?> IsLeaderAsync(string key, TimeSpan expiration,
         CancellationToken cancellationToken = default) {
         var formattedKey = FormatLockKey(key);
@@ -48,8 +60,6 @@ public sealed class RedisCache : ICache
                 return new RedisLock(Database, formattedKey, _instanceId, _logger);
             }
 
-            // Já existe um lock: se for desta própria instância (ex.: re-entrância após falha de rede),
-            // devolve um handle; caso contrário, não é o líder.
             var currentLockOwner = await GetStringAsync(formattedKey, cancellationToken).ConfigureAwait(false);
 
             return currentLockOwner != _instanceId
@@ -62,16 +72,23 @@ public sealed class RedisCache : ICache
         }
     }
 
+    /// <summary>Lê o valor textual da <paramref name="key" />, ou <c>null</c> se a chave não existir.</summary>
     public async Task<string?> GetStringAsync(string key, CancellationToken cancellationToken = default) {
         var value = await Database.StringGetAsync(key).ConfigureAwait(false);
         return value.HasValue ? value.ToString() : null;
     }
 
+    /// <summary>Grava o <paramref name="value" /> na <paramref name="key" /> com TTL <paramref name="expiration" />, sobrescrevendo o valor existente.</summary>
     public async Task SetStringAsync(string key, string value, TimeSpan expiration,
         CancellationToken cancellationToken = default) {
         await Database.StringSetAsync(key, value, expiration).ConfigureAwait(false);
     }
 
+    /// <summary>
+    ///     Grava o <paramref name="value" /> apenas se a <paramref name="key" /> ainda não existir (semântica
+    ///     <c>SET NX</c>), com TTL <paramref name="expiration" />. Base atômica para deduplicação.
+    /// </summary>
+    /// <returns><c>true</c> se gravou (chave nova); <c>false</c> se a chave já existia.</returns>
     public async Task<bool> SetIfNotExistsAsync(string key, string value, TimeSpan expiration,
         CancellationToken cancellationToken = default) {
         var wasSet = await Database.StringSetAsync(key, value, expiration, When.NotExists).ConfigureAwait(false);
@@ -84,14 +101,21 @@ public sealed class RedisCache : ICache
         return wasSet;
     }
 
+    /// <summary>Indica se a <paramref name="key" /> existe no Redis.</summary>
     public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default) {
         return await Database.KeyExistsAsync(key).ConfigureAwait(false);
     }
 
+    /// <summary>Remove a <paramref name="key" />; devolve <c>true</c> se a chave existia e foi apagada.</summary>
     public async Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default) {
         return await Database.KeyDeleteAsync(key).ConfigureAwait(false);
     }
 
+    /// <summary>
+    ///     Estende o TTL de um lock de liderança existente (chave já normalizada internamente), prorrogando a
+    ///     posse sem reeleger. Use periodicamente enquanto a instância segue líder de um trabalho longo.
+    /// </summary>
+    /// <returns><c>true</c> se o lock existia e o TTL foi renovado; <c>false</c> se não havia lock.</returns>
     public async Task<bool> RenewLockAsync(string key, TimeSpan ttl, CancellationToken cancellationToken = default) {
         var formattedKey = FormatLockKey(key);
 
@@ -112,6 +136,11 @@ public sealed class RedisCache : ICache
         }
     }
 
+    /// <summary>
+    ///     Varre as chaves que casam com <paramref name="pattern" /> (glob do Redis) no primeiro endpoint da
+    ///     conexão. Em falha ou sem endpoints, registra e devolve coleção vazia em vez de lançar.
+    /// </summary>
+    /// <remarks>Operação de scan; evite padrões muito abrangentes em bases grandes por custo de varredura.</remarks>
     public Task<IEnumerable<string>> GetKeysAsync(string pattern, CancellationToken cancellationToken = default) {
         try {
             var connection = EnsureConnection();
@@ -134,6 +163,10 @@ public sealed class RedisCache : ICache
         }
     }
 
+    /// <summary>
+    ///     Incrementa atomicamente o contador da <paramref name="key" /> e devolve o novo valor. No primeiro
+    ///     incremento (retorno == 1), define o TTL <paramref name="ttl" /> da chave.
+    /// </summary>
     public async Task<long> IncrementAsync(string key, TimeSpan ttl, CancellationToken cancellationToken = default) {
         var value = await Database.StringIncrementAsync(key).ConfigureAwait(false);
         if (value == 1)
@@ -141,6 +174,11 @@ public sealed class RedisCache : ICache
         return value;
     }
 
+    /// <summary>
+    ///     Devolve a conexão multiplexada, reconectando sob lock se a atual estiver caída. A troca é livre de
+    ///     race: a conexão antiga não é descartada de imediato, mas via <see cref="ScheduleDeferredDispose" />,
+    ///     para não derrubar operações em voo que ainda apontam para o multiplexer anterior.
+    /// </summary>
     private IConnectionMultiplexer EnsureConnection() {
         lock (_lock) {
             if (_connection.IsConnected) {
@@ -149,8 +187,6 @@ public sealed class RedisCache : ICache
             }
 
             try {
-                // Sem race: a conexão antiga só é liberada depois de um atraso, evitando descartar uma
-                // conexão que operações em voo ainda possam estar usando ao trocar de multiplexer.
                 var previousConnection = _connection;
                 _connection = Connect();
                 ScheduleDeferredDispose(previousConnection);
@@ -165,8 +201,11 @@ public sealed class RedisCache : ICache
         }
     }
 
+    /// <summary>
+    ///     Abre uma conexão e liga os handlers de falha/restauração. Sem <see cref="RedisCacheOptions.SentinelMasterName" />,
+    ///     conecta direto (Standalone ou Cluster — o driver detecta o cluster); com ele, descobre o master via Sentinel.
+    /// </summary>
     private IConnectionMultiplexer Connect() {
-        // Standalone/Cluster: conexão direta (o driver detecta o cluster). Sentinel: descobre o master.
         var connection = string.IsNullOrWhiteSpace(_options.SentinelMasterName)
             ? ConnectDirect(_options.EndPoint)
             : ConnectViaSentinel();
@@ -199,12 +238,21 @@ public sealed class RedisCache : ICache
         return ConnectionMultiplexer.Connect(configOptions);
     }
 
+    /// <summary>
+    ///     Pergunta ao Redis Sentinel qual é o endpoint do master atual e abre uma conexão direta a ele. É o
+    ///     caminho que garante escrever sempre no master vigente mesmo após um failover.
+    /// </summary>
     private IConnectionMultiplexer ConnectViaSentinel() {
         var masterEndpoint = DiscoverMasterEndpointViaSentinel();
         _logger.LogDebug("Master Redis descoberto via Sentinel: {MasterEndpoint}", masterEndpoint);
         return ConnectDirect(masterEndpoint);
     }
 
+    /// <summary>
+    ///     Conecta a um nó Sentinel, consulta o endereço do master pelo nome do serviço e devolve o endpoint
+    ///     normalizado (e reescrito para loopback em dev local — ver <see cref="RewriteMasterEndpointForLocalSentinel" />).
+    ///     Lança se o Sentinel não responder ou devolver um endpoint inválido.
+    /// </summary>
     private string DiscoverMasterEndpointViaSentinel() {
         var serviceName = _options.SentinelMasterName!;
 
@@ -271,6 +319,11 @@ public sealed class RedisCache : ICache
         return rewritten;
     }
 
+    /// <summary>
+    ///     Agenda o descarte da conexão antiga após <see cref="StaleConnectionDisposeDelay" />, em vez de
+    ///     descartá-la na hora. O atraso evita o race de liberar um multiplexer que operações em voo, iniciadas
+    ///     antes da reconexão, ainda possam estar usando. Falhas no descarte são apenas registradas.
+    /// </summary>
     private void ScheduleDeferredDispose(IConnectionMultiplexer staleConnection) {
         _ = Task.Run(async () => {
             try {

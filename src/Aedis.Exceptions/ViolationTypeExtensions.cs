@@ -41,7 +41,7 @@ public static class ViolationTypeExtensions
             "conflict_error" => ViolationType.ConflictError,
             "precondition_failed" => ViolationType.PreconditionFailed,
             "business_error" => ViolationType.BusinessError,
-            _ => ViolationType.ValidationError // Default
+            _ => ViolationType.ValidationError
         };
     }
 

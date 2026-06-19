@@ -10,6 +10,10 @@ public sealed class UptimeHealthCheck : IHealthCheck
 {
     private readonly DateTimeOffset _startTime = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    ///     Reporta sempre <see cref="HealthCheckResult.Healthy(string,IReadOnlyDictionary{string,object})" />,
+    ///     anexando o uptime (formatado e em segundos) e os instantes de início e atual em UTC nos dados.
+    /// </summary>
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         var uptime = DateTimeOffset.UtcNow - _startTime;

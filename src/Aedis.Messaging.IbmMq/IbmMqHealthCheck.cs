@@ -15,6 +15,7 @@ public sealed class IbmMqHealthCheck : IHealthCheck
     private readonly ILogger<IbmMqHealthCheck> _logger;
     private readonly IbmMqOptions _options;
 
+    /// <summary>Cria o health check ligado ao broker IBM MQ, cuja conexão será reusada nas verificações.</summary>
     public IbmMqHealthCheck(IOptions<IbmMqOptions> options, ILogger<IbmMqHealthCheck> logger,
         IbmMqMessageBrokerService broker) {
         _options = options.Value;
@@ -22,6 +23,7 @@ public sealed class IbmMqHealthCheck : IHealthCheck
         _broker = broker;
     }
 
+    /// <summary>Reporta <c>Healthy</c> quando o Queue Manager está acessível pela conexão do broker; senão <c>Unhealthy</c>.</summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         try {

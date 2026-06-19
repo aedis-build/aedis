@@ -5,6 +5,10 @@ namespace Aedis.Domain.Saga;
 /// </summary>
 public class SagaExecutionException : Exception
 {
+    /// <summary>
+    ///     Cria a exceção identificando a saga que falhou e, quando conhecido, o nome da step culpada,
+    ///     preservando a exceção original como <see cref="Exception.InnerException" />.
+    /// </summary>
     public SagaExecutionException(
         Guid sagaId,
         string message,

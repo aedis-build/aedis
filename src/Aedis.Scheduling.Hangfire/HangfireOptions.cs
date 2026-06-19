@@ -8,6 +8,7 @@ namespace Aedis.Scheduling.Hangfire;
 /// </summary>
 public sealed class HangfireOptions
 {
+    /// <summary>Nome da seção de configuração de onde as opções são lidas (<c>Hangfire</c>).</summary>
     public const string SectionName = "Hangfire";
 
     /// <summary>Connection string do banco dedicado ao Hangfire (storage dos jobs).</summary>

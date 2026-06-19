@@ -10,11 +10,13 @@ public sealed class TempFileStreamStrategy : IStrategy<StreamContext>
 {
     private const int BufferSize = 1024 * 1024;
 
+    /// <inheritdoc />
     public bool CanHandle(StreamContext context) {
         return context.Mode == StreamMode.TempFile ||
                context is { Mode: StreamMode.Memory, ContentLength: > MemoryStreamStrategy.MemoryThreshold };
     }
 
+    /// <inheritdoc />
     public async Task ExecuteAsync(StreamContext context, CancellationToken cancellationToken = default) {
         var tempFile = Path.GetTempFileName();
         var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, BufferSize,

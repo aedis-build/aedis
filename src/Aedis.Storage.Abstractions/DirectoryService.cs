@@ -32,6 +32,7 @@ public sealed class DirectoryService : IDirectory
     /// <summary>Caminho base (absoluto) da pasta controlada.</summary>
     public string BasePath => _basePath;
 
+    /// <inheritdoc />
     public async IAsyncEnumerable<BucketObject> ListObjectsAsync(string? prefix, long offsetTimestamp = 0,
         [EnumeratorCancellation] CancellationToken cancellationToken = default) {
         var searchPath = GetFullPath(prefix ?? string.Empty);
@@ -55,6 +56,15 @@ public sealed class DirectoryService : IDirectory
         await Task.CompletedTask;
     }
 
+    /// <summary>
+    ///     Abre o arquivo e aplica a estratégia de stream/memória do <paramref name="mode" />; retorna
+    ///     <c>null</c> se o objeto não existir.
+    /// </summary>
+    /// <remarks>
+    ///     Nos modos Memory/TempFile a estratégia copia o conteúdo para um novo stream; quando isso ocorre
+    ///     (o resultado deixa de ser o <see cref="FileStream" /> de origem), o FileStream original é liberado
+    ///     para não vazar o handle do arquivo.
+    /// </remarks>
     public async Task<Stream?> GetObjectAsync(string key, StreamMode mode = StreamMode.Default,
         CancellationToken cancellationToken = default) {
         var fullPath = GetFullPath(key);
@@ -66,13 +76,13 @@ public sealed class DirectoryService : IDirectory
         var context = new StreamContext { Mode = mode, SourceStream = fileStream, ContentLength = length };
         await _streamResolver.ExecuteAsync(context, cancellationToken);
 
-        // Memory/TempFile copiaram para um novo stream → libera o FileStream de origem.
         if (!ReferenceEquals(context.Result, fileStream))
             await fileStream.DisposeAsync();
 
         return context.Result;
     }
 
+    /// <inheritdoc />
     public async Task PutObjectAsync(string key, Stream stream, string contentType = "application/octet-stream",
         Action<UploadProgress>? onProgress = null, long? contentLength = null,
         CancellationToken cancellationToken = default) {
@@ -100,6 +110,7 @@ public sealed class DirectoryService : IDirectory
         }
     }
 
+    /// <inheritdoc />
     public async Task CopyObjectAsync(string sourceKey, string destinationKey,
         CancellationToken cancellationToken = default) {
         var sourcePath = GetFullPath(sourceKey);
@@ -115,18 +126,23 @@ public sealed class DirectoryService : IDirectory
         await Task.Run(() => File.Copy(sourcePath, destPath, true), cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task MoveObjectAsync(string sourceKey, string destinationKey,
         CancellationToken cancellationToken = default) {
         await CopyObjectAsync(sourceKey, destinationKey, cancellationToken);
         await DeleteObjectAsync(sourceKey, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task DeleteObjectAsync(string key, CancellationToken cancellationToken = default) {
         var fullPath = GetFullPath(key);
         if (File.Exists(fullPath)) await Task.Run(() => File.Delete(fullPath), cancellationToken);
     }
 
-    // Resolve a chave dentro da pasta base, bloqueando path traversal.
+    /// <summary>
+    ///     Resolve a chave para um caminho absoluto dentro da pasta base, bloqueando <em>path traversal</em>:
+    ///     chaves que escapem da base (via <c>..</c>) resultam em <see cref="UnauthorizedAccessException" />.
+    /// </summary>
     private string GetFullPath(string key) {
         var normalizedKey = key.Replace('\\', '/').Trim('/');
         var resolved = Path.GetFullPath(Path.Combine(_basePath, normalizedKey));

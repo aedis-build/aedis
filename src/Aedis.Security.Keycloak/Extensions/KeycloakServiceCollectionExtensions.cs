@@ -20,6 +20,11 @@ public static class KeycloakServiceCollectionExtensions
     ///     nomes de claim do Keycloak (<c>sub</c>/<c>name</c>/<c>roles</c>). Combine com
     ///     <c>AddAedisAuditContext()</c> para o usuário logado fluir até o carimbo de auditoria.
     /// </summary>
+    /// <remarks>
+    ///     Define <c>MapInboundClaims = false</c> para preservar os nomes de claim originais do Keycloak
+    ///     (<c>sub</c>/<c>name</c>/<c>roles</c>), evitando o remapeamento default do handler para
+    ///     <c>ClaimTypes.*</c> — sem isso, a leitura por nome de claim configurado deixaria de encontrá-los.
+    /// </remarks>
     public static AuthenticationBuilder AddAedisKeycloakAuth(this IServiceCollection services,
         IConfiguration configuration) {
         services.AddOptions<KeycloakAuthOptions>()
@@ -37,7 +42,7 @@ public static class KeycloakServiceCollectionExtensions
                 jwt.Authority = options.Authority;
                 jwt.Audience = options.Audience;
                 jwt.RequireHttpsMetadata = options.RequireHttpsMetadata;
-                jwt.MapInboundClaims = false; // preserva sub/name/roles do Keycloak (sem remapear para ClaimTypes.*)
+                jwt.MapInboundClaims = false;
                 jwt.TokenValidationParameters = new TokenValidationParameters {
                     ValidateIssuer = true,
                     ValidIssuer = options.Authority,

@@ -35,7 +35,7 @@ public sealed class BaseMetricsTests
         metrics.Processed("csv");
         metrics.Processed("xml");
 
-        listener.RecordObservableInstruments(); // dispara os callbacks dos observable counters
+        listener.RecordObservableInstruments();
 
         longMeasurements.Should().Contain(m =>
             m.Name == "test_processed_total" && m.Value == 2

@@ -9,6 +9,10 @@ public sealed class MessageSerializerResolver
     private readonly IMessageSerializer _fallback;
     private readonly IReadOnlyList<IMessageSerializer> _serializers;
 
+    /// <summary>
+    ///     Cria o resolvedor a partir da lista ordenada de estratégias; a ordem define a prioridade no publish.
+    ///     O <see cref="JsonMessageSerializer" /> presente na lista (ou um novo) é adotado como fallback.
+    /// </summary>
     public MessageSerializerResolver(IEnumerable<IMessageSerializer> serializers) {
         _serializers = serializers.ToList();
         _fallback = _serializers.FirstOrDefault(s => s is JsonMessageSerializer) ?? new JsonMessageSerializer();

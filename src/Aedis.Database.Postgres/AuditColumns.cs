@@ -42,8 +42,13 @@ internal sealed class AuditColumns
 
     public static AuditColumns For(Type type) => Cache.GetOrAdd(type, t => new AuditColumns(t));
 
+    /// <summary>
+    ///     Carimba na entidade as colunas de auditoria presentes a partir do <paramref name="audit" />.
+    ///     Quando não há usuário logado (<c>CurrentActor == null</c>), usa <paramref name="defaultActor" />
+    ///     para gravar um valor visível (ex.: "system") em vez de nulo. <c>CreatedAt</c>/<c>CreatedBy</c> só
+    ///     são preenchidos quando ainda vazios; <c>UpdatedAt</c>/<c>UpdatedBy</c> sempre.
+    /// </summary>
     public void Stamp(object entity, IAuditContext audit, string defaultActor) {
-        // Sem usuário logado (CurrentActor == null) → grava um valor visível (ex.: "system") em vez de nulo.
         var actor = audit.CurrentActor ?? defaultActor;
 
         if (_createdAt is not null && IsUnsetTime(_createdAt.GetValue(entity)))

@@ -17,7 +17,7 @@ namespace Aedis.Security.Keycloak.Tests;
 public sealed class KeycloakCurrentUserTests
 {
     private static KeycloakCurrentUser UserFrom(params Claim[] claims) {
-        var identity = new ClaimsIdentity(claims, authenticationType: "jwt"); // autenticado
+        var identity = new ClaimsIdentity(claims, authenticationType: "jwt");
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         var accessor = new HttpContextAccessor { HttpContext = context };
         return new KeycloakCurrentUser(accessor, Options.Create(new KeycloakAuthOptions()));

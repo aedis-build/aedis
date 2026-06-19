@@ -18,7 +18,10 @@ namespace Aedis.Messaging.AwsSqs;
 /// </summary>
 public abstract partial class AwsSqsBaseService : IAsyncDisposable
 {
+    /// <summary>Logger compartilhado com as subclasses para diagnósticos de conexão e publicação.</summary>
     protected readonly ILogger Logger;
+
+    /// <summary>Configuração de acesso ao SQS/SNS usada pelas subclasses.</summary>
     protected readonly AwsSqsOptions Options;
 
     private readonly ConcurrentDictionary<string, ExchangeType> _exchangeTypeCache = new();
@@ -28,6 +31,10 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
     private IAmazonSimpleNotificationService? _snsClient;
     private IAmazonSQS? _sqsClient;
 
+    /// <summary>
+    ///     Prepara o serviço com as opções e o logger; os clientes SQS/SNS são criados de forma preguiçosa no
+    ///     primeiro uso.
+    /// </summary>
     protected AwsSqsBaseService(IOptions<AwsSqsOptions> options, ILogger logger) {
         Options = options.Value;
         Logger = logger;
@@ -36,10 +43,17 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
     /// <summary>Tipo do exchange, detectado de forma transparente ao usuário.</summary>
     public enum ExchangeType
     {
+        /// <summary>SNS Topic — semântica pub/sub (fan-out para múltiplas filas inscritas).</summary>
         Topic,
+
+        /// <summary>SQS Queue — semântica point-to-point (uma fila, um consumidor lógico).</summary>
         Queue
     }
 
+    /// <summary>
+    ///     Devolve o cliente SQS único, criando-o de forma preguiçosa e thread-safe (double-checked lock)
+    ///     no primeiro uso. Usa credenciais estáticas se informadas, senão a cadeia do ambiente.
+    /// </summary>
     public async Task<IAmazonSQS> GetSqsClientAsync(CancellationToken ct = default) {
         if (_sqsClient != null) return _sqsClient;
 
@@ -62,6 +76,10 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     Devolve o cliente SNS único, criando-o de forma preguiçosa e thread-safe (double-checked lock)
+    ///     no primeiro uso. Usa credenciais estáticas se informadas, senão a cadeia do ambiente.
+    /// </summary>
     public async Task<IAmazonSimpleNotificationService> GetSnsClientAsync(CancellationToken ct = default) {
         if (_snsClient != null) return _snsClient;
 
@@ -96,6 +114,7 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
         return normalized.Trim('-');
     }
 
+    /// <summary>Indica se o nome corresponde a uma fila/tópico FIFO (sufixo <c>.fifo</c>).</summary>
     public bool IsFifoQueue(string name) => name.EndsWith(".fifo", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
@@ -116,7 +135,6 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
             return ExchangeType.Queue;
         }
         catch (QueueDoesNotExistException) {
-            // não é uma fila — cai no default
         }
         catch (Exception ex) {
             Logger.LogWarning(ex, "Erro ao verificar a fila SQS '{Exchange}'.", normalized);
@@ -129,8 +147,10 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
         return defaultType;
     }
 
+    /// <summary>Limpa o cache de tipos de exchange — útil em testes ou após recriar recursos.</summary>
     public void ClearExchangeTypeCache() => _exchangeTypeCache.Clear();
 
+    /// <summary>Descarta os clientes SQS/SNS e os semáforos de inicialização.</summary>
     public async ValueTask DisposeAsync() {
         _sqsClient?.Dispose();
         _snsClient?.Dispose();
@@ -145,7 +165,7 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
 
     private void ApplyEndpoint(ClientConfig config) {
         if (!string.IsNullOrWhiteSpace(Options.ServiceUrl))
-            config.ServiceURL = Options.ServiceUrl; // ex.: LocalStack
+            config.ServiceURL = Options.ServiceUrl;
         else if (!string.IsNullOrWhiteSpace(Options.Region))
             config.RegionEndpoint = RegionEndpoint.GetBySystemName(Options.Region);
     }

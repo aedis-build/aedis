@@ -29,7 +29,7 @@ public sealed class RabbitMqPublishSubscribeTests : IAsyncLifetime
     public Task InitializeAsync() => _container.StartAsync();
     public Task DisposeAsync() => _container.DisposeAsync().AsTask();
 
-    // Mensagem serializada como JSON (sem [MessagePackObject]).
+    /// <summary>Mensagem serializada como JSON (sem <c>[MessagePackObject]</c>).</summary>
     public sealed class JsonOrder : MessageBase
     {
         public override string EventName => "test.json.order";
@@ -37,7 +37,7 @@ public sealed class RabbitMqPublishSubscribeTests : IAsyncLifetime
         public string Customer { get; set; } = string.Empty;
     }
 
-    // Mensagem serializada como MessagePack (keyAsPropertyName cobre os membros herdados).
+    /// <summary>Mensagem serializada como MessagePack (<c>keyAsPropertyName</c> cobre os membros herdados).</summary>
     [MessagePackObject(true)]
     public sealed class PackedOrder : MessageBase
     {
@@ -48,7 +48,9 @@ public sealed class RabbitMqPublishSubscribeTests : IAsyncLifetime
 
     private sealed class BusinessRejected() : PermanentFailureException("rejeitado por regra de negócio");
 
-    // Mensagem de payload bruto: ToData() emite bytes; FromRaw() os reconstrói (inverso simétrico).
+    /// <summary>
+    ///     Mensagem de payload bruto: <c>ToData()</c> emite bytes e <c>FromRaw()</c> os reconstrói (inverso simétrico).
+    /// </summary>
     public sealed class RawNote : MessageBase, IRawMessage
     {
         public RawNote() { }
@@ -191,7 +193,6 @@ public sealed class RabbitMqPublishSubscribeTests : IAsyncLifetime
 
         await broker.PublishAsync(exchange, routingKey, new JsonOrder { OrderId = 99, Customer = "X" }, cts.Token);
 
-        // A mensagem deve aparecer na DLQ ("<fila>.dlq").
         var connection = await broker.GetConnectionAsync();
         await using var channel = await connection.CreateChannelAsync(cancellationToken: cts.Token);
 

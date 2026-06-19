@@ -35,9 +35,23 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     private readonly NamingStrategyResolver _naming;
     private readonly IUnitOfWorkFactory _sessionFactory;
 
+    /// <summary>Opções do provider PostgreSQL em vigor para este repositório (convenção de nomes, pool, auditoria, chunk de bulk).</summary>
     protected readonly DatabaseOptions Options;
+
+    /// <summary>Nome da tabela resolvido para a entidade — vindo do parâmetro explícito ou da convenção de nomes aplicada ao nome do tipo.</summary>
     protected readonly string TableName;
 
+    /// <summary>
+    ///     Constrói o repositório, resolvendo tabela e colunas da entidade por reflexão e convenção de
+    ///     nomes, localizando a chave <c>Id</c> e detectando as colunas de soft-delete (IsDeleted/DeletedAt/DeletedBy).
+    /// </summary>
+    /// <param name="sessionFactory">Fábrica de sessões (escrita/leitura) usada pelos métodos sem unidade de trabalho explícita.</param>
+    /// <param name="logger">Logger do repositório.</param>
+    /// <param name="naming">Resolvedor de estratégias de nomes para mapear propriedades em colunas/tabelas.</param>
+    /// <param name="options">Opções do provider PostgreSQL.</param>
+    /// <param name="bulkInserter">Inseridor em massa via COPY binário, usado pelas operações de bulk.</param>
+    /// <param name="tableName">Nome de tabela explícito; quando <c>null</c>, deriva-se do nome da entidade pela convenção.</param>
+    /// <param name="auditContext">Contexto de auditoria opcional; quando presente, carimba as colunas de auditoria existentes.</param>
     public PostgresRepository(IUnitOfWorkFactory sessionFactory, ILogger<PostgresRepository<TEntity, TId>> logger,
         NamingStrategyResolver naming, IOptions<DatabaseOptions> options, PostgresBulkInserter bulkInserter,
         string? tableName = null, IAuditContext? auditContext = null) {
@@ -64,63 +78,71 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     private bool HasColumn(string name) =>
         _columns.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
-    // ---- Read --------------------------------------------------------------------------------------
 
+    /// <inheritdoc />
     public Task<TEntity?> GetByIdAsync(TId id, CancellationToken ct = default) =>
         InReadSessionAsync((uow, c) => GetByIdAsync(id, uow, c), ct);
 
+    /// <inheritdoc />
     public async Task<TEntity?> GetByIdAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
         var sql = $"SELECT {SelectColumns()} FROM {TableName} WHERE {Col("Id")} = @Id{SoftDeleteSuffix()}";
         return await unitOfWork.QuerySingleOrDefaultAsync<TEntity>(sql, new { Id = id }, ct);
     }
 
+    /// <inheritdoc />
     public Task<IEnumerable<TEntity>> FindAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
         InReadSessionAsync((uow, c) => FindAsync(criteria, uow, c), ct);
 
+    /// <inheritdoc />
     public async Task<IEnumerable<TEntity>> FindAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
         CancellationToken ct = default) {
         var (sql, parameters) = criteria.Build();
         return await unitOfWork.QueryAsync<TEntity>(sql, parameters, ct);
     }
 
+    /// <inheritdoc />
     public Task<int> CountAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
         InReadSessionAsync((uow, c) => CountAsync(criteria, uow, c), ct);
 
+    /// <inheritdoc />
     public async Task<int> CountAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
         CancellationToken ct = default) {
         var (sql, parameters) = criteria.Build();
         return await unitOfWork.QuerySingleOrDefaultAsync<int>($"SELECT count(*) FROM ({sql}) AS _c", parameters, ct);
     }
 
+    /// <inheritdoc />
     public Task<bool> ExistsAsync(TId id, CancellationToken ct = default) =>
         InReadSessionAsync((uow, c) => ExistsAsync(id, uow, c), ct);
 
+    /// <inheritdoc />
     public async Task<bool> ExistsAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
         var sql = $"SELECT EXISTS(SELECT 1 FROM {TableName} WHERE {Col("Id")} = @Id{SoftDeleteSuffix()})";
         return await unitOfWork.QuerySingleOrDefaultAsync<bool>(sql, new { Id = id }, ct);
     }
 
+    /// <inheritdoc />
     public Task<IEnumerable<TResult>> QueryAsync<TResult>(ICriteria<TResult> criteria, CancellationToken ct = default) =>
         InReadSessionAsync((uow, c) => QueryAsync(criteria, uow, c), ct);
 
+    /// <inheritdoc />
     public async Task<IEnumerable<TResult>> QueryAsync<TResult>(ICriteria<TResult> criteria, IUnitOfWork unitOfWork,
         CancellationToken ct = default) {
         var (sql, parameters) = criteria.Build();
         return await unitOfWork.QueryAsync<TResult>(sql, parameters, ct);
     }
 
-    // ---- Write -------------------------------------------------------------------------------------
 
+    /// <inheritdoc />
     public Task<TEntity> SaveAsync(TEntity entity, CancellationToken ct = default) =>
         InWriteSessionAsync((uow, c) => SaveAsync(entity, uow, c), ct);
 
+    /// <inheritdoc />
     public async Task<TEntity> SaveAsync(TEntity entity, IUnitOfWork unitOfWork, CancellationToken ct = default) {
         Stamp(entity);
         var columns = string.Join(", ", _columns.Select(p => Col(p.Name)));
         var values = string.Join(", ", _columns.Select(p => "@" + p.Name));
 
-        // Mesmo template method do bulk: a cláusula de upsert é definida uma vez em GetOnConflictClause()
-        // e vale tanto para o Save (INSERT) quanto para BulkInsert/BulkInsertChunked.
         var conflict = GetOnConflictClause();
         var sql = $"INSERT INTO {TableName} ({columns}) VALUES ({values})"
                   + (conflict is null ? string.Empty : " " + conflict);
@@ -129,12 +151,14 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
         return entity;
     }
 
+    /// <inheritdoc />
     public Task DeleteAsync(TId id, CancellationToken ct = default) =>
         InWriteSessionAsync(async (uow, c) => {
             await DeleteAsync(id, uow, c);
             return true;
         }, ct);
 
+    /// <inheritdoc />
     public async Task DeleteAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
         if (!_hasSoftDelete) {
             await unitOfWork.ExecuteAsync($"DELETE FROM {TableName} WHERE {Col("Id")} = @Id", new { Id = id }, ct);
@@ -161,33 +185,39 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             $"UPDATE {TableName} SET {string.Join(", ", sets)} WHERE {Col("Id")} = @Id", parameters, ct);
     }
 
+    /// <inheritdoc />
     public Task BulkInsertAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
         InWriteSessionAsync(async (uow, c) => {
             await BulkInsertAsync(entities, uow, c);
             return true;
         }, ct);
 
+    /// <inheritdoc />
     public Task BulkInsertAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork, CancellationToken ct = default) =>
         _bulkInserter.BulkInsertAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
             GetOnConflictClause(), ct);
 
+    /// <inheritdoc />
     public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
         InWriteSessionAsync(async (uow, c) => {
             await BulkInsertChunkedAsync(entities, uow, c);
             return true;
         }, ct);
 
+    /// <inheritdoc />
     public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
         CancellationToken ct = default) =>
         _bulkInserter.BulkInsertChunkedAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
             Options.BulkInsertChunkSize, GetOnConflictClause(), ct);
 
+    /// <inheritdoc />
     public Task BulkUpdateAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
         InWriteSessionAsync(async (uow, c) => {
             await BulkUpdateAsync(entities, uow, c);
             return true;
         }, ct);
 
+    /// <inheritdoc />
     public async Task BulkUpdateAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
         CancellationToken ct = default) {
         var updateColumns = _columns.Where(IsNotId).ToArray();
@@ -200,9 +230,11 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
         }
     }
 
+    /// <inheritdoc />
     public Task<int> CommandAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
         InWriteSessionAsync((uow, c) => CommandAsync(criteria, uow, c), ct);
 
+    /// <inheritdoc />
     public async Task<int> CommandAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
         CancellationToken ct = default) {
         var (sql, parameters) = criteria.Build();
@@ -237,7 +269,6 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             : $"{conflictTarget} DO UPDATE SET {string.Join(", ", sets)}";
     }
 
-    // ---- Helpers -----------------------------------------------------------------------------------
 
     private async Task<T> InReadSessionAsync<T>(Func<IUnitOfWork, CancellationToken, Task<T>> action,
         CancellationToken ct) {
@@ -316,14 +347,18 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
 
     private string Convert(NamingContext context) => _naming.GetStrategy(context).Convert(context);
 
+    /// <summary>
+    ///     Decide se o tipo deve ficar fora das colunas mapeadas. <c>string</c> e <c>byte[]</c> são colunas
+    ///     escalares (text/bytea). Arrays/listas de tipos simples (<c>string[]</c>, <c>int[]</c>,
+    ///     <c>Guid[]</c>…) também são colunas Postgres (<c>text[]</c>/<c>int[]</c>/…); coleções de tipos
+    ///     complexos representam navegação de agregado e são excluídas.
+    /// </summary>
     private static bool IsCollection(Type type) {
         if (type == typeof(string) || type == typeof(byte[]))
-            return false; // text / bytea são colunas escalares
+            return false;
         if (!typeof(IEnumerable).IsAssignableFrom(type))
             return false;
 
-        // Arrays/listas de tipos simples (string[], int[], Guid[]…) são colunas Postgres (text[]/int[]/…);
-        // coleções de tipos complexos são navegação de agregado e ficam fora das colunas.
         var element = type.IsArray
             ? type.GetElementType()
             : type.IsGenericType

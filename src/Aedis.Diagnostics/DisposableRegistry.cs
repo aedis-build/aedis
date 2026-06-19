@@ -23,6 +23,11 @@ public sealed class DisposableRegistry : IDisposableRegistry
     private readonly ILogger<DisposableRegistry>? _logger;
     private readonly ConcurrentBag<IDisposable> _syncDisposables = new();
 
+    /// <summary>
+    ///     Cria o registro vazio. O <paramref name="logger" /> é opcional e, quando fornecido, emite traços de
+    ///     diagnóstico (Debug) a cada registro/desregistro e ao descartar os recursos.
+    /// </summary>
+    /// <param name="logger">Logger opcional para diagnóstico do ciclo de vida dos recursos.</param>
     public DisposableRegistry(ILogger<DisposableRegistry>? logger = null) {
         _logger = logger;
     }

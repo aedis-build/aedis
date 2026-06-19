@@ -9,6 +9,7 @@ namespace Aedis.Database.Postgres;
 /// </summary>
 public sealed class DatabaseOptions
 {
+    /// <summary>Nome da seção de configuração de onde estas opções são vinculadas (<c>"Database"</c>).</summary>
     public const string SectionName = "Database";
 
     /// <summary>Connection string única (usada quando write/read não são informados separadamente).</summary>
@@ -23,9 +24,16 @@ public sealed class DatabaseOptions
     /// <summary>Convenção de nomes para tabelas/colunas. Padrão snake_case (idiomático no PostgreSQL).</summary>
     public NamingConvention NamingConvention { get; set; } = NamingConvention.SnakeCase;
 
+    /// <summary>Tamanho máximo do pool de conexões do endpoint de escrita (primário). Padrão 50.</summary>
     public int WritePoolSize { get; set; } = 50;
+
+    /// <summary>Tamanho máximo do pool de conexões dos endpoints de leitura (réplicas). Padrão 150.</summary>
     public int ReadPoolSize { get; set; } = 150;
+
+    /// <summary>Tempo máximo de espera para abrir uma conexão antes de falhar. Padrão 30 segundos.</summary>
     public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Tempo máximo de execução de um comando SQL antes de falhar. Padrão 60 segundos.</summary>
     public TimeSpan CommandTimeout { get; set; } = TimeSpan.FromSeconds(60);
 
     /// <summary>TTL do cache do health check — o banco é sondado no máximo uma vez por intervalo.</summary>

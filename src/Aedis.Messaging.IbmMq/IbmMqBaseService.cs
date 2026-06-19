@@ -13,12 +13,19 @@ namespace Aedis.Messaging.IbmMq;
 public abstract class IbmMqBaseService : IAsyncDisposable
 {
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
+    /// <summary>Logger compartilhado com as subclasses para diagnósticos de conexão e fila.</summary>
     protected readonly ILogger _logger;
+
+    /// <summary>Configuração de conexão ao gerenciador de filas usada pelas subclasses.</summary>
     protected readonly IbmMqOptions _options;
 
     private MQQueueManager? _connection;
     private bool _disposed;
 
+    /// <summary>
+    ///     Valida a configuração de conexão e prepara o serviço; a conexão em si só é estabelecida no
+    ///     primeiro uso (criação preguiçosa).
+    /// </summary>
     protected IbmMqBaseService(IOptions<IbmMqOptions> options, ILogger logger) {
         _options = options.Value;
         _logger = logger;
@@ -28,6 +35,7 @@ public abstract class IbmMqBaseService : IAsyncDisposable
         _logger.LogDebug("IbmMqBaseService inicializado. A conexão será estabelecida no primeiro uso.");
     }
 
+    /// <summary>Desconecta e fecha a conexão IBM MQ (idempotente), liberando o semáforo de conexão.</summary>
     public virtual async ValueTask DisposeAsync() {
         if (_disposed) return;
 
@@ -63,18 +71,30 @@ public abstract class IbmMqBaseService : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    ///     Garante uma conexão ativa (reconectando se preciso) e executa a operação sobre o
+    ///     <see cref="MQQueueManager" /> resultante. Usado pelas subclasses para os caminhos de PUT/GET.
+    /// </summary>
     protected async Task ExecuteWithSessionAsync(Func<MQQueueManager, Task> operation,
         CancellationToken cancellationToken = default) {
         var connection = await EnsureConnectionAsync();
         await operation(connection);
     }
 
+    /// <summary>
+    ///     Variante de <see cref="ExecuteWithSessionAsync(Func{MQQueueManager,Task},CancellationToken)" /> que
+    ///     devolve o resultado produzido pela operação sobre a conexão.
+    /// </summary>
     protected async Task<T> ExecuteWithSessionAsync<T>(Func<MQQueueManager, Task<T>> operation,
         CancellationToken cancellationToken = default) {
         var connection = await EnsureConnectionAsync();
         return await operation(connection);
     }
 
+    /// <summary>
+    ///     Devolve a conexão IBM MQ ativa, criando-a no primeiro uso e recriando-a quando detectada inválida
+    ///     (a conexão antiga, já em estado inválido, é descartada ignorando erros de fechamento). Thread-safe.
+    /// </summary>
     public async Task<MQQueueManager> EnsureConnectionAsync() {
         await _connectionLock.WaitAsync();
         try {
@@ -86,14 +106,12 @@ public abstract class IbmMqBaseService : IAsyncDisposable
                     _connection.Disconnect();
                 }
                 catch {
-                    // ignorado: a conexão já está em estado inválido
                 }
 
                 try {
                     _connection.Close();
                 }
                 catch {
-                    // ignorado: a conexão já está em estado inválido
                 }
 
                 _connection = null;
@@ -118,6 +136,7 @@ public abstract class IbmMqBaseService : IAsyncDisposable
         }
     }
 
+    /// <summary>Indica se há uma conexão estabelecida e válida no momento, sem tentar reconectar.</summary>
     public Task<bool> IsConnectionHealthyAsync() {
         try {
             return Task.FromResult(_connection != null && IsConnectionValid(_connection));
@@ -183,11 +202,19 @@ public abstract class IbmMqBaseService : IAsyncDisposable
         return props;
     }
 
+    /// <summary>
+    ///     Abre a fila indicada no Queue Manager para escrita e consulta, falhando se o broker estiver em
+    ///     quiesce. Use dentro de um <c>using</c> para fechá-la ao final.
+    /// </summary>
     protected static MQQueue OpenQueue(MQQueueManager queueManager, string queueName) {
         var queueOptions = MQC.MQOO_OUTPUT | MQC.MQOO_INQUIRE | MQC.MQOO_FAIL_IF_QUIESCING;
         return queueManager.AccessQueue(queueName, queueOptions);
     }
 
+    /// <summary>
+    ///     Monta as opções de PUT (novo MsgId, falha em quiesce) ligando ou não o syncpoint conforme
+    ///     <see cref="IbmMqOptions.UseSyncpoint" />.
+    /// </summary>
     protected MQPutMessageOptions BuildPutMessageOptions() {
         var options = MQC.MQPMO_FAIL_IF_QUIESCING | MQC.MQPMO_NEW_MSG_ID;
         options |= _options.UseSyncpoint ? MQC.MQPMO_SYNCPOINT : MQC.MQPMO_NO_SYNCPOINT;

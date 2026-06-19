@@ -25,6 +25,7 @@ public sealed class GracefulShutdownHostedService : IHostedService
     private readonly IDisposableRegistry _registry;
     private readonly ShutdownHealthCheck _shutdownHealthCheck;
 
+    /// <summary>Recebe por injeção o ciclo de vida do host, o health check de desligamento, o registro de descartáveis, os handlers de limpeza, as opções e o logger.</summary>
     public GracefulShutdownHostedService(
         IHostApplicationLifetime lifetime,
         ShutdownHealthCheck shutdownHealthCheck,
@@ -40,11 +41,13 @@ public sealed class GracefulShutdownHostedService : IHostedService
         _logger = logger;
     }
 
+    /// <summary>Registra o callback de desligamento gracioso em <see cref="IHostApplicationLifetime.ApplicationStopping" />. Não bloqueia a inicialização.</summary>
     public Task StartAsync(CancellationToken cancellationToken) {
         _lifetime.ApplicationStopping.Register(OnStopping);
         return Task.CompletedTask;
     }
 
+    /// <summary>Não faz nada: toda a sequência de desligamento ocorre no callback de <c>ApplicationStopping</c>.</summary>
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     private void OnStopping() {

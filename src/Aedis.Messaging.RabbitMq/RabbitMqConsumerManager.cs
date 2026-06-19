@@ -23,6 +23,7 @@ public class RabbitMqConsumerManager : IAsyncDisposable
     private readonly MessageSerializerResolver _serializers;
     private bool _disposed;
 
+    /// <summary>Cria o gerenciador com o logger, as opções do RabbitMQ e o resolvedor de serialização usados ao consumir.</summary>
     public RabbitMqConsumerManager(ILogger<RabbitMqConsumerManager> logger, IOptions<RabbitMqOptions> options,
         MessageSerializerResolver serializers) {
         _logger = logger;
@@ -30,6 +31,7 @@ public class RabbitMqConsumerManager : IAsyncDisposable
         _serializers = serializers;
     }
 
+    /// <summary>Para todos os consumers ativos e libera os recursos. Idempotente e protegido contra chamadas concorrentes.</summary>
     public async ValueTask DisposeAsync() {
         if (_disposed) return;
 
@@ -50,6 +52,13 @@ public class RabbitMqConsumerManager : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    ///     Registra e inicia um consumer na fila informada, fiando o despacho de cada mensagem ao
+    ///     <paramref name="handler" /> com a política de retry. Cria uma tarefa de monitor que mantém o
+    ///     consumer rastreado para verificação de saúde e parada, e retorna o id que o identifica.
+    /// </summary>
+    /// <typeparam name="T">Tipo da mensagem consumida.</typeparam>
+    /// <returns>Identificador do consumer recém-iniciado, usado nas demais operações.</returns>
     public async Task<string> StartConsumerAsync<T>(IChannel channel, string queue, string exchange, string routingKey,
         IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
         where T : class, IMessage {
@@ -95,6 +104,10 @@ public class RabbitMqConsumerManager : IAsyncDisposable
         return consumerId;
     }
 
+    /// <summary>
+    ///     Para o consumer identificado: cancela seu token, aguarda o monitor encerrar e cancela a assinatura no
+    ///     canal. Não faz nada se o id não estiver mais ativo. Não propaga exceções (apenas registra).
+    /// </summary>
     public async Task StopConsumerAsync(string consumerId, CancellationToken cancellationToken = default) {
         if (!_activeConsumers.TryRemove(consumerId, out var consumerInfo)) return;
 
@@ -122,6 +135,10 @@ public class RabbitMqConsumerManager : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     Indica se o consumer está saudável: ativo, não descartado, com a tarefa de monitor viva e o canal
+    ///     aberto. Retorna <c>false</c> para id desconhecido ou diante de qualquer falha na verificação.
+    /// </summary>
     public Task<bool> IsConsumerHealthyAsync(string consumerId) {
         if (!_activeConsumers.TryGetValue(consumerId, out var info))
             return Task.FromResult(false);
@@ -138,6 +155,10 @@ public class RabbitMqConsumerManager : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     Varre os consumers ativos e para os que estiverem não saudáveis, liberando seus recursos para que a
+    ///     camada superior possa reassiná-los. A reassinatura em si fica a cargo de quem chama.
+    /// </summary>
     public async Task RestartUnhealthyConsumersAsync(CancellationToken cancellationToken = default) {
         var unhealthy = new List<string>();
         foreach (var id in _activeConsumers.Keys)
@@ -150,6 +171,14 @@ public class RabbitMqConsumerManager : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     Núcleo de consumo de uma mensagem: materializa o payload, invoca o handler e decide o destino conforme
+    ///     o resultado. O tipo da exceção define a ação — <see cref="SkippableMessageException" /> descarta com
+    ///     ACK; <see cref="PermanentFailureException" /> vai à DLQ; <see cref="RetryableException" /> e
+    ///     <see cref="ExternalServiceException" /> escolhem health-retry, backoff ou requeue imediato segundo a
+    ///     política; e exceções inesperadas caem no backoff (ou requeue, se desabilitado). Mensagens que excedem
+    ///     <see cref="ConsumerRetryOptions.MaxRetries" /> são enviadas direto à DLQ.
+    /// </summary>
     private async Task ProcessMessageAsync<T>(string consumerId, IChannel channel, string queue, string exchange,
         string routingKey, ConsumerRetryOptions retryOptions, BasicDeliverEventArgs eventArgs,
         IMessageHandler<T> handler, CancellationToken cancellationToken) where T : class, IMessage {
@@ -272,6 +301,11 @@ public class RabbitMqConsumerManager : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     Materializa a mensagem do corpo recebido: para tipos <see cref="IRawMessage" />, instancia e chama
+    ///     <see cref="IRawMessage.FromRaw" /> com os bytes brutos; caso contrário, desserializa pelo
+    ///     content-type informado nas propriedades.
+    /// </summary>
     private T? Materialize<T>(BasicDeliverEventArgs eventArgs) where T : class, IMessage {
         if (typeof(IRawMessage).IsAssignableFrom(typeof(T))) {
             var raw = (IRawMessage)Activator.CreateInstance(typeof(T))!;
@@ -348,6 +382,11 @@ public class RabbitMqConsumerManager : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     Encaminha a mensagem à DLQ final (<c>{fila}.dlq</c> no exchange <c>default.dlq</c>), anexando headers
+    ///     de diagnóstico (fila/exchange originais, contagem de mortes, instante e correlação). Republica o corpo
+    ///     original sem reserializá-lo, preservando o payload exatamente como recebido.
+    /// </summary>
     private async Task SendToFinalDeadLetterQueueAsync(IChannel channel, string queue,
         BasicDeliverEventArgs eventArgs, string correlationId, int deathCount, CancellationToken cancellationToken) {
         const string dlqExchange = "default.dlq";
@@ -368,7 +407,6 @@ public class RabbitMqConsumerManager : IAsyncDisposable
             Headers = headers
         };
 
-        // Preserva o payload original (não reserializa).
         await channel.BasicPublishAsync(dlqExchange, dlqName, false, props, eventArgs.Body, cancellationToken);
         _logger.LogWarning("Mensagem enviada à DLQ final {DlqName} (correlation {CorrelationId}, death {DeathCount}).",
             dlqName, correlationId, deathCount);

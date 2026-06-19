@@ -16,6 +16,8 @@ public class StrategyResolver<TContext, TStrategy> : IStrategyResolver<TContext>
     where TStrategy : class, IStrategy<TContext>
 {
     private readonly IStrategyResolver<TContext> _internalResolver;
+
+    /// <summary>Estratégias disponíveis para resolução, expostas às subclasses que customizam o despacho.</summary>
     protected readonly IEnumerable<TStrategy> Strategies;
 
     /// <summary>
@@ -47,6 +49,10 @@ public class StrategyResolver<TContext, TStrategy> : IStrategyResolver<TContext>
         }
     }
 
+    /// <summary>
+    ///     Resolve e executa a estratégia adequada ao contexto, delegando ao resolver interno (O(1) ou O(n))
+    ///     escolhido na construção. Sobrescreva em subclasses para customizar o despacho.
+    /// </summary>
     public virtual Task ExecuteAsync(TContext context, CancellationToken cancellationToken = default) {
         return _internalResolver.ExecuteAsync(context, cancellationToken);
     }
@@ -165,7 +171,9 @@ public class StrategyResolver<TContext, TStrategy> : IStrategyResolver<TContext>
 /// <typeparam name="TContext">Tipo do contexto</typeparam>
 public class StrategyResolver<TContext> : StrategyResolver<TContext, IStrategy<TContext>>
 {
+    /// <summary>Estratégias disponíveis para resolução, expostas às subclasses que customizam o despacho.</summary>
     protected new readonly IEnumerable<IStrategy<TContext>> Strategies;
+
     private IStrategyResolver<TContext> _internalResolver;
 
     /// <summary>
@@ -282,6 +290,10 @@ public class StrategyResolver<TContext> : StrategyResolver<TContext, IStrategy<T
         return ctx => (TKey)keySelector(ctx);
     }
 
+    /// <summary>
+    ///     Resolve e executa a estratégia adequada ao contexto, delegando ao resolver interno escolhido na
+    ///     construção (O(1) por chave quando aplicável, senão O(n) via <c>CanHandle</c>).
+    /// </summary>
     public new virtual Task ExecuteAsync(TContext context, CancellationToken cancellationToken = default) {
         return _internalResolver.ExecuteAsync(context, cancellationToken);
     }

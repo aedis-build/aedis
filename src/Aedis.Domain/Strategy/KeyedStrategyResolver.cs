@@ -18,6 +18,10 @@ public class KeyedStrategyResolver<TKey, TContext, TStrategy> : IStrategyResolve
     private readonly ILogger<KeyedStrategyResolver<TKey, TContext, TStrategy>>? _logger;
     private readonly Dictionary<TKey, TStrategy> _strategies;
 
+    /// <summary>
+    ///     Inicializa o resolver indexando as estratégias por sua <c>Key</c> num dicionário e guardando o
+    ///     seletor que extrai a chave do contexto.
+    /// </summary>
     public KeyedStrategyResolver(
         IEnumerable<TStrategy> strategies,
         Func<TContext, TKey> keySelector,
@@ -27,6 +31,10 @@ public class KeyedStrategyResolver<TKey, TContext, TStrategy> : IStrategyResolve
         _logger = logger;
     }
 
+    /// <summary>
+    ///     Extrai a chave do contexto, encontra a estratégia correspondente em O(1) e a executa. Lança
+    ///     <see cref="NotSupportedException" /> quando não há estratégia registrada para a chave.
+    /// </summary>
     public async Task ExecuteAsync(TContext context, CancellationToken cancellationToken = default) {
         var key = _keySelector(context);
 
@@ -62,6 +70,10 @@ public class
     KeyedStrategyResolver<TKey, TContext> : KeyedStrategyResolver<TKey, TContext, IKeyedStrategy<TKey, TContext>>
     where TKey : notnull
 {
+    /// <summary>
+    ///     Inicializa o resolver com as estratégias <see cref="IKeyedStrategy{TKey, TContext}" />, o seletor
+    ///     de chave e um logger opcional.
+    /// </summary>
     public KeyedStrategyResolver(
         IEnumerable<IKeyedStrategy<TKey, TContext>> strategies,
         Func<TContext, TKey> keySelector,

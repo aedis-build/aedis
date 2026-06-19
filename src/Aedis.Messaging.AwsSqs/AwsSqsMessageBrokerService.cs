@@ -23,6 +23,11 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
     private readonly ILogger<AwsSqsMessageBrokerService> _logger;
     private readonly MessageSerializerResolver _serializers;
 
+    /// <summary>
+    ///     Cria o broker AWS SQS/SNS com a factory de clientes compartilhada, o admin helper de
+    ///     auto-provisionamento, o gerenciador de consumidores e o resolvedor de serializadores (usa o
+    ///     default quando ausente).
+    /// </summary>
     public AwsSqsMessageBrokerService(IAwsPubSubFactory factory, ILogger<AwsSqsMessageBrokerService> logger,
         AwsSqsAdministrationHelper adminHelper, AwsSqsConsumerManager consumerManager,
         MessageSerializerResolver? serializers = null) {
@@ -33,6 +38,10 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
         _serializers = serializers ?? MessageSerializerResolver.CreateDefault();
     }
 
+    /// <summary>
+    ///     Publica uma mensagem tipada no exchange (SNS Topic ou SQS Queue, detectado automaticamente),
+    ///     serializando o payload e codificando-o em base64. O content-type vai num atributo de mensagem.
+    /// </summary>
     public async Task PublishAsync<T>(string exchange, string routingKey, T message,
         CancellationToken cancellationToken = default) where T : class, IMessage {
         ArgumentNullException.ThrowIfNull(message);
@@ -45,6 +54,10 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
             cancellationToken);
     }
 
+    /// <summary>
+    ///     Publica um payload bruto (bytes) no exchange, codificado em base64, sem passar por serializador.
+    ///     Gera um CorrelationId quando não informado.
+    /// </summary>
     public async Task PublishRawAsync(string exchange, string routingKey, ReadOnlyMemory<byte> payload,
         string contentType = "application/octet-stream", string? correlationId = null,
         CancellationToken cancellationToken = default) {
@@ -53,11 +66,19 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
             cancellationToken);
     }
 
+    /// <summary>
+    ///     Assina o exchange com uma routing key, auto-provisionando os recursos (tópico, fila, DLQ e
+    ///     inscrição) e iniciando o consumer. Routing key vazia, <c>#</c> ou <c>*</c> recebe tudo.
+    /// </summary>
     public Task SubscribeAsync<T>(string queue, string exchange, string routingKey, IMessageHandler<T> handler,
         ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default) where T : class, IMessage =>
         SubscribeCoreAsync(queue, exchange,
             string.IsNullOrWhiteSpace(routingKey) ? [] : [routingKey], handler, retryOptions, cancellationToken);
 
+    /// <summary>
+    ///     Assina o exchange com várias routing keys (vira filter policy na inscrição SNS), auto-provisionando
+    ///     os recursos e iniciando o consumer. Keys vazias são ignoradas.
+    /// </summary>
     public Task SubscribeAsync<T>(string queue, string exchange, IEnumerable<string> routingKeys,
         IMessageHandler<T> handler, ConsumerRetryOptions retryOptions, CancellationToken cancellationToken = default)
         where T : class, IMessage =>
