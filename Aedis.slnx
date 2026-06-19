@@ -50,6 +50,7 @@
     <Project Path="tests/Aedis.Messaging.IbmMq.Tests/Aedis.Messaging.IbmMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.RabbitMq.Tests/Aedis.Messaging.RabbitMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.Tests/Aedis.Messaging.Tests.csproj" />
+    <Project Path="tests/Aedis.Observability.Tests/Aedis.Observability.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Keycloak.Tests/Aedis.Security.Keycloak.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Tests/Aedis.Security.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.AzureBlob.Tests/Aedis.Storage.AzureBlob.Tests.csproj" />
