@@ -6,13 +6,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Aedis.Hosting.Abstractions\Aedis.Hosting.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Scheduling.Abstractions\Aedis.Scheduling.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Scheduling.Hangfire.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="Cronos" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
   <ItemGroup>

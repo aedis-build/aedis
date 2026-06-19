@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Scheduling.Abstractions</PackageId>
+    <Description>Aedis.Scheduling.Abstractions — contrato de jobs agendados, sem acoplamento ao scheduler.</Description>
+  </PropertyGroup>
+
+</Project>
