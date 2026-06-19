@@ -258,6 +258,29 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         public string Nome { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    ///     Contrato: herdar de AuditableAggregateRoot é o opt-in; criar as colunas na migration é
+    ///     responsabilidade do app. Sem schema generator — se faltar uma coluna, o Save falha na hora com
+    ///     erro explícito do PostgreSQL (42703 undefined_column), em vez de qualquer DDL automático.
+    /// </summary>
+    [Fact]
+    public async Task Coluna_de_auditoria_ausente_no_schema_falha_claro_no_save() {
+        var table = $"incompleto_{Guid.NewGuid():N}";
+        // Tabela SEM a coluna updated_reason (que o AuditableAggregateRoot possui).
+        await _fixture.ExecAsync($@"CREATE TABLE {table} (
+            id uuid PRIMARY KEY, codigo text, nome text,
+            created_at timestamptz, created_by text, updated_at timestamptz, updated_by text,
+            is_deleted boolean NOT NULL DEFAULT false, deleted_at timestamptz, deleted_by text)");
+        var repo = _fixture.Repo<CalendarioEscopo>(table, new FakeAudit("bob", DateTimeOffset.UtcNow, "motivo"));
+
+        var act = async () =>
+            await repo.SaveAsync(new CalendarioEscopo { Id = Guid.NewGuid(), Codigo = "C", Nome = "N" });
+
+        var exception = (await act.Should().ThrowAsync<PostgresException>()).Which;
+        exception.SqlState.Should().Be("42703", "undefined_column — fail-fast, sem DDL automático");
+        exception.Message.Should().Contain("updated_reason");
+    }
+
     [Fact]
     public async Task Cadeia_DI_completa_carimba_o_usuario_logado_automaticamente() {
         var table = "calendario_escopos"; // convenção: CalendarioEscopo → snake plural
