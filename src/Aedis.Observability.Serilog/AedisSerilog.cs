@@ -1,3 +1,4 @@
+using Aedis.Core.Utils;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Events;
@@ -24,7 +25,8 @@ public static class AedisSerilog
         return loggerConfiguration.CreateLogger();
     }
 
-    internal static void Configure(LoggerConfiguration loggerConfiguration, IConfiguration configuration) {
+    /// <summary>Aplica a configuração padrão do Aedis a um <see cref="LoggerConfiguration" /> existente.</summary>
+    public static void Configure(LoggerConfiguration loggerConfiguration, IConfiguration configuration) {
         loggerConfiguration
             .MinimumLevel.Information()
             .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
@@ -36,8 +38,9 @@ public static class AedisSerilog
         loggerConfiguration
             .Filter.ByExcluding(IsNoise)
             .Enrich.With(new LogTypeEnricher("Application"))
+            .Enrich.WithProperty("application", ApplicationInfo.Name) // mesma tag das métricas — filtra por serviço
             .Enrich.FromLogContext()
-            .WriteTo.Console(new CompactJsonFormatter()); // stdout — sempre (entrega durável)
+            .WriteTo.Console(new CompactJsonFormatter()); // JSON compacto no stdout — sempre (entrega durável)
 
         ConfigureOpenTelemetrySink(loggerConfiguration, configuration);
     }

@@ -24,8 +24,17 @@ public sealed class RedisCacheOptions
     [Required]
     public required bool UseSsl { get; set; }
 
-    /// <summary>Nome do master quando usando Redis Sentinel. Opcional.</summary>
+    /// <summary>
+    ///     Nome do master quando usando Redis Sentinel. Quando definido, a conexão descobre o master via
+    ///     Sentinel; quando vazio, conecta direto (Standalone ou Cluster — o driver detecta o cluster).
+    /// </summary>
     public string? SentinelMasterName { get; set; }
+
+    /// <summary>Usuário para autenticar nos nós Sentinel (ACL). Opcional.</summary>
+    public string? SentinelUser { get; set; }
+
+    /// <summary>Senha para autenticar nos nós Sentinel. Opcional.</summary>
+    public string? SentinelPassword { get; set; }
 
     /// <summary>
     ///     Identidade desta instância para eleição de líder (valor gravado no lock). Quando nulo, usa
