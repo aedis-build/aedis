@@ -12,20 +12,26 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// </summary>
 public static class TokenProtectionServiceCollectionExtensions
 {
-    /// <summary>Registra a denylist de tokens (<see cref="CacheTokenDenylist" />). Imposta na validação do JWT do provider.</summary>
-    public static IServiceCollection AddAedisTokenDenylist(this IServiceCollection services) {
+    /// <summary>
+    ///     Registra a denylist de tokens (<see cref="CacheTokenDenylist" />) e o serviço administrativo de
+    ///     revogação (<see cref="ITokenRevocation" />), vinculando <see cref="TokenDenylistOptions" /> à seção
+    ///     <c>Security:TokenDenylist</c>. A imposição ocorre na validação do JWT do provider.
+    /// </summary>
+    public static IServiceCollection AddAedisTokenDenylist(this IServiceCollection services, IConfiguration configuration) {
+        services.Configure<TokenDenylistOptions>(configuration.GetSection(TokenDenylistOptions.SectionName));
         services.TryAddSingleton<ITokenDenylist, CacheTokenDenylist>();
+        services.TryAddSingleton<ITokenRevocation, TokenRevocation>();
         return services;
     }
 
     /// <summary>
     ///     Registra a proteção completa do cenário de token vazado: o <see cref="IBruteForceGuard" /> (com os
-    ///     3 níveis de bloqueio), a <see cref="ITokenDenylist" /> e o <see cref="ITokenAbuseGuard" /> (scoped)
-    ///     que liga ambos ao token/usuário atual.
+    ///     3 níveis de bloqueio), a <see cref="ITokenDenylist" /> + <see cref="ITokenRevocation" /> e o
+    ///     <see cref="ITokenAbuseGuard" /> (scoped) que liga tudo ao token/usuário atual.
     /// </summary>
     public static IServiceCollection AddAedisTokenAbuseGuard(this IServiceCollection services, IConfiguration configuration) {
         services.AddAedisBruteForceGuard(configuration);
-        services.AddAedisTokenDenylist();
+        services.AddAedisTokenDenylist(configuration);
         services.TryAddScoped<ITokenAbuseGuard, TokenAbuseGuard>();
         return services;
     }

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Aedis.Security.Abstractions;
 using Aedis.Security.Keycloak;
 using Microsoft.AspNetCore.Authentication;
@@ -63,8 +64,25 @@ public static class KeycloakServiceCollectionExtensions
         if (denylist is null)
             return;
 
-        var tokenId = context.Principal?.FindFirst("jti")?.Value;
-        if (tokenId is not null && await denylist.IsRevokedAsync(tokenId, context.HttpContext.RequestAborted))
+        var principal = context.Principal;
+        var cancellationToken = context.HttpContext.RequestAborted;
+
+        var tokenId = principal?.FindFirst("jti")?.Value;
+        if (tokenId is not null && await denylist.IsRevokedAsync(tokenId, cancellationToken)) {
             context.Fail("Token revogado.");
+            return;
+        }
+
+        var subject = principal?.FindFirst("sub")?.Value;
+        var issuedAt = ReadIssuedAt(principal);
+        if (subject is not null && issuedAt is not null && await denylist.IsUserRevokedAsync(subject, issuedAt.Value, cancellationToken))
+            context.Fail("Sessões do usuário revogadas.");
+    }
+
+    private static DateTimeOffset? ReadIssuedAt(ClaimsPrincipal? principal) {
+        var issuedAt = principal?.FindFirst("iat")?.Value;
+        return issuedAt is not null && long.TryParse(issuedAt, out var unixSeconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(unixSeconds)
+            : null;
     }
 }
