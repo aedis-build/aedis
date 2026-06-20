@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    Hardening de binário opt-in para publicação NativeAOT. É um NO-OP fora de AOT:
+    no modelo gerenciado (JIT) o processo já herda ASLR/DEP/NX/CFG/CET do runtime e do SO,
+    e o código é memory-safe. Só atua quando o app define <PublishAot>true</PublishAot>.
+    Ver docs/SECURITY-HARDENING.md.
+  -->
+
+  <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+    <!-- Control Flow Guard e CET (shadow stack) no Windows; ignorados em outras plataformas. -->
+    <ControlFlowGuard>Guard</ControlFlowGuard>
+    <CetCompat>true</CetCompat>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.StartsWith('linux'))">
+    <!-- RELRO completo no Linux: GOT read-only + binding imediato (mitiga GOT/PLT overwrite). -->
+    <LinkerArg Include="-Wl,-z,relro,-z,now" />
+  </ItemGroup>
+
+</Project>

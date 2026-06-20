@@ -1,0 +1,51 @@
+# Trecho de Deployment com securityContext endurecido para um serviço Aedis.
+# Aplica anti-escalada-de-privilégio e redução de superfície no nível do SO/orquestrador:
+# non-root, root FS read-only, drop de todas as capabilities, no-new-privileges e seccomp default.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aedis-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aedis-service
+  template:
+    metadata:
+      labels:
+        app: aedis-service
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1654          # $APP_UID das imagens chiseled do .NET
+        runAsGroup: 1654
+        fsGroup: 1654
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: registry.example.com/aedis-service:latest
+          ports:
+            - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+      volumes:
+        - name: tmp
+          emptyDir: {}

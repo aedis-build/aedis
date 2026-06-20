@@ -32,6 +32,7 @@ Uma biblioteca entrega **controles técnicos de camada de aplicação**. Por iss
 | 16 | Compressão de resposta consciente de HTTPS | `AedisApiHost` (response compression) | — | — | — | trade-off documentado (BREACH) |
 | 17 | Anti-força-bruta por credencial com bloqueio em 3 níveis configuráveis (chaveado pelo alvo, não pelo IP → imune a IP-rotation; distribuído via ICache) | `IBruteForceGuard`/`CacheBruteForceGuard` | A07 | PR.AA, DE.CM | A.8.5 | M1036; mitiga T1110 (incl. T1110.003 com rotação de IP) |
 | 18 | Revogação de token (denylist distribuída imposta na validação do JWT): por `jti` (token vazado) ou por usuário `sub` (corte de sessão por `iat` — kill-all-sessions); guard de abuso que revoga ao detectar uso abusivo; e serviço/endpoint administrativo de revogação (SOC) | `ITokenDenylist`, `ITokenAbuseGuard`, `ITokenRevocation`, `MapAedisTokenRevocation` | A07, A01 | PR.AA-01, RS.MI | A.8.5 | M1018; mitiga T1528, T1550.001 (uso de token roubado) |
+| 19 | Código gerenciado **memory-safe** (zero `unsafe`/`stackalloc`) — elimina estruturalmente a classe de buffer overflow; ASLR/DEP/NX/CFG/CET herdados do runtime/SO; hardening de AOT opt-in | C# + runtime .NET; `Aedis.Build` (props AOT); `docs/SECURITY-HARDENING.md` | A06 | PR.PS | A.8.28 | M1050; mitiga T1203 / corrupção de memória |
 
 ## Fora do escopo da biblioteca (responsabilidade do operador)
 
@@ -42,6 +43,7 @@ Uma biblioteca entrega **controles técnicos de camada de aplicação**. Por iss
 | Hardening de SO, container e cluster | imagem base, políticas do Kubernetes, admission controllers |
 | WAF / proteção DDoS de borda | camada de rede/CDN |
 | Brute force de **credencial** (login) e **revogação definitiva** de conta/sessão | **IdP (Keycloak)**: o app nunca vê a senha — o ataque de credencial bate na porta do IdP, que tem brute-force detection nativo + disable/lockout de conta + logout de sessão. O app cobre o abuso *autenticado* (token válido/vazado) via `IBruteForceGuard` + denylist local, sem credencial de IdP. |
+| Endurecimento de **binário/processo** (ASLR/DEP/NX/CFG/CET) e de **imagem** (non-root, root FS read-only, drop de capabilities, `no-new-privileges`, seccomp) | **runtime .NET + SO** (automático no código gerenciado — `unsafe` ausente elimina buffer overflow) e **deploy/imagem**: baseline em `docs/SECURITY-HARDENING.md` + `docs/hardening/`. RELRO/canary só se aplicam em publish **NativeAOT** (props opt-in em `Aedis.Build`). |
 | Gestão de risco, políticas, treinamento, resposta a incidentes (ISMS) | processo organizacional ISO 27001 |
 | Backup e recuperação de dados | infraestrutura de dados |
 

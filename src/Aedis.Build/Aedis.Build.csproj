@@ -19,4 +19,9 @@
     <ProjectReference Include="..\Aedis.Diagnostics\Aedis.Diagnostics.csproj" />
   </ItemGroup>
 
+  <!-- Props de hardening AOT (opt-in) entregue transitivamente a quem consome o meta-pacote. -->
+  <ItemGroup>
+    <None Include="buildTransitive\Aedis.Build.props" Pack="true" PackagePath="buildTransitive\Aedis.Build.props" />
+  </ItemGroup>
+
 </Project>
