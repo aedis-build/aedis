@@ -1,50 +1,63 @@
-# Deployment endurecido para AedisApi1: non-root, root FS read-only, drop de capabilities,
-# no-new-privileges e seccomp default. Probes apontam para os endpoints de health do AedisApiHost.
+# Manifesto endurecido: non-root, filesystem read-only, sem escalonamento de privilégio,
+# capabilities zeradas e seccomp RuntimeDefault. Ajuste imagem, réplicas e recursos conforme seu cluster.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: aedisapi1
+  name: aedis.app1
+  labels:
+    app: aedis.app1
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: aedisapi1
+      app: aedis.app1
   template:
     metadata:
       labels:
-        app: aedisapi1
+        app: aedis.app1
     spec:
-      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1654
-        runAsGroup: 1654
-        fsGroup: 1654
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: app
-          image: registry.example.com/aedisapi1:latest
+        - name: api
+          image: aedis.app1:latest
           ports:
             - containerPort: 8080
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            privileged: false
+            runAsNonRoot: true
             capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
+              drop: [ "ALL" ]
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
           livenessProbe:
             httpGet:
               path: /health/live
               port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health/ready
               port: 8080
-      volumes:
-        - name: tmp
-          emptyDir: {}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aedis.app1
+spec:
+  selector:
+    app: aedis.app1
+  ports:
+    - port: 80
+      targetPort: 8080

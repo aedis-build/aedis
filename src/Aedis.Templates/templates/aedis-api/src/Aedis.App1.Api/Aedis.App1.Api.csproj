@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Aedis.App1.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aedis.Hosting.AspNetCore" />
+    <PackageReference Include="Aedis.Security.Keycloak" />
+    <PackageReference Include="Aedis.Security" />
+    <PackageReference Include="Aedis.Database.Postgres" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.App1.Application\Aedis.App1.Application.csproj" />
+    <ProjectReference Include="..\Aedis.App1.Infrastructure\Aedis.App1.Infrastructure.csproj" />
+    <ProjectReference Include="..\Aedis.App1.Domain\Aedis.App1.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

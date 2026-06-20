@@ -1,23 +1,29 @@
 name: Templates
 
 # Empacota, valida (E2E real) e publica os templates `dotnet new` do Aedis.
-# Garante que `dotnet new install Aedis.Templates` esteja disponível e funcional.
+# A validação vai além da instanciação: empacota a solução num feed local e dá build + test no app
+# gerado pelo aedis-api, garantindo que o template compila contra os pacotes Aedis reais.
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'src/Aedis.Templates/**'
+      - 'src/Aedis.Hosting.AspNetCore/**'
       - '.github/workflows/templates.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'src/Aedis.Templates/**'
+      - 'src/Aedis.Hosting.AspNetCore/**'
   release:
     types: [ published ]
 
 permissions:
   contents: read
+
+env:
+  FEED: ${{ github.workspace }}/artifacts/feed
 
 jobs:
   validate-and-publish:
@@ -49,23 +55,47 @@ jobs:
             exit 1
           fi
 
-      - name: Pack
-        run: dotnet pack src/Aedis.Templates/Aedis.Templates.csproj -c Release -o ./artifacts
+      - name: Pack da solução (feed local)
+        continue-on-error: true
+        run: dotnet pack Aedis.slnx -c Release -o "$FEED"
 
-      - name: Instalar e instanciar (E2E)
+      - name: Verificar pacotes essenciais no feed
         run: |
-          dotnet new install ./artifacts/Aedis.Templates.*.nupkg
-          dotnet new aedis-api -n SmokeApi -o /tmp/smoke-api
+          REQUIRED="Aedis.Templates Aedis.Domain Aedis.Commands Aedis.Exceptions Aedis.Database.Abstractions Aedis.Database.Postgres Aedis.Hosting.AspNetCore Aedis.Security Aedis.Security.Keycloak Aedis.Hosting.Worker"
+          for p in $REQUIRED; do
+            ls "$FEED/$p."*.nupkg >/dev/null 2>&1 || { echo "::error::pacote essencial ausente no feed: $p"; exit 1; }
+          done
+
+      - name: Instalar e instanciar (api/worker/lib)
+        run: |
+          dotnet new install "$FEED"/Aedis.Templates.*.nupkg
+          dotnet new aedis-api -n Smoke -o /tmp/smoke-api
           dotnet new aedis-worker -n SmokeWorker -o /tmp/smoke-worker
           dotnet new aedis-lib -n SmokeLib -o /tmp/smoke-lib
-          test -f /tmp/smoke-api/SmokeApi.csproj
+          test -f /tmp/smoke-api/Smoke.slnx
+          test -f /tmp/smoke-api/src/Smoke.Api/Controllers/ProductsController.cs
           test -f /tmp/smoke-worker/SmokeWorker.csproj
           test -f /tmp/smoke-lib/SmokeLib.csproj
-          if grep -rqE "AedisApi1|AedisWorker1|AedisLibrary1|AEDIS_PKG_VERSION" /tmp/smoke-api /tmp/smoke-worker /tmp/smoke-lib; then
+          if grep -rqE "Aedis\.App1|AedisWorker1|AedisLibrary1|AEDIS_PKG_VERSION|aedis\.app1" /tmp/smoke-api /tmp/smoke-worker /tmp/smoke-lib; then
             echo "::error::placeholder não substituído nos projetos gerados"
             exit 1
           fi
 
+      - name: Build + test do app gerado (contra o feed)
+        run: |
+          cat > /tmp/smoke-api/nuget.config <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+              <add key="aedis-local" value="$FEED" />
+            </packageSources>
+          </configuration>
+          EOF
+          dotnet build /tmp/smoke-api/Smoke.slnx -c Release
+          dotnet test /tmp/smoke-api/Smoke.slnx -c Release --no-build
+
       - name: Publicar no NuGet (release)
         if: github.event_name == 'release'
-        run: dotnet nuget push ./artifacts/Aedis.Templates.*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+        run: dotnet nuget push "$FEED"/Aedis.Templates.*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate

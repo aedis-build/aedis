@@ -9,6 +9,7 @@
     <IncludeSymbols>false</IncludeSymbols>
     <IncludeContentInPack>true</IncludeContentInPack>
     <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
     <NoWarn>$(NoWarn);NU5128</NoWarn>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>

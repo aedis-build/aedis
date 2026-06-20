@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Aedis.Commands" />
+    <PackageReference Include="Aedis.Exceptions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.App1.Domain\Aedis.App1.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
