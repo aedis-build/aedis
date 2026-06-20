@@ -21,9 +21,11 @@ public sealed class BruteForceGuardTests
         var options = Options.Create(new BruteForceOptions {
             MaxAttempts = 3,
             AttemptWindow = TimeSpan.FromMinutes(15),
-            BaseLockout = TimeSpan.FromMinutes(1),
-            EscalationFactor = 2.0,
-            MaxLockout = TimeSpan.FromHours(1),
+            Lockout = new BruteForceLockoutLevels {
+                Level1 = TimeSpan.FromMinutes(1),
+                Level2 = TimeSpan.FromMinutes(15),
+                Level3 = TimeSpan.FromHours(1)
+            },
             EscalationWindow = TimeSpan.FromHours(12)
         });
         return (new CacheBruteForceGuard(new FakeCache(time), options, time), time);
@@ -43,20 +45,20 @@ public sealed class BruteForceGuardTests
     }
 
     [Fact]
-    public async Task O_bloqueio_escala_a_cada_reincidencia() {
+    public async Task O_bloqueio_endurece_nos_tres_niveis_a_cada_reincidencia() {
         var (guard, time) = Create();
 
-        var first = await FailUntilBlockedAsync(guard, "alice");
+        var level1 = await FailUntilBlockedAsync(guard, "alice");
         time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(1));
 
-        var second = await FailUntilBlockedAsync(guard, "alice");
-        time.Advance(TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(1));
+        var level2 = await FailUntilBlockedAsync(guard, "alice");
+        time.Advance(TimeSpan.FromMinutes(15) + TimeSpan.FromSeconds(1));
 
-        var third = await FailUntilBlockedAsync(guard, "alice");
+        var level3 = await FailUntilBlockedAsync(guard, "alice");
 
-        first.RetryAfter.Should().Be(TimeSpan.FromMinutes(1));
-        second.RetryAfter.Should().Be(TimeSpan.FromMinutes(2));
-        third.RetryAfter.Should().Be(TimeSpan.FromMinutes(4));
+        level1.RetryAfter.Should().Be(TimeSpan.FromMinutes(1));
+        level2.RetryAfter.Should().Be(TimeSpan.FromMinutes(15));
+        level3.RetryAfter.Should().Be(TimeSpan.FromHours(1));
     }
 
     [Fact]

@@ -78,15 +78,11 @@ public sealed class CacheBruteForceGuard : IBruteForceGuard
         return value is not null && int.TryParse(value, out var count) ? count : 0;
     }
 
-    private TimeSpan ComputeLockout(long strikes) {
-        var multiplier = Math.Pow(_options.EscalationFactor, Math.Max(0, strikes - 1));
-        var ticks = _options.BaseLockout.Ticks * multiplier;
-
-        if (double.IsInfinity(ticks) || ticks >= _options.MaxLockout.Ticks)
-            return _options.MaxLockout;
-
-        return TimeSpan.FromTicks((long)ticks);
-    }
+    private TimeSpan ComputeLockout(long strikes) => strikes switch {
+        <= 1 => _options.Lockout.Level1,
+        2 => _options.Lockout.Level2,
+        _ => _options.Lockout.Level3
+    };
 
     private string FailureKey(string id) => $"{_options.KeyPrefix}{id}:fails";
     private string LockKey(string id) => $"{_options.KeyPrefix}{id}:lock";

@@ -52,6 +52,19 @@ public static class KeycloakServiceCollectionExtensions
                     NameClaimType = options.NameClaimType,
                     RoleClaimType = options.RoleClaimType
                 };
+                jwt.Events = new JwtBearerEvents {
+                    OnTokenValidated = RejectRevokedTokenAsync
+                };
             });
+    }
+
+    private static async Task RejectRevokedTokenAsync(TokenValidatedContext context) {
+        var denylist = context.HttpContext.RequestServices.GetService<ITokenDenylist>();
+        if (denylist is null)
+            return;
+
+        var tokenId = context.Principal?.FindFirst("jti")?.Value;
+        if (tokenId is not null && await denylist.IsRevokedAsync(tokenId, context.HttpContext.RequestAborted))
+            context.Fail("Token revogado.");
     }
 }

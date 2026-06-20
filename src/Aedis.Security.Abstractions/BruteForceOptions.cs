@@ -3,8 +3,9 @@ namespace Aedis.Security.Abstractions;
 /// <summary>
 ///     Configura a proteção contra força bruta por credencial, vinculada à seção <c>Security:BruteForce</c>.
 ///     Ao exceder <see cref="MaxAttempts" /> falhas dentro de <see cref="AttemptWindow" />, a credencial é
-///     bloqueada por <see cref="BaseLockout" />; cada bloqueio subsequente (enquanto a memória de
-///     escalonamento dura) multiplica a duração por <see cref="EscalationFactor" />, até <see cref="MaxLockout" />.
+///     bloqueada; a duração do bloqueio (o período de 429) endurece em <strong>três níveis</strong>
+///     configuráveis (<see cref="Lockout" />) conforme a reincidência, enquanto a memória de escalonamento
+///     (<see cref="EscalationWindow" />) durar.
 /// </summary>
 public sealed class BruteForceOptions
 {
@@ -17,21 +18,32 @@ public sealed class BruteForceOptions
     /// <summary>Janela de contagem das falhas. Default 15 minutos.</summary>
     public TimeSpan AttemptWindow { get; set; } = TimeSpan.FromMinutes(15);
 
-    /// <summary>Duração do primeiro bloqueio. Default 1 minuto.</summary>
-    public TimeSpan BaseLockout { get; set; } = TimeSpan.FromMinutes(1);
-
-    /// <summary>Fator de multiplicação da duração a cada bloqueio repetido. Default 2,0 (dobra a cada vez).</summary>
-    public double EscalationFactor { get; set; } = 2.0;
-
-    /// <summary>Teto da duração de bloqueio, por mais que escale. Default 1 hora.</summary>
-    public TimeSpan MaxLockout { get; set; } = TimeSpan.FromHours(1);
+    /// <summary>Durações de bloqueio (período de 429) em três níveis, do mais brando ao mais severo.</summary>
+    public BruteForceLockoutLevels Lockout { get; set; } = new();
 
     /// <summary>
     ///     Por quanto tempo o nível de escalonamento (número de bloqueios) é lembrado. Reincidências dentro
-    ///     desta janela continuam escalando; após ela, o próximo bloqueio volta à duração base. Default 12 horas.
+    ///     desta janela sobem de nível; após ela, o próximo bloqueio volta ao nível 1. Default 12 horas.
     /// </summary>
     public TimeSpan EscalationWindow { get; set; } = TimeSpan.FromHours(12);
 
     /// <summary>Prefixo das chaves no cache. Default <c>security:bruteforce:</c>.</summary>
     public string KeyPrefix { get; set; } = "security:bruteforce:";
+}
+
+/// <summary>
+///     Durações do bloqueio (período de 429) em três níveis crescentes. O 1º bloqueio aplica
+///     <see cref="Level1" />; reincidências sobem para <see cref="Level2" /> e depois <see cref="Level3" />,
+///     que é o teto e permanece nas reincidências seguintes.
+/// </summary>
+public sealed class BruteForceLockoutLevels
+{
+    /// <summary>Duração do bloqueio no 1º nível (primeira reincidência). Default 1 minuto.</summary>
+    public TimeSpan Level1 { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>Duração do bloqueio no 2º nível. Default 15 minutos.</summary>
+    public TimeSpan Level2 { get; set; } = TimeSpan.FromMinutes(15);
+
+    /// <summary>Duração do bloqueio no 3º nível (teto). Default 1 hora.</summary>
+    public TimeSpan Level3 { get; set; } = TimeSpan.FromHours(1);
 }
