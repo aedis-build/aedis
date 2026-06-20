@@ -24,4 +24,10 @@ public sealed class HttpClientProfile
 
     /// <summary>Cabeçalhos aplicados a toda requisição deste cliente (ex.: <c>User-Agent</c>, chaves de API fixas).</summary>
     public IDictionary<string, string> DefaultHeaders { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    ///     Política anti-SSRF do transporte. Quando habilitada, recusa conexões a endereços internos
+    ///     verificando o IP resolvido no momento de conectar (imune a DNS rebinding). Default desligada (opt-in).
+    /// </summary>
+    public SsrfPolicy Ssrf { get; init; } = new();
 }

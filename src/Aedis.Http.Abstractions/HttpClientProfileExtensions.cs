@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Aedis.Http.Abstractions;
@@ -22,6 +24,9 @@ public static class HttpClientProfileExtensions
                 handler.SslOptions.ClientCertificates.Add(certificate);
         }
 
+        if (profile.Ssrf.Enabled)
+            handler.ConnectCallback = CreateSsrfGuardedConnect(profile.Ssrf);
+
         var httpClient = new HttpClient(handler, disposeHandler: true) {
             Timeout = profile.Timeout
         };
@@ -34,4 +39,32 @@ public static class HttpClientProfileExtensions
 
         return httpClient;
     }
+
+    private static Func<SocketsHttpConnectionContext, CancellationToken, ValueTask<Stream>> CreateSsrfGuardedConnect(SsrfPolicy policy) =>
+        async (context, cancellationToken) => {
+            var host = context.DnsEndPoint.Host;
+            if (policy.IsHostBlocked(host))
+                throw new SsrfBlockedException(host, null);
+
+            var addresses = IPAddress.TryParse(host, out var literal)
+                ? [literal]
+                : await Dns.GetHostAddressesAsync(host, cancellationToken);
+
+            var permitted = policy.IsHostAllowlisted(host)
+                ? addresses
+                : addresses.Where(address => !policy.IsAddressBlocked(address)).ToArray();
+
+            if (permitted.Length == 0)
+                throw new SsrfBlockedException(host, addresses.Length > 0 ? addresses[0] : null);
+
+            var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+            try {
+                await socket.ConnectAsync(permitted, context.DnsEndPoint.Port, cancellationToken);
+                return new NetworkStream(socket, ownsSocket: true);
+            }
+            catch {
+                socket.Dispose();
+                throw;
+            }
+        };
 }
