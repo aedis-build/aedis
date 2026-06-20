@@ -72,18 +72,8 @@ public abstract class AedisApiHost
     /// <param name="args">Argumentos de linha de comando recebidos pelo <c>Main</c>.</param>
     /// <param name="cancellationToken">Token que sinaliza o encerramento gracioso do host.</param>
     public async Task RunAsync(string[] args, CancellationToken cancellationToken = default) {
-        var builder = WebApplication.CreateBuilder(args);
-        Log.Logger = AedisSerilog.CreateLogger(builder.Configuration);
-
         try {
-            builder.ConfigureAedisKestrelHardening();
-            ConfigureInfrastructure(builder);
-            ConfigureSecurity(builder);
-            ConfigureServices(builder.Configuration, builder.Services);
-
-            var app = builder.Build();
-            BuildPipeline(app);
-
+            var app = BuildApplication(args);
             await app.RunAsync(cancellationToken);
         }
         catch (Exception exception) {
@@ -93,6 +83,29 @@ public abstract class AedisApiHost
         finally {
             await Log.CloseAndFlushAsync();
         }
+    }
+
+    /// <summary>
+    ///     Constrói o <see cref="WebApplication" /> totalmente configurado (infra, segurança, pipeline) sem
+    ///     executá-lo. Costura de teste: <paramref name="configureBuilder" /> roda logo após a criação do
+    ///     builder — antes da configuração de segurança — permitindo aos testes ajustar ambiente, configuração
+    ///     e servidor (ex.: <c>UseTestServer</c>). Em produção, <see cref="RunAsync" /> o invoca e executa.
+    /// </summary>
+    internal WebApplication BuildApplication(string[] args, Action<WebApplicationBuilder>? configureBuilder = null) {
+        var builder = WebApplication.CreateBuilder(args);
+        Log.Logger = AedisSerilog.CreateLogger(builder.Configuration);
+
+        configureBuilder?.Invoke(builder);
+
+        builder.ConfigureAedisKestrelHardening();
+        ConfigureInfrastructure(builder);
+        ConfigureSecurity(builder);
+        ConfigureServices(builder.Configuration, builder.Services);
+
+        var app = builder.Build();
+        BuildPipeline(app);
+
+        return app;
     }
 
     private void ConfigureInfrastructure(WebApplicationBuilder builder) {

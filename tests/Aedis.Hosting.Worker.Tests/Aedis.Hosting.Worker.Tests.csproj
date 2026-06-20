@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Aedis.Hosting.AspNetCore\Aedis.Hosting.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\Aedis.Hosting.Worker\Aedis.Hosting.Worker.csproj" />
   </ItemGroup>
 
 </Project>

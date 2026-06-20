@@ -64,15 +64,26 @@ public abstract class AedisWorkerHost
     }
 
     private async Task RunWithHealthEndpointAsync(string[] args, CancellationToken cancellationToken) {
+        var app = BuildWebApplication(args);
+        await app.RunAsync(cancellationToken);
+    }
+
+    /// <summary>
+    ///     Constrói o host web mínimo (serviços + endpoint de health) sem executá-lo. Costura de teste:
+    ///     <paramref name="configureBuilder" /> roda após a criação do builder, permitindo aos testes ajustar
+    ///     ambiente, configuração e servidor (ex.: <c>UseTestServer</c>).
+    /// </summary>
+    internal WebApplication BuildWebApplication(string[] args, Action<WebApplicationBuilder>? configureBuilder = null) {
         var builder = WebApplication.CreateBuilder(args);
         Log.Logger = AedisSerilog.CreateLogger(builder.Configuration);
 
+        configureBuilder?.Invoke(builder);
         RegisterServices(builder.Services, builder.Configuration);
 
         var app = builder.Build();
         app.MapAedisHealthChecks();
 
-        await app.RunAsync(cancellationToken);
+        return app;
     }
 
     private async Task RunHeadlessAsync(string[] args, CancellationToken cancellationToken) {
