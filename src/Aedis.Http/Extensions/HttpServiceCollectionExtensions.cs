@@ -3,6 +3,7 @@ using Aedis.Http.Abstractions.Authentication;
 using Aedis.Http.Authentication;
 using Aedis.Http.Native;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -42,7 +43,9 @@ public static class HttpServiceCollectionExtensions
             return new OAuthTokenProvider(
                 provider.GetRequiredService<IAedisHttpClientFactory>(),
                 provider.GetRequiredService<ITokenStore>(),
-                options);
+                options,
+                provider.GetService<TimeProvider>(),
+                provider.GetService<ILogger<OAuthTokenProvider>>());
         });
 
         services.AddKeyedSingleton<IAedisHttpClient>(name, (provider, key) => {

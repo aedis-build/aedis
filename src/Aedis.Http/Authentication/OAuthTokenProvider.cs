@@ -1,16 +1,18 @@
 using System.Text.Json.Serialization;
 using Aedis.Http.Abstractions;
 using Aedis.Http.Abstractions.Authentication;
+using Microsoft.Extensions.Logging;
 
 namespace Aedis.Http.Authentication;
 
 /// <summary>
-///     Template agnóstico de provedor de token OAuth2 <c>client_credentials</c>. Implementa o ciclo
-///     get-or-refresh: lê do <see cref="ITokenStore" />; em falta, obtém um novo token usando a
-///     <see cref="IAuthenticationStrategy" /> configurada e o cacheia com um TTL derivado do
-///     <c>expires_in</c> (menos a margem de segurança, limitado entre piso e teto). A obtenção é protegida por
-///     um portão de concorrência (single-flight): chamadas paralelas em cache frio resultam em uma única
-///     busca, evitando o cache stampede. Funciona com qualquer <see cref="IAedisHttpClient" /> (nativo ou Flurl).
+///     Template agnóstico de provedor de token OAuth2 <c>client_credentials</c> com renovação proativa.
+///     Quando há um token válido, ele é servido imediatamente; ao entrar na janela de renovação
+///     (<c>RefreshAt</c>, antes da expiração real), dispara-se uma renovação em <strong>segundo plano</strong>
+///     enquanto o token atual segue sendo servido — nenhuma requisição espera por um token. A geração é
+///     coordenada para evitar race condition: single-flight em processo (uma busca por instância) e lock de
+///     geração via <see cref="ITokenStore.TryAcquireRefreshLockAsync" /> (uma busca por toda a frota, quando o
+///     store é distribuído). Em cache frio, a busca é síncrona; sob falha, o erro propaga (fail-fast).
 /// </summary>
 public sealed class OAuthTokenProvider : ITokenProvider
 {
@@ -18,13 +20,20 @@ public sealed class OAuthTokenProvider : ITokenProvider
     private readonly ITokenStore _tokenStore;
     private readonly OAuthTokenOptions _options;
     private readonly IAuthenticationStrategy _strategy;
+    private readonly TimeProvider _timeProvider;
+    private readonly ILogger<OAuthTokenProvider>? _logger;
     private readonly SemaphoreSlim _fetchGate = new(1, 1);
 
     /// <summary>
     ///     Cria o provedor a partir da fábrica de clientes, do store e das opções. O cliente de obtenção de
     ///     token é criado uma vez (reuso eficiente) sobre o transporte das opções.
     /// </summary>
-    public OAuthTokenProvider(IAedisHttpClientFactory httpClientFactory, ITokenStore tokenStore, OAuthTokenOptions options) {
+    public OAuthTokenProvider(
+        IAedisHttpClientFactory httpClientFactory,
+        ITokenStore tokenStore,
+        OAuthTokenOptions options,
+        TimeProvider? timeProvider = null,
+        ILogger<OAuthTokenProvider>? logger = null) {
         if (string.IsNullOrWhiteSpace(options.TokenEndpoint))
             throw new ArgumentException("OAuthTokenOptions.TokenEndpoint é obrigatório.", nameof(options));
 
@@ -32,34 +41,95 @@ public sealed class OAuthTokenProvider : ITokenProvider
         _httpClient = httpClientFactory.Create(options.Transport);
         _tokenStore = tokenStore;
         _options = options;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _logger = logger;
     }
 
     /// <inheritdoc />
     public async Task<string> GetTokenAsync(CancellationToken cancellationToken = default) {
+        var now = _timeProvider.GetUtcNow();
         var cached = await _tokenStore.GetAsync(_options.CacheKey, cancellationToken);
-        if (cached is not null)
-            return cached;
 
-        await _fetchGate.WaitAsync(cancellationToken);
-        try {
-            cached = await _tokenStore.GetAsync(_options.CacheKey, cancellationToken);
-            if (cached is not null)
-                return cached;
+        if (cached is not null && !cached.IsExpired(now)) {
+            if (cached.IsDueForRefresh(now))
+                TriggerBackgroundRefresh();
 
-            var (token, ttl) = await FetchTokenAsync(cancellationToken);
-            await _tokenStore.SetAsync(_options.CacheKey, token, ttl, cancellationToken);
-            return token;
+            return cached.AccessToken;
         }
-        finally {
-            _fetchGate.Release();
-        }
+
+        return await AcquireTokenAsync(cancellationToken);
     }
 
     /// <inheritdoc />
     public Task InvalidateAsync(CancellationToken cancellationToken = default) =>
         _tokenStore.RemoveAsync(_options.CacheKey, cancellationToken);
 
-    private async Task<(string Token, TimeSpan Ttl)> FetchTokenAsync(CancellationToken cancellationToken) {
+    /// <summary>
+    ///     Renova o token sob o lock de geração: se outra chamada/instância já o detém, não faz nada (o token
+    ///     atual continua válido e sendo servido). Usada pela renovação proativa em segundo plano.
+    /// </summary>
+    internal async Task RefreshAsync(CancellationToken cancellationToken = default) {
+        await using var lease = await _tokenStore.TryAcquireRefreshLockAsync(_options.CacheKey, _options.FetchLockDuration, cancellationToken);
+        if (lease is null)
+            return;
+
+        var cached = await _tokenStore.GetAsync(_options.CacheKey, cancellationToken);
+        if (cached is not null && !cached.IsDueForRefresh(_timeProvider.GetUtcNow()))
+            return;
+
+        await FetchAndStoreAsync(cancellationToken);
+    }
+
+    private async Task<string> AcquireTokenAsync(CancellationToken cancellationToken) {
+        await _fetchGate.WaitAsync(cancellationToken);
+        try {
+            var cached = await _tokenStore.GetAsync(_options.CacheKey, cancellationToken);
+            if (cached is not null && !cached.IsExpired(_timeProvider.GetUtcNow()))
+                return cached.AccessToken;
+
+            await using var lease = await _tokenStore.TryAcquireRefreshLockAsync(_options.CacheKey, _options.FetchLockDuration, cancellationToken);
+            if (lease is null) {
+                var awaited = await AwaitTokenFromOtherInstanceAsync(cancellationToken);
+                if (awaited is not null)
+                    return awaited;
+            }
+
+            return await FetchAndStoreAsync(cancellationToken);
+        }
+        finally {
+            _fetchGate.Release();
+        }
+    }
+
+    private void TriggerBackgroundRefresh() =>
+        _ = Task.Run(async () => {
+            try {
+                await RefreshAsync(CancellationToken.None);
+            }
+            catch (Exception exception) {
+                _logger?.LogWarning(exception, "Falha ao renovar o token em segundo plano; será renovado sob demanda.");
+            }
+        });
+
+    private async Task<string?> AwaitTokenFromOtherInstanceAsync(CancellationToken cancellationToken) {
+        for (var attempt = 0; attempt < 20; attempt++) {
+            await Task.Delay(50, cancellationToken);
+            var cached = await _tokenStore.GetAsync(_options.CacheKey, cancellationToken);
+            if (cached is not null && !cached.IsExpired(_timeProvider.GetUtcNow()))
+                return cached.AccessToken;
+        }
+
+        return null;
+    }
+
+    private async Task<string> FetchAndStoreAsync(CancellationToken cancellationToken) {
+        var (accessToken, expiresInSeconds) = await FetchTokenAsync(cancellationToken);
+        var token = StampToken(accessToken, expiresInSeconds);
+        await _tokenStore.SetAsync(_options.CacheKey, token, cancellationToken);
+        return token.AccessToken;
+    }
+
+    private async Task<(string AccessToken, int ExpiresInSeconds)> FetchTokenAsync(CancellationToken cancellationToken) {
         var request = _strategy.BuildTokenRequest(_options.TokenEndpoint);
         var response = await _httpClient.SendAsync(request, cancellationToken);
 
@@ -72,21 +142,27 @@ public sealed class OAuthTokenProvider : ITokenProvider
         if (string.IsNullOrEmpty(payload.AccessToken))
             throw new InvalidOperationException("Resposta do endpoint de token sem access_token.");
 
-        return (payload.AccessToken, CalculateTtl(payload.ExpiresIn));
+        return (payload.AccessToken, payload.ExpiresIn);
     }
 
     /// <summary>
-    ///     Calcula o TTL de cache do token: parte de <c>max(60s, expires_in)</c>, subtrai a margem de
-    ///     segurança e limita entre o piso e o teto configurados.
+    ///     Carimba o token com seus instantes de expiração e renovação: vida = <c>max(60s, expires_in)</c>;
+    ///     a renovação proativa ocorre a vida menos a margem de segurança, limitada entre o piso e o teto
+    ///     configurados e nunca após a expiração.
     /// </summary>
-    internal TimeSpan CalculateTtl(int expiresInSeconds) {
+    internal CachedToken StampToken(string accessToken, int expiresInSeconds) {
+        var now = _timeProvider.GetUtcNow();
         var lifetime = TimeSpan.FromSeconds(Math.Max(60, expiresInSeconds));
-        var ttl = lifetime - _options.ExpirationSkew;
 
-        if (ttl < _options.MinimumLifetime)
-            return _options.MinimumLifetime;
+        var untilRefresh = lifetime - _options.ExpirationSkew;
+        if (untilRefresh < _options.MinimumLifetime)
+            untilRefresh = _options.MinimumLifetime;
+        if (untilRefresh > _options.MaximumLifetime)
+            untilRefresh = _options.MaximumLifetime;
+        if (untilRefresh > lifetime)
+            untilRefresh = lifetime;
 
-        return ttl > _options.MaximumLifetime ? _options.MaximumLifetime : ttl;
+        return new CachedToken(accessToken, now + lifetime, now + untilRefresh);
     }
 
     private sealed class TokenResponse

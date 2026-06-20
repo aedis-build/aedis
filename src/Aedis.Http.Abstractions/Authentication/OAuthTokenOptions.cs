@@ -2,9 +2,11 @@ namespace Aedis.Http.Abstractions.Authentication;
 
 /// <summary>
 ///     Configura um provedor de token OAuth2 <c>client_credentials</c>: endpoint, estratégia de credencial,
-///     perfil de transporte (incl. mTLS), chave de cache e a política de validade (skew e limites). Os
-///     defaults de validade replicam o padrão observado nas integrações de produção: margem de segurança de
-///     30 minutos, com piso de 1 minuto e teto de 4 horas sobre o <c>expires_in</c> recebido.
+///     perfil de transporte (incl. mTLS), chave de cache e a política de renovação. O token é renovado de
+///     forma <strong>proativa</strong>: a partir de <see cref="ExpirationSkew" /> antes da expiração real
+///     (derivada do <c>expires_in</c>), uma renovação ocorre em segundo plano enquanto o token atual,
+///     ainda válido, continua sendo servido. Defaults observados em produção: antecedência de 30 minutos,
+///     com janela de renovação entre 1 minuto e 4 horas após a emissão.
 /// </summary>
 public sealed class OAuthTokenOptions
 {
@@ -20,12 +22,18 @@ public sealed class OAuthTokenOptions
     /// <summary>Chave sob a qual o token é armazenado. Deve ser única por integração (ex.: <c>"meu-provedor:auth:token"</c>).</summary>
     public string CacheKey { get; set; } = "aedis:http:token";
 
-    /// <summary>Margem de segurança subtraída da validade do token para renová-lo antes de expirar. Default 30 minutos.</summary>
+    /// <summary>Antecedência com que o token é renovado antes de expirar (o <c>RefreshAt</c> = expiração − este valor). Default 30 minutos.</summary>
     public TimeSpan ExpirationSkew { get; set; } = TimeSpan.FromMinutes(30);
 
-    /// <summary>Validade mínima aplicada ao token cacheado (piso do TTL). Default 1 minuto.</summary>
+    /// <summary>Tempo mínimo após a emissão antes de renovar (piso da janela de renovação). Default 1 minuto.</summary>
     public TimeSpan MinimumLifetime { get; set; } = TimeSpan.FromMinutes(1);
 
-    /// <summary>Validade máxima aplicada ao token cacheado (teto do TTL). Default 4 horas.</summary>
+    /// <summary>Tempo máximo após a emissão antes de renovar (teto da janela de renovação). Default 4 horas.</summary>
     public TimeSpan MaximumLifetime { get; set; } = TimeSpan.FromHours(4);
+
+    /// <summary>
+    ///     TTL do lock distribuído de geração/renovação do token — tempo suficiente para buscar um token, com
+    ///     auto-liberação caso o detentor falhe (evita lock preso). Default 30 segundos.
+    /// </summary>
+    public TimeSpan FetchLockDuration { get; set; } = TimeSpan.FromSeconds(30);
 }

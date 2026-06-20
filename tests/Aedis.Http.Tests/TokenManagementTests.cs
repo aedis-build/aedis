@@ -10,10 +10,13 @@ namespace Aedis.Http.Tests;
 
 /// <summary>
 ///     Garante o ciclo de vida do token no <see cref="OAuthTokenProvider" />: get-or-refresh (busca uma vez,
-///     reusa do cache), single-flight (uma única busca sob concorrência) e a política de TTL (skew + limites).
+///     reusa do cache), single-flight (uma única busca sob concorrência), a renovação proativa antes da
+///     expiração e o respeito ao lock de geração (não gera quando outro detém o lock).
 /// </summary>
 public sealed class OAuthTokenProviderTests
 {
+    private static readonly DateTimeOffset Start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public async Task Busca_o_token_uma_vez_e_reusa_do_cache() {
         var client = ClientReturning(TokenResponses.Of("abc"));
@@ -41,13 +44,48 @@ public sealed class OAuthTokenProviderTests
     }
 
     [Theory]
-    [InlineData(3600, 30)]
-    [InlineData(120, 1)]
-    [InlineData(36000, 240)]
-    public void Calcula_o_ttl_com_skew_e_limites(int expiresInSeconds, int expectedMinutes) {
-        var provider = new OAuthTokenProvider(FactoryFor(Substitute.For<IAedisHttpClient>()), new InMemoryTokenStore(), TokenResponses.Options());
+    [InlineData(3600, 60, 30)]
+    [InlineData(120, 2, 1)]
+    [InlineData(36000, 600, 240)]
+    public void Carimba_a_expiracao_e_o_ponto_de_renovacao(int expiresInSeconds, int expiryMinutes, int refreshMinutes) {
+        var time = new FakeTimeProvider(Start);
+        var provider = new OAuthTokenProvider(FactoryFor(Substitute.For<IAedisHttpClient>()), new InMemoryTokenStore(time), TokenResponses.Options(), time);
 
-        provider.CalculateTtl(expiresInSeconds).Should().Be(TimeSpan.FromMinutes(expectedMinutes));
+        var token = provider.StampToken("t", expiresInSeconds);
+
+        token.ExpiresAt.Should().Be(Start.AddMinutes(expiryMinutes));
+        token.RefreshAt.Should().Be(Start.AddMinutes(refreshMinutes));
+    }
+
+    [Fact]
+    public async Task Renova_proativamente_ao_entrar_na_janela_antes_de_expirar() {
+        var time = new FakeTimeProvider(Start);
+        var store = new InMemoryTokenStore(time);
+        var client = Substitute.For<IAedisHttpClient>();
+        client.SendAsync(Arg.Any<AedisHttpRequest>(), Arg.Any<CancellationToken>())
+            .Returns(TokenResponses.Of("token-1"), TokenResponses.Of("token-2"));
+        var provider = new OAuthTokenProvider(FactoryFor(client), store, TokenResponses.Options(), time);
+
+        (await provider.GetTokenAsync()).Should().Be("token-1");
+
+        time.Advance(TimeSpan.FromMinutes(31));
+        await provider.RefreshAsync();
+
+        (await provider.GetTokenAsync()).Should().Be("token-2", "o token foi renovado proativamente ainda válido");
+        await client.Received(2).SendAsync(Arg.Any<AedisHttpRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Nao_gera_token_quando_outro_detem_o_lock_de_geracao() {
+        var store = Substitute.For<ITokenStore>();
+        store.TryAcquireRefreshLockAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IAsyncDisposable?>(null));
+        var client = Substitute.For<IAedisHttpClient>();
+        var provider = new OAuthTokenProvider(FactoryFor(client), store, TokenResponses.Options());
+
+        await provider.RefreshAsync();
+
+        await client.DidNotReceive().SendAsync(Arg.Any<AedisHttpRequest>(), Arg.Any<CancellationToken>());
     }
 
     private static IAedisHttpClient ClientReturning(AedisHttpResponse response) {
@@ -87,27 +125,29 @@ public sealed class AuthenticatedHttpClientTests
     }
 }
 
-/// <summary>Garante que o <see cref="InMemoryTokenStore" /> respeita o TTL: lê o token até expirar e depois devolve null.</summary>
+/// <summary>Garante que o <see cref="InMemoryTokenStore" /> respeita a expiração do <see cref="CachedToken" />.</summary>
 public sealed class InMemoryTokenStoreTests
 {
     [Fact]
-    public async Task Expira_a_entrada_apos_o_ttl() {
-        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+    public async Task Devolve_o_token_ate_expirar_e_depois_null() {
+        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var time = new FakeTimeProvider(start);
         var store = new InMemoryTokenStore(time);
+        var token = new CachedToken("tok", start.AddMinutes(5), start.AddMinutes(4));
 
-        await store.SetAsync("k", "tok", TimeSpan.FromMinutes(5));
-        (await store.GetAsync("k")).Should().Be("tok");
+        await store.SetAsync("k", token);
+        (await store.GetAsync("k"))!.AccessToken.Should().Be("tok");
 
         time.Advance(TimeSpan.FromMinutes(6));
         (await store.GetAsync("k")).Should().BeNull();
     }
+}
 
-    private sealed class FakeTimeProvider(DateTimeOffset start) : TimeProvider
-    {
-        private DateTimeOffset _now = start;
-        public override DateTimeOffset GetUtcNow() => _now;
-        public void Advance(TimeSpan delta) => _now += delta;
-    }
+internal sealed class FakeTimeProvider(DateTimeOffset start) : TimeProvider
+{
+    private DateTimeOffset _now = start;
+    public override DateTimeOffset GetUtcNow() => _now;
+    public void Advance(TimeSpan delta) => _now += delta;
 }
 
 internal static class TokenResponses
