@@ -57,6 +57,7 @@ public interface IBucket<T>
     /// <param name="key">Chave do objeto.</param>
     /// <param name="ttl">Tempo de validade da URL.</param>
     /// <param name="accessType">Tipo de acesso concedido pela URL (padrão: leitura).</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
     Task<string> GetPreSignedUrlAsync(string key, TimeSpan ttl,
         FileAccess accessType = FileAccess.Read,
         CancellationToken cancellationToken = default);

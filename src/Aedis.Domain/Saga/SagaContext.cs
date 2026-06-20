@@ -7,7 +7,7 @@ namespace Aedis.Domain.Saga;
 ///     Não contém dependências específicas de infraestrutura (Database, Mensageria, etc).
 ///     <para>
 ///         Para usar saga com banco de dados, o usuário deve criar seu próprio contexto
-///         herdando de <see cref="SagaContext" /> e incluir <see cref="IUnitOfWork" /> como propriedade opcional.
+///         herdando de <see cref="SagaContext" /> e incluir <c>IUnitOfWork</c> como propriedade opcional.
 ///         A gestão de transações deve ser feita externamente (no handler que chama a saga).
 ///     </para>
 /// </summary>

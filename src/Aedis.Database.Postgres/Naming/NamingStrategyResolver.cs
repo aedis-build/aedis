@@ -19,7 +19,7 @@ public sealed class NamingStrategyResolver : StrategyResolver<NamingContext>
 
     /// <summary>
     ///     Retorna a <see cref="INamingStrategy" /> que sabe lidar com o contexto (via
-    ///     <see cref="INamingStrategy.CanHandle" />), já tipada para dispensar cast. Lança
+    ///     <c>CanHandle</c>), já tipada para dispensar cast. Lança
     ///     <see cref="InvalidOperationException" /> quando nenhuma estratégia atende à convenção.
     /// </summary>
     public new INamingStrategy GetStrategy(NamingContext context) {

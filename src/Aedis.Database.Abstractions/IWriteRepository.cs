@@ -41,7 +41,7 @@ public interface IWriteRepository<TEntity, TId>
     /// <summary>
     ///     Bulk upsert em chunks de tamanho configurado por <c>DatabaseOptions.BulkInsertChunkSize</c>.
     ///     Cria a tabela temporária uma única vez e a reutiliza com TRUNCATE entre chunks,
-    ///     reduzindo overhead de catálogo em comparação com múltiplas chamadas a <see cref="BulkInsertAsync"/>.
+    ///     reduzindo overhead de catálogo em comparação com múltiplas chamadas a <c>BulkInsertAsync</c>.
     /// </summary>
     Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, CancellationToken ct = default);
 
