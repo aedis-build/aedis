@@ -9,7 +9,6 @@
   <ItemGroup Label="Kernel / utils">
     <PackageVersion Include="UUIDNext" Version="4.2.4" />
     <PackageVersion Include="MessagePack" Version="3.1.7" />
-    <PackageVersion Include="AspectInjector" Version="2.9.0" />
   </ItemGroup>
 
   <ItemGroup Label="Cache">
@@ -22,6 +21,8 @@
     <PackageVersion Include="IBMMQDotnetClient" Version="9.4.5" />
     <!-- Override de transitivo vulnerável (Newtonsoft.Json 11 via IBMMQDotnetClient) -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+    <!-- Override de transitivo vulnerável (AWSSDK.Core 4.0.3.1 via AWSSDK.S3 — GHSA-9cvc-h2w8-phrp, corrigido em 4.0.3.3; pinado em 4.0.7.1 para respeitar o piso exigido por AWSSDK.Extensions.NETCore.Setup e unificar a versão entre todos os projetos) -->
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.7.1" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.2.1" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.2.17" />
     <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.4" />
