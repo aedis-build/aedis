@@ -41,6 +41,7 @@ Uma biblioteca entrega **controles técnicos de camada de aplicação**. Por iss
 | Gestão e rotação de segredos | gerenciador de segredos (Secrets Manager, Key Vault, Vault) via env/CSI |
 | Hardening de SO, container e cluster | imagem base, políticas do Kubernetes, admission controllers |
 | WAF / proteção DDoS de borda | camada de rede/CDN |
+| Brute force de **credencial** (login) e **revogação definitiva** de conta/sessão | **IdP (Keycloak)**: o app nunca vê a senha — o ataque de credencial bate na porta do IdP, que tem brute-force detection nativo + disable/lockout de conta + logout de sessão. O app cobre o abuso *autenticado* (token válido/vazado) via `IBruteForceGuard` + denylist local, sem credencial de IdP. |
 | Gestão de risco, políticas, treinamento, resposta a incidentes (ISMS) | processo organizacional ISO 27001 |
 | Backup e recuperação de dados | infraestrutura de dados |
 
