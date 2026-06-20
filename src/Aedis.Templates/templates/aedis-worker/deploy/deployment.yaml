@@ -1,0 +1,50 @@
+# Deployment endurecido para AedisWorker1: non-root, root FS read-only, drop de capabilities,
+# no-new-privileges e seccomp default. Probes apontam para os endpoints de health do AedisWorkerHost.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aedisworker1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aedisworker1
+  template:
+    metadata:
+      labels:
+        app: aedisworker1
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1654
+        runAsGroup: 1654
+        fsGroup: 1654
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: registry.example.com/aedisworker1:latest
+          ports:
+            - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+      volumes:
+        - name: tmp
+          emptyDir: {}

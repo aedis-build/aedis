@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Aedis",
+  "classifications": [ "Library", "Aedis" ],
+  "identity": "Aedis.Templates.Library",
+  "name": "Aedis Library",
+  "description": "Biblioteca de classes seguindo as convenções do Aedis: net10, nullable, documentação XML didática e zero comentários inline.",
+  "shortName": "aedis-lib",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "AedisLibrary1",
+  "preferNameDirectory": true
+}

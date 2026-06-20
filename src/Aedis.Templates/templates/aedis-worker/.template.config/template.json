@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Aedis",
+  "classifications": [ "Worker", "Service", "Aedis", "Cloud" ],
+  "identity": "Aedis.Templates.Worker",
+  "name": "Aedis Worker",
+  "description": "Serviço headless (worker/consumer/batch) sobre o AedisWorkerHost: observabilidade, health probes e shutdown gracioso por default. Inclui Dockerfile e manifesto k8s endurecidos.",
+  "shortName": "aedis-worker",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "AedisWorker1",
+  "preferNameDirectory": true
+}

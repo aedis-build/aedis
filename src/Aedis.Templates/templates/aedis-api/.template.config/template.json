@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Aedis",
+  "classifications": [ "Web", "API", "Aedis", "Cloud" ],
+  "identity": "Aedis.Templates.Api",
+  "name": "Aedis Secure API",
+  "description": "API REST segura por construção sobre o AedisApiHost: health probes, security headers, rate limiting, ProblemDetails, validação 422 e portão de autenticação fail-closed. Inclui Dockerfile e manifesto k8s endurecidos.",
+  "shortName": "aedis-api",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "AedisApi1",
+  "preferNameDirectory": true
+}
