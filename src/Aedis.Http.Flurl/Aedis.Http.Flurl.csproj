@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>Aedis.Http</PackageId>
-    <Description>Aedis.Http — cliente HTTP agnóstico com provider nativo (System.Net.Http) e template de integração autenticada por token OAuth2.</Description>
+    <PackageId>Aedis.Http.Flurl</PackageId>
+    <Description>Aedis.Http.Flurl — provider de IAedisHttpClient sobre Flurl.Http, alternativo ao provider nativo.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,10 +11,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Flurl.Http" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Aedis.Http.Tests" />
+    <InternalsVisibleTo Include="Aedis.Http.Flurl.Tests" />
   </ItemGroup>
 
 </Project>

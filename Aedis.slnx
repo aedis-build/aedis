@@ -20,6 +20,9 @@
     <Project Path="src/Aedis.Hosting.AspNetCore/Aedis.Hosting.AspNetCore.csproj" />
     <Project Path="src/Aedis.Hosting.Worker/Aedis.Hosting.Worker.csproj" />
     <Project Path="src/Aedis.Http/Aedis.Http.csproj" />
+    <Project Path="src/Aedis.Http.Abstractions/Aedis.Http.Abstractions.csproj" />
+    <Project Path="src/Aedis.Http.Cache/Aedis.Http.Cache.csproj" />
+    <Project Path="src/Aedis.Http.Flurl/Aedis.Http.Flurl.csproj" />
     <Project Path="src/Aedis.Messaging.Abstractions/Aedis.Messaging.Abstractions.csproj" />
     <Project Path="src/Aedis.Messaging.AwsSqs/Aedis.Messaging.AwsSqs.csproj" />
     <Project Path="src/Aedis.Messaging.AzureServiceBus/Aedis.Messaging.AzureServiceBus.csproj" />
@@ -49,6 +52,9 @@
     <Project Path="tests/Aedis.Diagnostics.Tests/Aedis.Diagnostics.Tests.csproj" />
     <Project Path="tests/Aedis.Hosting.AspNetCore.Tests/Aedis.Hosting.AspNetCore.Tests.csproj" />
     <Project Path="tests/Aedis.Hosting.Worker.Tests/Aedis.Hosting.Worker.Tests.csproj" />
+    <Project Path="tests/Aedis.Http.Tests/Aedis.Http.Tests.csproj" />
+    <Project Path="tests/Aedis.Http.Cache.Tests/Aedis.Http.Cache.Tests.csproj" />
+    <Project Path="tests/Aedis.Http.Flurl.Tests/Aedis.Http.Flurl.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.AwsSqs.Tests/Aedis.Messaging.AwsSqs.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.AzureServiceBus.Tests/Aedis.Messaging.AzureServiceBus.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.IbmMq.Tests/Aedis.Messaging.IbmMq.Tests.csproj" />

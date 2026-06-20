@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Http.Cache</PackageId>
+    <Description>Aedis.Http.Cache — armazenamento distribuído de token sobre o ICache do Aedis, opt-in para compartilhar o token entre instâncias.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Http.Abstractions\Aedis.Http.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Cache.Abstractions\Aedis.Cache.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Http.Cache.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Http.Abstractions</PackageId>
+    <Description>Aedis.Http.Abstractions — contratos agnósticos de cliente HTTP e de autenticação por token (OAuth2) da plataforma Aedis.</Description>
+  </PropertyGroup>
+
+</Project>
