@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aedis.Hosting.AspNetCore" Version="0.1.0-preview.1" />
-    <PackageReference Include="Aedis.Security.Keycloak" Version="0.1.0-preview.1" />
+    <PackageReference Include="Aedis.Hosting.AspNetCore" Version="AEDIS_PKG_VERSION" />
+    <PackageReference Include="Aedis.Security.Keycloak" Version="AEDIS_PKG_VERSION" />
   </ItemGroup>
 
 </Project>

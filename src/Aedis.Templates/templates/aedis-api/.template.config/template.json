@@ -11,5 +11,14 @@
     "type": "project"
   },
   "sourceName": "AedisApi1",
-  "preferNameDirectory": true
+  "preferNameDirectory": true,
+  "symbols": {
+    "AedisVersion": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "0.1.0-preview.1",
+      "replaces": "AEDIS_PKG_VERSION",
+      "description": "Versão dos pacotes Aedis referenciados pelo projeto."
+    }
+  }
 }

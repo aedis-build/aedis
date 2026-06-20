@@ -1,0 +1,71 @@
+name: Templates
+
+# Empacota, valida (E2E real) e publica os templates `dotnet new` do Aedis.
+# Garante que `dotnet new install Aedis.Templates` esteja disponível e funcional.
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/Aedis.Templates/**'
+      - '.github/workflows/templates.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/Aedis.Templates/**'
+  release:
+    types: [ published ]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Verificar sincronia de versão (templates vs framework)
+        run: |
+          PREFIX="$(grep -oP '(?<=<VersionPrefix>)[^<]+' Directory.Build.props)"
+          SUFFIX="$(grep -oP '(?<=<VersionSuffix>)[^<]+' Directory.Build.props)"
+          if [ -n "$SUFFIX" ]; then FRAMEWORK="$PREFIX-$SUFFIX"; else FRAMEWORK="$PREFIX"; fi
+          echo "Versão do framework: $FRAMEWORK"
+          MISMATCH=0
+          for f in src/Aedis.Templates/templates/*/.template.config/template.json; do
+            DEF="$(grep -oP '(?<="defaultValue": ")[^"]+' "$f" || true)"
+            if [ -n "$DEF" ] && [ "$DEF" != "$FRAMEWORK" ]; then
+              echo "::error file=$f::AedisVersion default '$DEF' != framework '$FRAMEWORK'"
+              MISMATCH=1
+            fi
+          done
+          if [ "$MISMATCH" -ne 0 ]; then
+            echo "Atualize o defaultValue de AedisVersion nos templates para casar com o framework."
+            exit 1
+          fi
+
+      - name: Pack
+        run: dotnet pack src/Aedis.Templates/Aedis.Templates.csproj -c Release -o ./artifacts
+
+      - name: Instalar e instanciar (E2E)
+        run: |
+          dotnet new install ./artifacts/Aedis.Templates.*.nupkg
+          dotnet new aedis-api -n SmokeApi -o /tmp/smoke-api
+          dotnet new aedis-worker -n SmokeWorker -o /tmp/smoke-worker
+          dotnet new aedis-lib -n SmokeLib -o /tmp/smoke-lib
+          test -f /tmp/smoke-api/SmokeApi.csproj
+          test -f /tmp/smoke-worker/SmokeWorker.csproj
+          test -f /tmp/smoke-lib/SmokeLib.csproj
+          if grep -rqE "AedisApi1|AedisWorker1|AedisLibrary1|AEDIS_PKG_VERSION" /tmp/smoke-api /tmp/smoke-worker /tmp/smoke-lib; then
+            echo "::error::placeholder não substituído nos projetos gerados"
+            exit 1
+          fi
+
+      - name: Publicar no NuGet (release)
+        if: github.event_name == 'release'
+        run: dotnet nuget push ./artifacts/Aedis.Templates.*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
