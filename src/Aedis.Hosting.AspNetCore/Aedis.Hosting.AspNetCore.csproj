@@ -24,8 +24,6 @@
   <ItemGroup>
     <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="Microsoft.OpenApi" />
-    <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" />
-    <PackageReference Include="Microsoft.AspNetCore.ResponseCompression" />
     <PackageReference Include="FluentValidation.AspNetCore" />
   </ItemGroup>
 
