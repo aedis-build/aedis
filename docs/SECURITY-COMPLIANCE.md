@@ -30,6 +30,7 @@ Uma biblioteca entrega **controles técnicos de camada de aplicação**. Por iss
 | 14 | Swagger desligado por default (opt-in) | `AedisApiHost.EnableSwagger` | A05 | PR.PS | A.8.9 | mitiga T1592 (redução de superfície) |
 | 15 | Build determinístico, CPM com versões fixas, override de transitivo vulnerável | `Directory.*.props` | A06, A08 | ID.RA, PR.PS | A.8.8, A.8.29, A.8.30 | mitiga T1195 (supply chain) |
 | 16 | Compressão de resposta consciente de HTTPS | `AedisApiHost` (response compression) | — | — | — | trade-off documentado (BREACH) |
+| 17 | Anti-força-bruta por credencial com bloqueio escalonado (chaveado pelo alvo, não pelo IP → imune a IP-rotation; distribuído via ICache) | `IBruteForceGuard`/`CacheBruteForceGuard` | A07 | PR.AA, DE.CM | A.8.5 | M1036; mitiga T1110 (incl. T1110.003 com rotação de IP) |
 
 ## Fora do escopo da biblioteca (responsabilidade do operador)
 
