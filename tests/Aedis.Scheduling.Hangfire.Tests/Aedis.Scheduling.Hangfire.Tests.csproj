@@ -12,8 +12,6 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Testcontainers.PostgreSql" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="coverlet.msbuild">
       <PrivateAssets>all</PrivateAssets>
