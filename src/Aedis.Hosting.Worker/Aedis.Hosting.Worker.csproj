@@ -2,15 +2,22 @@
 
   <PropertyGroup>
     <PackageId>Aedis.Hosting.Worker</PackageId>
-    <Description>Aedis.Hosting.Worker — parte da plataforma Aedis.</Description>
+    <Description>Aedis.Hosting.Worker — host headless (worker/consumer/batch) com observabilidade, health e shutdown gracioso por default.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Hosting.Abstractions\Aedis.Hosting.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Diagnostics\Aedis.Diagnostics.csproj" />
+    <ProjectReference Include="..\Aedis.Observability.Serilog\Aedis.Observability.Serilog.csproj" />
+    <ProjectReference Include="..\Aedis.Observability.Otlp\Aedis.Observability.Otlp.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Hosting.Worker.Tests" />
   </ItemGroup>
 
 </Project>

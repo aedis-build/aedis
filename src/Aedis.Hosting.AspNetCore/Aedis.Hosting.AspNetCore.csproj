@@ -7,10 +7,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Hosting.Abstractions\Aedis.Hosting.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
     <ProjectReference Include="..\Aedis.Commands\Aedis.Commands.csproj" />
-    <ProjectReference Include="..\Aedis.Observability.Abstractions\Aedis.Observability.Abstractions.csproj" />
     <ProjectReference Include="..\Aedis.Exceptions\Aedis.Exceptions.csproj" />
     <ProjectReference Include="..\Aedis.Security.Abstractions\Aedis.Security.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Security.Web\Aedis.Security.Web.csproj" />
+    <ProjectReference Include="..\Aedis.Diagnostics\Aedis.Diagnostics.csproj" />
+    <ProjectReference Include="..\Aedis.Observability.Serilog\Aedis.Observability.Serilog.csproj" />
+    <ProjectReference Include="..\Aedis.Observability.Otlp\Aedis.Observability.Otlp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Hosting.AspNetCore.Tests" />
   </ItemGroup>
 
   <ItemGroup>
