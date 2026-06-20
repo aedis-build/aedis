@@ -35,6 +35,7 @@
     <Project Path="src/Aedis.Security/Aedis.Security.csproj" />
     <Project Path="src/Aedis.Security.Abstractions/Aedis.Security.Abstractions.csproj" />
     <Project Path="src/Aedis.Security.Keycloak/Aedis.Security.Keycloak.csproj" />
+    <Project Path="src/Aedis.Security.Web/Aedis.Security.Web.csproj" />
     <Project Path="src/Aedis.Storage.Abstractions/Aedis.Storage.Abstractions.csproj" />
     <Project Path="src/Aedis.Storage.AzureBlob/Aedis.Storage.AzureBlob.csproj" />
     <Project Path="src/Aedis.Storage.S3/Aedis.Storage.S3.csproj" />

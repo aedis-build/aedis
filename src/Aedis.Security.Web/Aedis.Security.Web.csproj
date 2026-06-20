@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Security.Web</PackageId>
+    <Description>Aedis.Security.Web — controles de segurança HTTP (OWASP/NIST) componíveis para ASP.NET Core, secure-by-default.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Security.Web.Tests" />
+  </ItemGroup>
+
+</Project>
