@@ -13,6 +13,7 @@
     <PackageVersion Include="Aedis.Hosting.AspNetCore" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Security" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Security.Keycloak" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Analyzers" Version="AEDIS_PKG_VERSION" />
   </ItemGroup>
 
   <ItemGroup Label="Testes">

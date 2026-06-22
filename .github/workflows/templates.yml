@@ -60,7 +60,7 @@ jobs:
 
       - name: Verificar pacotes essenciais no feed
         run: |
-          REQUIRED="Aedis.Templates Aedis.Domain Aedis.Commands Aedis.Exceptions Aedis.Database.Abstractions Aedis.Database.Postgres Aedis.Hosting.AspNetCore Aedis.Security Aedis.Security.Keycloak Aedis.Hosting.Worker"
+          REQUIRED="Aedis.Templates Aedis.Domain Aedis.Commands Aedis.Exceptions Aedis.Database.Abstractions Aedis.Database.Postgres Aedis.Hosting.AspNetCore Aedis.Security Aedis.Security.Keycloak Aedis.Hosting.Worker Aedis.Analyzers"
           for p in $REQUIRED; do
             ls "$FEED/$p."*.nupkg >/dev/null 2>&1 || { echo "::error::pacote essencial ausente no feed: $p"; exit 1; }
           done

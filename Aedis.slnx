@@ -45,6 +45,7 @@
     <Project Path="src/Aedis.Templates/Aedis.Templates.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Aedis.Analyzers.Tests/Aedis.Analyzers.Tests.csproj" />
     <Project Path="tests/Aedis.Architecture.Tests/Aedis.Architecture.Tests.csproj" />
     <Project Path="tests/Aedis.Cache.Tests/Aedis.Cache.Tests.csproj" />
     <Project Path="tests/Aedis.Cache.Redis.Tests/Aedis.Cache.Redis.Tests.csproj" />

@@ -3,6 +3,10 @@
   <ItemGroup>
     <PackageReference Include="Aedis.Commands" />
     <PackageReference Include="Aedis.Exceptions" />
+    <!-- Impõe a regra de dependência (AEDIS0001) em compile-time; sem dependência em runtime. -->
+    <PackageReference Include="Aedis.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
