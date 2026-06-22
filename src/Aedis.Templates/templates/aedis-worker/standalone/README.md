@@ -5,6 +5,10 @@ Worker headless em camadas (DDD) gerado pelo template **`aedis-worker`**. Sobe s
 traz um **consumidor de mensagens** ponta a ponta: consome um evento de um broker (RabbitMQ), processa via
 handler com repositório PostgreSQL de forma **idempotente** e publica um evento de follow-up.
 
+> **Já tem uma solução e quer só adicionar um worker?** Use `dotnet new aedis-worker --add <Sua.slnx>` de
+> dentro da pasta da solução — gera **apenas** um projeto worker autônomo e o adiciona à `.slnx`, sem
+> duplicar camadas nem arquivos de raiz.
+
 ## Estrutura
 
 ```

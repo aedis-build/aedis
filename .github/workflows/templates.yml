@@ -102,6 +102,15 @@ jobs:
           dotnet build /tmp/smoke-worker/SmokeWorker.slnx -c Release
           dotnet test /tmp/smoke-worker/SmokeWorker.slnx -c Release --no-build
 
+      - name: Validar --add (worker em solução existente)
+        run: |
+          cd /tmp/smoke-api
+          dotnet new aedis-worker --add Smoke.slnx -n Smoke -o .
+          test -f src/Smoke.Worker/Smoke.Worker.csproj
+          grep -q "src/Smoke.Worker/Smoke.Worker.csproj" Smoke.slnx
+          if [ -d src/Smoke.Application ] && ! test -f src/Smoke.Worker/Smoke.Application.csproj; then :; else echo "::error::--add não deveria duplicar camadas"; exit 1; fi
+          dotnet build Smoke.slnx -c Release
+
       - name: Publicar no NuGet (release)
         if: github.event_name == 'release'
         run: dotnet nuget push "$FEED"/Aedis.Templates.*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate

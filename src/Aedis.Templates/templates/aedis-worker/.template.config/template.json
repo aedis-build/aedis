@@ -4,7 +4,7 @@
   "classifications": [ "Worker", "Service", "Aedis", "Cloud", "DDD", "Messaging" ],
   "identity": "Aedis.Templates.Worker",
   "name": "Aedis Worker (camadas + consumer)",
-  "description": "Worker headless em 4 camadas (Worker/Application/Domain/Infrastructure + testes) sobre o AedisWorkerHost: consome mensagens de um broker (RabbitMQ), processa via handler com repositório PostgreSQL de forma idempotente e publica um evento de follow-up. Observabilidade, health probe e shutdown gracioso por default. Inclui Dockerfile e manifesto k8s endurecidos.",
+  "description": "Worker headless sobre o AedisWorkerHost: consome mensagens de um broker (RabbitMQ), processa de forma idempotente e publica um evento de follow-up. Sem --add gera uma solução nova em 4 camadas (Worker/Application/Domain/Infrastructure + testes); com --add adiciona apenas um projeto worker autônomo a uma solução existente.",
   "shortName": "aedis-worker",
   "tags": {
     "language": "C#",
@@ -20,11 +20,51 @@
       "replaces": "AEDIS_PKG_VERSION",
       "description": "Versão dos pacotes Aedis referenciados pelo projeto."
     },
+    "add": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "",
+      "description": "Quando informado (caminho da solução, ex.: --add Acme.slnx), gera apenas o projeto worker e o adiciona à solução existente, em vez de uma solução nova."
+    },
+    "addMode": {
+      "type": "computed",
+      "value": "(add != \"\")"
+    },
     "appNameLower": {
       "type": "derived",
       "valueSource": "name",
       "valueTransform": "lowerCase",
       "replaces": "aedis.app1"
     }
-  }
+  },
+  "sources": [
+    {
+      "condition": "(!addMode)",
+      "source": "./standalone/",
+      "target": "./"
+    },
+    {
+      "condition": "(addMode)",
+      "source": "./add/",
+      "target": "./"
+    }
+  ],
+  "primaryOutputs": [
+    {
+      "condition": "(addMode)",
+      "path": "src/Aedis.App1.Worker/Aedis.App1.Worker.csproj"
+    }
+  ],
+  "postActions": [
+    {
+      "condition": "(addMode)",
+      "description": "Adiciona o projeto worker à solução existente.",
+      "manualInstructions": [
+        { "text": "Adicione o projeto à solução: dotnet sln add src/Aedis.App1.Worker/Aedis.App1.Worker.csproj" }
+      ],
+      "actionId": "D396686C-DE0E-4DE6-906D-291CD29FC5DE",
+      "args": { "primaryOutputIndexes": "0" },
+      "continueOnError": true
+    }
+  ]
 }
