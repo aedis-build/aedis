@@ -1,4 +1,5 @@
 using System.Globalization;
+using Aedis.Barcode.Abstractions;
 using Aedis.Pdf.Abstractions;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -12,19 +13,19 @@ namespace Aedis.Pdf.QuestPdf.Internal;
 ///     carimbo de geração em UTC). Toda a renderização QuestPDF vive aqui, isolada do contrato.
 /// </summary>
 internal static class PdfTableComposer {
-    public static void Compose<T>(IDocumentContainer container, IReadOnlyList<T> rows, IReadOnlyList<PdfColumn<T>> columns, PdfPageOptions options) {
+    public static void Compose<T>(IDocumentContainer container, IReadOnlyList<T> rows, IReadOnlyList<PdfColumn<T>> columns, PdfPageOptions options, IBarcodeGenerator barcode) {
         container.Page(page => {
             page.Size(PdfPageSizeMapper.Map(options.PageSize, options.Landscape));
             page.Margin(1, Unit.Centimetre);
             page.DefaultTextStyle(style => style.FontSize(9));
 
-            page.Header().Element(header => ComposeHeader(header, options));
+            page.Header().Element(header => ComposeHeader(header, options, barcode));
             page.Content().Element(content => ComposeTable(content, rows, columns));
             page.Footer().Element(footer => ComposeFooter(footer, options));
         });
     }
 
-    private static void ComposeHeader(IContainer container, PdfPageOptions options) {
+    private static void ComposeHeader(IContainer container, PdfPageOptions options, IBarcodeGenerator barcode) {
         container.PaddingBottom(8).Column(column => {
             column.Item().BorderBottom(0.5f).BorderColor(Colors.Black).PaddingBottom(6).Row(row => {
                 if (!string.IsNullOrWhiteSpace(options.LogoBase64)) {
@@ -36,7 +37,8 @@ internal static class PdfTableComposer {
 
                     if (options.Code is not null) {
                         var width = options.Code.Kind == PdfCodeKind.QrCode ? 64f : 130f;
-                        right.Item().PaddingTop(4).AlignRight().Width(width).Image(PdfCodeImage.Create(options.Code));
+                        var image = barcode.CreatePng(options.Code.Content, MapSymbology(options.Code.Kind));
+                        right.Item().PaddingTop(4).AlignRight().Width(width).Image(image);
                     }
                 });
             });
@@ -60,6 +62,9 @@ internal static class PdfTableComposer {
             });
         });
     }
+
+    private static BarcodeSymbology MapSymbology(PdfCodeKind kind) =>
+        kind == PdfCodeKind.QrCode ? BarcodeSymbology.QrCode : BarcodeSymbology.Code128;
 
     private static void ComposeTable<T>(IContainer container, IReadOnlyList<T> rows, IReadOnlyList<PdfColumn<T>> columns) {
         container.Table(table => {

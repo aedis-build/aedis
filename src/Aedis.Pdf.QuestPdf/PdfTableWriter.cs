@@ -1,3 +1,4 @@
+using Aedis.Barcode.Abstractions;
 using Aedis.Core.Utils;
 using Aedis.Pdf.Abstractions;
 using Aedis.Pdf.QuestPdf.Internal;
@@ -8,9 +9,19 @@ namespace Aedis.Pdf.QuestPdf;
 /// <summary>
 ///     Implementação de <see cref="IPdfTableWriter" /> sobre o QuestPDF. Renderiza as linhas em uma tabela
 ///     paginada (com cabeçalho, rodapé e opções de página) e devolve o PDF em um <see cref="PdfResult" /> com
-///     o nome de arquivo sanitizado.
+///     o nome de arquivo sanitizado. O desenho de QR/barcode é delegado ao <see cref="IBarcodeGenerator" />.
 /// </summary>
 public sealed class PdfTableWriter : IPdfTableWriter {
+    private readonly IBarcodeGenerator _barcode;
+
+    /// <summary>
+    ///     Cria o writer com o gerador de código (QR/barcode).
+    /// </summary>
+    /// <param name="barcode">Gerador agnóstico de código de barras/QR.</param>
+    public PdfTableWriter(IBarcodeGenerator barcode) {
+        _barcode = barcode;
+    }
+
     /// <inheritdoc />
     public Task<PdfResult> WriteAsync<T>(
         IEnumerable<T> rows,
@@ -24,7 +35,7 @@ public sealed class PdfTableWriter : IPdfTableWriter {
         var options = pageOptions ?? new PdfPageOptions();
         var materialized = rows as IReadOnlyList<T> ?? rows.ToList();
 
-        var document = Document.Create(container => PdfTableComposer.Compose(container, materialized, columns, options));
+        var document = Document.Create(container => PdfTableComposer.Compose(container, materialized, columns, options, _barcode));
 
         var stream = new MemoryStream();
         document.GeneratePdf(stream);

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Barcode.Abstractions</PackageId>
+    <Description>Aedis.Barcode.Abstractions — parte da plataforma Aedis.</Description>
+  </PropertyGroup>
+
+</Project>

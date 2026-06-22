@@ -7,13 +7,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Pdf.Abstractions\Aedis.Pdf.Abstractions.csproj" />
+    <!-- O desenho de QR/barcode é delegado ao gerador agnóstico (que traz ZXing+SkiaSharp). -->
+    <ProjectReference Include="..\Aedis.Barcode.ZXing\Aedis.Barcode.ZXing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="QuestPDF" />
-    <PackageReference Include="SkiaSharp" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
-    <PackageReference Include="ZXing.Net" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 

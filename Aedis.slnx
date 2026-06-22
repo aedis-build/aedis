@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Aedis.Analyzers/Aedis.Analyzers.csproj" />
+    <Project Path="src/Aedis.Barcode.Abstractions/Aedis.Barcode.Abstractions.csproj" />
+    <Project Path="src/Aedis.Barcode.ZXing/Aedis.Barcode.ZXing.csproj" />
     <Project Path="src/Aedis.Build/Aedis.Build.csproj" />
     <Project Path="src/Aedis.Cache/Aedis.Cache.csproj" />
     <Project Path="src/Aedis.Cache.Abstractions/Aedis.Cache.Abstractions.csproj" />
@@ -47,6 +49,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Aedis.Analyzers.Tests/Aedis.Analyzers.Tests.csproj" />
     <Project Path="tests/Aedis.Architecture.Tests/Aedis.Architecture.Tests.csproj" />
+    <Project Path="tests/Aedis.Barcode.ZXing.Tests/Aedis.Barcode.ZXing.Tests.csproj" />
     <Project Path="tests/Aedis.Cache.Tests/Aedis.Cache.Tests.csproj" />
     <Project Path="tests/Aedis.Cache.Redis.Tests/Aedis.Cache.Redis.Tests.csproj" />
     <Project Path="tests/Aedis.Database.Postgres.Tests/Aedis.Database.Postgres.Tests.csproj" />

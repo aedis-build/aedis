@@ -20,6 +20,7 @@ public static class PdfServiceCollectionExtensions {
 
         Settings.License = options.License;
 
+        services.AddAedisBarcode();
         services.AddSingleton<IPdfTableWriter, PdfTableWriter>();
         return services;
     }
