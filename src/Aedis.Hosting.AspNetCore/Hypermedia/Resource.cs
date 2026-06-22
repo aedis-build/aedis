@@ -1,10 +1,9 @@
 using System.Text.Json.Serialization;
 
-namespace Aedis.Hosting.AspNetCore.Hateoas;
+namespace Aedis.Hosting.AspNetCore.Hypermedia;
 
 /// <summary>
-///     Contrato dos recursos que carregam links de hipermídia. Expõe a coleção de <see cref="Link" /> indexada
-///     pela relação semântica, serializada como <c>_links</c> no estilo HAL.
+///     Contrato dos recursos que carregam links de hipermídia, serializados como <c>_links</c> no estilo HAL.
 /// </summary>
 public interface IHasLinks {
     /// <summary>
@@ -14,9 +13,9 @@ public interface IHasLinks {
 }
 
 /// <summary>
-///     Base dos recursos HATEOAS. Mantém o dicionário de links serializado como <c>_links</c> e oferece
-///     <see cref="AddLink" /> para anexar relações de forma segura. Use os tipos concretos
-///     <see cref="Resource{T}" /> (recurso único) ou <see cref="CollectionResource{T}" /> (coleção paginada).
+///     Base dos recursos de hipermídia. Mantém o dicionário de links serializado como <c>_links</c> e oferece
+///     <see cref="AddLink" /> para anexar relações. Use os tipos concretos <see cref="Resource{T}" /> (item
+///     único) ou <see cref="ResourceCollection{T}" /> (coleção paginada).
 /// </summary>
 public abstract class Resource : IHasLinks {
     /// <summary>
@@ -48,8 +47,8 @@ public abstract class Resource : IHasLinks {
 }
 
 /// <summary>
-///     Recurso HATEOAS de item único. O payload de negócio fica sob <c>data</c> e os links sob <c>_links</c>,
-///     mantendo o envelope estável independentemente do formato do modelo.
+///     Recurso de hipermídia de item único. O payload de negócio fica sob <c>data</c> e os links sob
+///     <c>_links</c>, mantendo o envelope estável independentemente do formato do modelo.
 /// </summary>
 /// <typeparam name="T">Tipo do modelo de resposta exposto sob <c>data</c>.</typeparam>
 public sealed class Resource<T> : Resource {
@@ -72,21 +71,22 @@ public sealed class Resource<T> : Resource {
 }
 
 /// <summary>
-///     Recurso HATEOAS de coleção paginada. Os itens ficam sob <c>items</c>, os metadados de paginação
-///     (<c>totalCount</c>/<c>page</c>/<c>pageSize</c>) no mesmo nível e os links de navegação
+///     Recurso de hipermídia de coleção paginada. Cada item é um <see cref="Resource{T}" /> — ou seja, já
+///     carrega seus próprios <c>_links</c> — sob <c>items</c>; os metadados de paginação
+///     (<c>totalCount</c>/<c>page</c>/<c>pageSize</c>) ficam no mesmo nível e os links de navegação da coleção
 ///     (<c>self</c>/<c>first</c>/<c>prev</c>/<c>next</c>/<c>last</c>) sob <c>_links</c>.
 /// </summary>
 /// <typeparam name="T">Tipo de cada item da coleção.</typeparam>
-public sealed class CollectionResource<T> : Resource {
+public sealed class ResourceCollection<T> : Resource {
     /// <summary>
     ///     Cria uma coleção paginada de recursos.
     /// </summary>
-    /// <param name="items">Itens da página atual. Não pode ser nulo.</param>
+    /// <param name="items">Itens da página, já encapsulados com seus links. Não pode ser nulo.</param>
     /// <param name="totalCount">Total de itens em todas as páginas, quando conhecido.</param>
     /// <param name="page">Número da página atual (1-based), quando aplicável.</param>
     /// <param name="pageSize">Quantidade de itens por página, quando aplicável.</param>
     /// <exception cref="ArgumentNullException">Quando <paramref name="items" /> é nulo.</exception>
-    public CollectionResource(IEnumerable<T> items, int? totalCount = null, int? page = null, int? pageSize = null) {
+    public ResourceCollection(IEnumerable<Resource<T>> items, int? totalCount = null, int? page = null, int? pageSize = null) {
         ArgumentNullException.ThrowIfNull(items);
         Items = items.ToList();
         TotalCount = totalCount;
@@ -95,11 +95,11 @@ public sealed class CollectionResource<T> : Resource {
     }
 
     /// <summary>
-    ///     Itens da página atual, serializados sob <c>items</c>.
+    ///     Itens da página atual, cada um com seu próprio <c>_links</c>, serializados sob <c>items</c>.
     /// </summary>
     [JsonPropertyName("items")]
     [JsonPropertyOrder(0)]
-    public IReadOnlyList<T> Items { get; }
+    public IReadOnlyList<Resource<T>> Items { get; }
 
     /// <summary>
     ///     Total de itens em todas as páginas, quando conhecido.

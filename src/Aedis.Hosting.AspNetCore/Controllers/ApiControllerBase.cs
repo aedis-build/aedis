@@ -1,5 +1,6 @@
 using Aedis.Commands.Abstractions;
-using Aedis.Hosting.AspNetCore.Hateoas;
+using Aedis.Core;
+using Aedis.Hosting.AspNetCore.Hypermedia;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,9 +9,9 @@ namespace Aedis.Hosting.AspNetCore.Controllers;
 /// <summary>
 ///     Base para controllers REST do Aedis. Mantém o controller fino: a regra de negócio vive nos handlers CQRS
 ///     (executados via <see cref="ICommandExecutor" />) e a representação de hipermídia é montada pelos helpers
-///     HATEOAS. Padroniza os códigos de status RESTful — <c>201 Created</c> com header <c>Location</c> na
-///     criação, <c>200 OK</c> com links na leitura/atualização e <c>204 No Content</c> na remoção — deixando o
-///     mapeamento de exceções de negócio para o middleware global de ProblemDetails.
+///     <c>OkResource</c>/<c>OkCollection</c>/<c>CreatedResource</c>. Padroniza os códigos RESTful — <c>201</c>
+///     com <c>Location</c> na criação, <c>200</c> com links na leitura/atualização e <c>204</c> na remoção —
+///     deixando o mapeamento de exceções de negócio para o middleware global de ProblemDetails.
 /// </summary>
 [ApiController]
 [Produces("application/json")]
@@ -36,21 +37,18 @@ public abstract class ApiControllerBase : ControllerBase {
     /// </summary>
     /// <typeparam name="TResponse">Tipo do modelo de resposta.</typeparam>
     /// <param name="model">Modelo a expor, ou nulo quando o recurso não existe.</param>
-    protected IActionResult OkWithHateoas<TResponse>(TResponse? model) {
-        return this.Hateoas(model);
+    protected IActionResult OkResource<TResponse>(TResponse? model) {
+        return this.AsResource(model);
     }
 
     /// <summary>
-    ///     Retorna <c>200 OK</c> com a coleção envolvida em <see cref="CollectionResource{T}" /> e os links de
-    ///     paginação. Ideal para <c>GET</c> de listagem.
+    ///     Retorna <c>200 OK</c> com a página envolvida em <see cref="ResourceCollection{T}" />: cada item com
+    ///     seus links e a coleção com os links de paginação. Ideal para <c>GET</c> de listagem.
     /// </summary>
     /// <typeparam name="TResponse">Tipo de cada item da coleção.</typeparam>
-    /// <param name="items">Itens da página atual.</param>
-    /// <param name="page">Número da página atual (1-based), quando aplicável.</param>
-    /// <param name="pageSize">Quantidade de itens por página, quando aplicável.</param>
-    /// <param name="totalCount">Total de itens em todas as páginas, quando conhecido.</param>
-    protected IActionResult CollectionWithHateoas<TResponse>(IEnumerable<TResponse> items, int? page = null, int? pageSize = null, int? totalCount = null) {
-        return this.HateoasCollection(items, page, pageSize, totalCount);
+    /// <param name="page">Página de resultados (itens + metadados de paginação).</param>
+    protected IActionResult OkCollection<TResponse>(PagedResult<TResponse> page) {
+        return this.AsCollection(page);
     }
 
     /// <summary>
@@ -58,15 +56,15 @@ public abstract class ApiControllerBase : ControllerBase {
     ///     envolvido em <see cref="Resource{T}" /> com seus links. Ideal para a resposta de <c>POST</c>.
     /// </summary>
     /// <typeparam name="TResponse">Tipo do modelo de resposta criado.</typeparam>
+    /// <param name="model">Modelo do recurso criado.</param>
     /// <param name="actionName">Nome do action que expõe o recurso criado (para o header <c>Location</c>).</param>
     /// <param name="routeValues">Valores de rota que identificam o recurso criado.</param>
-    /// <param name="model">Modelo do recurso criado.</param>
-    protected IActionResult CreatedWithHateoas<TResponse>(string actionName, object? routeValues, TResponse model) {
+    protected IActionResult CreatedResource<TResponse>(TResponse model, string actionName, object? routeValues) {
         return CreatedAtAction(actionName, routeValues, BuildResourcePayload(model));
     }
 
     private object BuildResourcePayload<TResponse>(TResponse model) {
-        var builder = HttpContext.RequestServices.GetService<IResourceLinkBuilder<TResponse>>();
-        return builder is null ? model! : builder.Build(model, HttpContext);
+        var links = HttpContext.RequestServices.GetService<IResourceLinks<TResponse>>();
+        return links is null ? model! : links.Build(model, HttpContext);
     }
 }

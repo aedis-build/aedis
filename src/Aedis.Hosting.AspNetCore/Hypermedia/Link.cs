@@ -1,12 +1,12 @@
 using System.Text.Json.Serialization;
 
-namespace Aedis.Hosting.AspNetCore.Hateoas;
+namespace Aedis.Hosting.AspNetCore.Hypermedia;
 
 /// <summary>
-///     Representa um vínculo de hipermídia (HATEOAS) anexado a um recurso. Cada link informa ao cliente para
-///     onde ir (<see cref="Href" />), qual a relação semântica (<see cref="Rel" />) e qual verbo HTTP usar
-///     (<see cref="Method" />), permitindo que o cliente descubra as ações disponíveis sem conhecer as URLs de
-///     antemão. Segue um envelope no estilo HAL, com os links agrupados sob <c>_links</c>.
+///     Vínculo de hipermídia anexado a um recurso. Informa ao cliente para onde ir (<see cref="Href" />), a
+///     relação semântica (<see cref="Rel" />) e qual verbo HTTP usar (<see cref="Method" />), permitindo
+///     descobrir as ações disponíveis sem conhecer as URLs de antemão. Envelope no estilo HAL, com os links
+///     agrupados sob <c>_links</c>.
 /// </summary>
 public sealed class Link {
     /// <summary>
