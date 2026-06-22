@@ -46,11 +46,15 @@ public static class AedisSerilog
 
         ApplyConfiguredLevels(loggerConfiguration, configuration);
 
+        var redaction = RedactionOptions.FromConfiguration(configuration);
+
         loggerConfiguration
             .Filter.ByExcluding(IsNoise)
+            .Destructure.With(new SensitiveDataDestructuringPolicy(redaction))
             .Enrich.With(new LogTypeEnricher("Application"))
             .Enrich.WithProperty("application", ApplicationInfo.Name)
             .Enrich.FromLogContext()
+            .Enrich.With(new RedactionEnricher(redaction))
             .WriteTo.Console(new CompactJsonFormatter());
 
         ConfigureOpenTelemetrySink(loggerConfiguration, configuration);
