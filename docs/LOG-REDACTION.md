@@ -70,3 +70,18 @@ Tudo é ajustável; os defaults já são seguros.
 
 > Mesmo escolhendo `Partial` como estratégia geral, **segredos permanecem com máscara total** por padrão —
 > mostrar os últimos dígitos de um token/senha vaza sem nenhum ganho operacional.
+
+## Access-log de requisições (`UseAedisRequestLogging`)
+
+O `AedisApiHost` liga, por padrão, um access-log estruturado (uma linha por requisição: método, rota, status,
+tempo) — substituindo o logging ruidoso e multi-linha do ASP.NET. O enriquecimento é **seguro por construção**:
+
+- Adiciona campos úteis e não sensíveis: `Host`, `Scheme`, `Protocol`, `UserAgent`, `ResponseContentType` e
+  `UserId` (derivado do `sub` autenticado).
+- A `QueryString` é registrada **já ofuscada** por `QueryStringRedactor` (mascara `?access_token=…`,
+  `?token=…`, etc.) — usando as mesmas chaves desta configuração.
+- O header `Authorization` **nunca** é registrado. E, como o evento final ainda passa pelo `RedactionEnricher`,
+  há uma segunda camada de defesa por nome.
+- `RequestPath` não inclui a query string (template padrão do Serilog), e `/health`/`favicon` são filtrados.
+
+Desligue com `Logging:RequestLogging:Enabled = false`.

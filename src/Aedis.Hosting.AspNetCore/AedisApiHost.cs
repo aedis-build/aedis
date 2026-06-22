@@ -159,6 +159,7 @@ public abstract class AedisApiHost
 
     private void BuildPipeline(WebApplication app) {
         app.UseAedisExceptionHandling();
+        app.UseAedisRequestLogging(app.Configuration);
         app.UseResponseCompression();
         app.UseAedisWebSecurity();
 
