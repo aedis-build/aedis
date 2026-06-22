@@ -51,6 +51,7 @@
     <Project Path="tests/Aedis.Cache.Redis.Tests/Aedis.Cache.Redis.Tests.csproj" />
     <Project Path="tests/Aedis.Database.Postgres.Tests/Aedis.Database.Postgres.Tests.csproj" />
     <Project Path="tests/Aedis.Diagnostics.Tests/Aedis.Diagnostics.Tests.csproj" />
+    <Project Path="tests/Aedis.Excel.MiniExcel.Tests/Aedis.Excel.MiniExcel.Tests.csproj" />
     <Project Path="tests/Aedis.Hosting.AspNetCore.Tests/Aedis.Hosting.AspNetCore.Tests.csproj" />
     <Project Path="tests/Aedis.Hosting.Worker.Tests/Aedis.Hosting.Worker.Tests.csproj" />
     <Project Path="tests/Aedis.Http.Tests/Aedis.Http.Tests.csproj" />
@@ -62,6 +63,7 @@
     <Project Path="tests/Aedis.Messaging.RabbitMq.Tests/Aedis.Messaging.RabbitMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.Tests/Aedis.Messaging.Tests.csproj" />
     <Project Path="tests/Aedis.Observability.Tests/Aedis.Observability.Tests.csproj" />
+    <Project Path="tests/Aedis.Pdf.QuestPdf.Tests/Aedis.Pdf.QuestPdf.Tests.csproj" />
     <Project Path="tests/Aedis.Scheduling.Hangfire.Tests/Aedis.Scheduling.Hangfire.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Keycloak.Tests/Aedis.Security.Keycloak.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Web.Tests/Aedis.Security.Web.Tests.csproj" />

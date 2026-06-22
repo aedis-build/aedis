@@ -9,4 +9,10 @@
     <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- O provider constrói ExcelResult (ctor interno) e usa ColumnValueFormatter (interno). -->
+    <InternalsVisibleTo Include="Aedis.Excel.MiniExcel" />
+    <InternalsVisibleTo Include="Aedis.Excel.MiniExcel.Tests" />
+  </ItemGroup>
+
 </Project>

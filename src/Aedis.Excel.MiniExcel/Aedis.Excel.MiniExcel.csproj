@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="MiniExcel" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
 </Project>
