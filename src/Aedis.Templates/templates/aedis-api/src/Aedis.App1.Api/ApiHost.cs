@@ -1,5 +1,5 @@
 using Aedis.App1.Api.Dtos.Responses;
-using Aedis.App1.Api.Hateoas;
+using Aedis.App1.Api.Hypermedia;
 using Aedis.App1.Api.Mappers;
 using Aedis.Hosting.AspNetCore;
 using Microsoft.AspNetCore.Builder;
@@ -34,8 +34,7 @@ public sealed class ApiHost : AedisApiHost {
         services.AddAedisAuditContext();
 
         services.AddScoped<ProductMapper>();
-        services.AddAedisResourceLinks<ProductResponse, ProductLinkBuilder>();
-        services.AddAedisCollectionLinks<ProductResponse>("/v1/products");
+        services.AddAedisHypermedia().Resource<ProductResponse, ProductLinks>();
     }
 
     /// <inheritdoc />

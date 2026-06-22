@@ -40,7 +40,7 @@ public sealed class ProductsController : ApiControllerBase {
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Create([FromBody] CreateProductRequest request, CancellationToken cancellationToken) {
         var product = await CommandExecutor.ExecuteAsync(new CreateProductCommand(request.Code, request.Name, request.Price), cancellationToken);
-        return CreatedWithHateoas(nameof(GetById), new { id = product.Id }, _mapper.ToResponse(product));
+        return CreatedResource(_mapper.ToResponse(product), nameof(GetById), new { id = product.Id });
     }
 
     /// <summary>
@@ -51,7 +51,7 @@ public sealed class ProductsController : ApiControllerBase {
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken) {
         var product = await CommandExecutor.ExecuteAsync(new GetProductByIdQuery(id), cancellationToken);
-        return OkWithHateoas(product is null ? null : _mapper.ToResponse(product));
+        return OkResource(product is null ? null : _mapper.ToResponse(product));
     }
 
     /// <summary>
@@ -62,8 +62,7 @@ public sealed class ProductsController : ApiControllerBase {
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Search([FromQuery] string? code, [FromQuery] string? name, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default) {
         var result = await CommandExecutor.ExecuteAsync(new SearchProductsQuery(code, name, page, pageSize), cancellationToken);
-        var items = result.Items.Select(_mapper.ToResponse);
-        return CollectionWithHateoas(items, result.Page, result.PageSize, result.Total);
+        return OkCollection(result.Map(_mapper.ToResponse));
     }
 
     /// <summary>
@@ -76,7 +75,7 @@ public sealed class ProductsController : ApiControllerBase {
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProductRequest request, CancellationToken cancellationToken) {
         var product = await CommandExecutor.ExecuteAsync(new UpdateProductCommand(id, request.Name, request.Price), cancellationToken);
-        return OkWithHateoas(_mapper.ToResponse(product));
+        return OkResource(_mapper.ToResponse(product));
     }
 
     /// <summary>

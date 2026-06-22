@@ -1,4 +1,5 @@
 using Aedis.App1.Domain.Entities;
+using Aedis.Core;
 
 namespace Aedis.App1.Application.Abstractions;
 
@@ -19,9 +20,9 @@ public interface IProductRepository {
     Task<Product?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Busca paginada com filtros opcionais por código e nome, retornando os itens da página e o total geral.
+    ///     Busca paginada com filtros opcionais por código e nome, retornando a página (itens + total geral).
     /// </summary>
-    Task<(IReadOnlyList<Product> Items, int Total)> SearchAsync(string? code, string? name, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<PagedResult<Product>> SearchAsync(string? code, string? name, int page, int pageSize, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     Persiste o produto (upsert) e devolve a entidade com as colunas de auditoria carimbadas.

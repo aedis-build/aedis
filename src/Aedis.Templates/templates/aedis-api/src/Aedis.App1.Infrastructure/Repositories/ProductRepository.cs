@@ -1,6 +1,7 @@
 using Aedis.App1.Application.Abstractions;
 using Aedis.App1.Domain.Entities;
 using Aedis.App1.Infrastructure.Queries;
+using Aedis.Core;
 using Aedis.Database.Abstractions;
 
 namespace Aedis.App1.Infrastructure.Repositories;
@@ -34,10 +35,10 @@ public sealed class ProductRepository : IProductRepository {
     }
 
     /// <inheritdoc />
-    public async Task<(IReadOnlyList<Product> Items, int Total)> SearchAsync(string? code, string? name, int page, int pageSize, CancellationToken cancellationToken = default) {
+    public async Task<PagedResult<Product>> SearchAsync(string? code, string? name, int page, int pageSize, CancellationToken cancellationToken = default) {
         var items = await _repository.FindAsync(new ProductSearchCriteria(code, name, page, pageSize), cancellationToken);
         var total = await _repository.CountAsync(new ProductSearchCriteria(code, name), cancellationToken);
-        return (items.ToList(), total);
+        return new PagedResult<Product>(items.ToList(), total, page, pageSize);
     }
 
     /// <inheritdoc />

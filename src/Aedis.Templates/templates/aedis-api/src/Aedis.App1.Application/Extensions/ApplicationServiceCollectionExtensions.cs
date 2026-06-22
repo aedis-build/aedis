@@ -3,6 +3,7 @@ using Aedis.App1.Application.Products.Commands.Handlers;
 using Aedis.App1.Application.Products.Queries;
 using Aedis.App1.Application.Products.Queries.Handlers;
 using Aedis.App1.Domain.Entities;
+using Aedis.Core;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -22,7 +23,7 @@ public static class ApplicationServiceCollectionExtensions {
         services.AddAedisCommandHandler<UpdateProductCommand, Product, UpdateProductCommandHandler>();
         services.AddAedisCommandHandler<DeleteProductCommand, DeleteProductResult, DeleteProductCommandHandler>();
         services.AddAedisCommandHandler<GetProductByIdQuery, Product?, GetProductByIdQueryHandler>();
-        services.AddAedisCommandHandler<SearchProductsQuery, SearchProductsResult, SearchProductsQueryHandler>();
+        services.AddAedisCommandHandler<SearchProductsQuery, PagedResult<Product>, SearchProductsQueryHandler>();
 
         return services;
     }

@@ -50,8 +50,9 @@ dotnet test
 ```
 
 Os endpoints exigem autenticação (`[Authorize]`, fail-closed). Para liberar o Swagger em desenvolvimento,
-descomente `EnableSwagger` em `ApiHost.cs`. Para condicionar links HATEOAS à permissão do usuário, injete
-`ICurrentUser` em `ProductLinkBuilder` e só adicione o link quando o papel exigido estiver presente.
+descomente `EnableSwagger` em `ApiHost.cs`. Os links de hipermídia são declarados em `ProductLinks` (resolvidos
+por *action*, sem URL na mão); para condicioná-los à permissão do usuário, injete `ICurrentUser` e só declare o
+link quando o papel exigido estiver presente.
 
 ## Imagem e deploy
 
