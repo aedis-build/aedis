@@ -56,7 +56,6 @@ jobs:
           fi
 
       - name: Pack da solução (feed local)
-        continue-on-error: true
         run: dotnet pack Aedis.slnx -c Release -o "$FEED"
 
       - name: Verificar pacotes essenciais no feed
