@@ -73,16 +73,18 @@ jobs:
           dotnet new aedis-lib -n SmokeLib -o /tmp/smoke-lib
           test -f /tmp/smoke-api/Smoke.slnx
           test -f /tmp/smoke-api/src/Smoke.Api/Controllers/ProductsController.cs
-          test -f /tmp/smoke-worker/SmokeWorker.csproj
+          test -f /tmp/smoke-worker/SmokeWorker.slnx
+          test -f /tmp/smoke-worker/src/SmokeWorker.Worker/Messaging/NotificationConsumerService.cs
           test -f /tmp/smoke-lib/SmokeLib.csproj
           if grep -rqE "Aedis\.App1|AedisWorker1|AedisLibrary1|AEDIS_PKG_VERSION|aedis\.app1" /tmp/smoke-api /tmp/smoke-worker /tmp/smoke-lib; then
             echo "::error::placeholder não substituído nos projetos gerados"
             exit 1
           fi
 
-      - name: Build + test do app gerado (contra o feed)
+      - name: Build + test dos apps gerados (contra o feed)
         run: |
-          cat > /tmp/smoke-api/nuget.config <<EOF
+          nuget_config() {
+            cat > "$1/nuget.config" <<EOF
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
             <packageSources>
@@ -92,8 +94,13 @@ jobs:
             </packageSources>
           </configuration>
           EOF
+          }
+          nuget_config /tmp/smoke-api
+          nuget_config /tmp/smoke-worker
           dotnet build /tmp/smoke-api/Smoke.slnx -c Release
           dotnet test /tmp/smoke-api/Smoke.slnx -c Release --no-build
+          dotnet build /tmp/smoke-worker/SmokeWorker.slnx -c Release
+          dotnet test /tmp/smoke-worker/SmokeWorker.slnx -c Release --no-build
 
       - name: Publicar no NuGet (release)
         if: github.event_name == 'release'

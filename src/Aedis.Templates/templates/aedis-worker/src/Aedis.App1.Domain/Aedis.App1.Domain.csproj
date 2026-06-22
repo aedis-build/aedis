@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Aedis.Domain" />
+    <!-- Impõe a regra de dependência (AEDIS0001) em compile-time; sem dependência em runtime. -->
+    <PackageReference Include="Aedis.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

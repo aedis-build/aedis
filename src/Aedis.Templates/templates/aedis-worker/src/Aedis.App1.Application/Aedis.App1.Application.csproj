@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Aedis.Messaging.Abstractions" />
+    <PackageReference Include="Aedis.Exceptions" />
+    <!-- Impõe a regra de dependência (AEDIS0001) em compile-time; sem dependência em runtime. -->
+    <PackageReference Include="Aedis.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.App1.Domain\Aedis.App1.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

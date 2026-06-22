@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Aedis.App1.Worker</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aedis.Hosting.Worker" />
+    <PackageReference Include="Aedis.Messaging.RabbitMq" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.App1.Application\Aedis.App1.Application.csproj" />
+    <ProjectReference Include="..\Aedis.App1.Infrastructure\Aedis.App1.Infrastructure.csproj" />
+    <ProjectReference Include="..\Aedis.App1.Domain\Aedis.App1.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Aedis.Database.Abstractions" />
+    <PackageReference Include="Aedis.Database.Postgres" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.App1.Application\Aedis.App1.Application.csproj" />
+    <ProjectReference Include="..\Aedis.App1.Domain\Aedis.App1.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

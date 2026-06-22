@@ -1,0 +1,27 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup Label="Aedis">
+    <PackageVersion Include="Aedis.Domain" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Exceptions" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Messaging.Abstractions" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Messaging.RabbitMq" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Database.Abstractions" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Database.Postgres" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Hosting.Worker" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Analyzers" Version="AEDIS_PKG_VERSION" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testes">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="NSubstitute" Version="5.3.0" />
+    <PackageVersion Include="FluentAssertions" Version="8.8.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+  </ItemGroup>
+
+</Project>

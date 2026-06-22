@@ -1,16 +1,16 @@
 {
   "$schema": "http://json.schemastore.org/template",
   "author": "Aedis",
-  "classifications": [ "Worker", "Service", "Aedis", "Cloud" ],
+  "classifications": [ "Worker", "Service", "Aedis", "Cloud", "DDD", "Messaging" ],
   "identity": "Aedis.Templates.Worker",
-  "name": "Aedis Worker",
-  "description": "Serviço headless (worker/consumer/batch) sobre o AedisWorkerHost: observabilidade, health probes e shutdown gracioso por default. Inclui Dockerfile e manifesto k8s endurecidos.",
+  "name": "Aedis Worker (camadas + consumer)",
+  "description": "Worker headless em 4 camadas (Worker/Application/Domain/Infrastructure + testes) sobre o AedisWorkerHost: consome mensagens de um broker (RabbitMQ), processa via handler com repositório PostgreSQL de forma idempotente e publica um evento de follow-up. Observabilidade, health probe e shutdown gracioso por default. Inclui Dockerfile e manifesto k8s endurecidos.",
   "shortName": "aedis-worker",
   "tags": {
     "language": "C#",
     "type": "project"
   },
-  "sourceName": "AedisWorker1",
+  "sourceName": "Aedis.App1",
   "preferNameDirectory": true,
   "symbols": {
     "AedisVersion": {
@@ -19,6 +19,12 @@
       "defaultValue": "0.1.0-preview.1",
       "replaces": "AEDIS_PKG_VERSION",
       "description": "Versão dos pacotes Aedis referenciados pelo projeto."
+    },
+    "appNameLower": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "lowerCase",
+      "replaces": "aedis.app1"
     }
   }
 }

@@ -6,8 +6,8 @@ ARG DOTNET_VERSION=10.0
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 WORKDIR /src
 COPY . .
-RUN dotnet restore
-RUN dotnet publish -c Release -o /app --no-restore
+RUN dotnet restore src/Aedis.App1.Worker/Aedis.App1.Worker.csproj
+RUN dotnet publish src/Aedis.App1.Worker/Aedis.App1.Worker.csproj -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION}-noble-chiseled AS final
 WORKDIR /app
@@ -16,4 +16,4 @@ USER $APP_UID
 ENV DOTNET_EnableDiagnostics=0 \
     ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "AedisWorker1.dll"]
+ENTRYPOINT ["dotnet", "Aedis.App1.Worker.dll"]

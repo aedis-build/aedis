@@ -1,50 +1,52 @@
-# Deployment endurecido para AedisWorker1: non-root, root FS read-only, drop de capabilities,
-# no-new-privileges e seccomp default. Probes apontam para os endpoints de health do AedisWorkerHost.
+# Manifesto endurecido do worker: non-root, filesystem read-only, sem escalonamento de privilégio,
+# capabilities zeradas e seccomp RuntimeDefault. O worker não expõe API pública — só o health probe.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: aedisworker1
+  name: aedis.app1
+  labels:
+    app: aedis.app1
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: aedisworker1
+      app: aedis.app1
   template:
     metadata:
       labels:
-        app: aedisworker1
+        app: aedis.app1
     spec:
-      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1654
-        runAsGroup: 1654
-        fsGroup: 1654
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: app
-          image: registry.example.com/aedisworker1:latest
+        - name: worker
+          image: aedis.app1:latest
           ports:
             - containerPort: 8080
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            privileged: false
+            runAsNonRoot: true
             capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
+              drop: [ "ALL" ]
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
           livenessProbe:
             httpGet:
-              path: /health/live
+              path: /health
               port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 15
           readinessProbe:
             httpGet:
-              path: /health/ready
+              path: /health
               port: 8080
-      volumes:
-        - name: tmp
-          emptyDir: {}
+            initialDelaySeconds: 5
+            periodSeconds: 15

@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Aedis.App1.Worker/Aedis.App1.Worker.csproj" />
+    <Project Path="src/Aedis.App1.Application/Aedis.App1.Application.csproj" />
+    <Project Path="src/Aedis.App1.Domain/Aedis.App1.Domain.csproj" />
+    <Project Path="src/Aedis.App1.Infrastructure/Aedis.App1.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Aedis.App1.UnitTests/Aedis.App1.UnitTests.csproj" />
+  </Folder>
+</Solution>
