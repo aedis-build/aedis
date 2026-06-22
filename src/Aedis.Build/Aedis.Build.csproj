@@ -3,9 +3,11 @@
   <PropertyGroup>
     <PackageId>Aedis.Build</PackageId>
     <Description>Aedis.Build — meta-pacote batteries-included: cura uma stack padrão (ASP.NET Core + Postgres + Redis + AWS SQS + OTLP + Keycloak + diagnostics).</Description>
-    <!-- Meta-pacote: sem código próprio. -->
+    <!-- Meta-pacote: sem código próprio, só dependências curadas + props transitivo. -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
+    <!-- Por desenho não há lib/ (meta-pacote): o mismatch lib×framework não se aplica. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

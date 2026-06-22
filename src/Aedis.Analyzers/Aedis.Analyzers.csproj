@@ -5,18 +5,20 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>Aedis.Analyzers</PackageId>
     <Description>Aedis.Analyzers — diagnostics Roslyn que impõem a regra de dependência (domínio não referencia implementação) e convenções do Aedis.</Description>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- Empacota a saída de build na pasta de analyzer: o NuGet a CONTA como conteúdo (evita o falso NU5017) e a coloca em analyzers/dotnet/cs em vez de lib/. -->
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <BuildOutputTargetFolder>analyzers/dotnet/cs</BuildOutputTargetFolder>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <DevelopmentDependency>true</DevelopmentDependency>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <!-- Sem doc XML no pacote de analyzer (só o assembly importa). -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Sem lib/: o aviso de mismatch lib×framework não se aplica a um pacote de analyzer. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
-  </ItemGroup>
-
-  <!-- Empacota o analyzer na pasta correta do .nupkg. -->
-  <ItemGroup>
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 
 </Project>
