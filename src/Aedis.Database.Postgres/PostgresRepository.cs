@@ -143,7 +143,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
         var columns = string.Join(", ", _columns.Select(p => Col(p.Name)));
         var values = string.Join(", ", _columns.Select(p => "@" + p.Name));
 
-        var conflict = GetOnConflictClause();
+        var conflict = EffectiveOnConflict();
         var sql = $"INSERT INTO {TableName} ({columns}) VALUES ({values})"
                   + (conflict is null ? string.Empty : " " + conflict);
 
@@ -195,7 +195,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// <inheritdoc />
     public Task BulkInsertAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork, CancellationToken ct = default) =>
         _bulkInserter.BulkInsertAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
-            GetOnConflictClause(), ct);
+            EffectiveOnConflict(), ct);
 
     /// <inheritdoc />
     public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
@@ -208,7 +208,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
         CancellationToken ct = default) =>
         _bulkInserter.BulkInsertChunkedAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
-            Options.BulkInsertChunkSize, GetOnConflictClause(), ct);
+            Options.BulkInsertChunkSize, EffectiveOnConflict(), ct);
 
     /// <inheritdoc />
     public Task BulkUpdateAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
@@ -242,15 +242,38 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     }
 
     /// <summary>
-    ///     Template method da cláusula <c>ON CONFLICT</c> — aplicada de forma consistente tanto no
-    ///     <see cref="SaveAsync(TEntity,CancellationToken)" /> (INSERT) quanto nas operações de bulk
-    ///     (<see cref="BulkInsertAsync(IEnumerable{TEntity},CancellationToken)" /> e
-    ///     <see cref="BulkInsertChunkedAsync(IEnumerable{TEntity},CancellationToken)" />). Padrão
-    ///     <c>null</c> (insert simples). Sobrescreva para habilitar upsert, ex.:
+    ///     Template method da especificação de upsert <strong>agnóstica de provider</strong> — a forma
+    ///     portável e recomendada. A mesma <see cref="UpsertSpec" /> vale no provider SQL Server, sem
+    ///     refatoração ao trocar de banco. Padrão <c>null</c>. Sobrescreva ex.:
+    ///     <c>protected override UpsertSpec? GetUpsertSpec() => UpsertSpec.OnKey("Id")
+    ///     .SetServerUtcNow("UpdatedAt").When(g => g.Newer("ObservedAt").AndNotDeleted());</c>. Tem
+    ///     precedência sobre <see cref="GetOnConflictClause" />.
+    /// </summary>
+    protected virtual UpsertSpec? GetUpsertSpec() => null;
+
+    /// <summary>
+    ///     Template method da cláusula <c>ON CONFLICT</c> em SQL literal — <strong>escape hatch específico do
+    ///     PostgreSQL</strong> para guards arbitrários que a <see cref="UpsertSpec" /> não cobre. Não é
+    ///     portável para o SQL Server. Só é consultado quando <see cref="GetUpsertSpec" /> devolve
+    ///     <c>null</c>. Padrão <c>null</c> (insert simples), ex.:
     ///     <c>protected override string? GetOnConflictClause() => BuildUpsertClause("Id");</c> ou com SQL
     ///     literal: <c>"ON CONFLICT (id) DO UPDATE SET ..."</c>.
     /// </summary>
     protected virtual string? GetOnConflictClause() => null;
+
+    /// <summary>
+    ///     Resolve a cláusula <c>ON CONFLICT</c> efetiva: compila a <see cref="GetUpsertSpec" /> portável
+    ///     quando presente; caso contrário, recai no <see cref="GetOnConflictClause" /> literal.
+    /// </summary>
+    private string? EffectiveOnConflict() {
+        var spec = GetUpsertSpec();
+        if (spec is null)
+            return GetOnConflictClause();
+
+        var allColumns = _columns.Select(p => Col(p.Name)).ToList();
+        var keyColumns = spec.KeyProperties.Select(Col).ToList();
+        return PostgresUpsertCompiler.Compile(spec, TableName, allColumns, keyColumns, Col);
+    }
 
     /// <summary>
     ///     Monta uma cláusula de upsert com base nas propriedades de conflito informadas (convertidas para

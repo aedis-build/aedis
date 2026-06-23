@@ -1,9 +1,7 @@
 using System.Collections;
 using System.Reflection;
-using System.Text;
 using Aedis.Database.Abstractions;
 using Aedis.Database.SqlServer.Naming;
-using Aedis.Database.SqlServer.Queries;
 using Aedis.Security.Abstractions;
 using Dapper;
 using Microsoft.Extensions.Logging;
@@ -142,15 +140,15 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// <inheritdoc />
     public async Task<TEntity> SaveAsync(TEntity entity, IUnitOfWork unitOfWork, CancellationToken ct = default) {
         Stamp(entity);
-        var keys = GetUpsertKeyColumns();
+        var spec = GetUpsertSpec();
         string sql;
-        if (keys is null or { Count: 0 }) {
+        if (spec is null) {
             var columns = string.Join(", ", _columns.Select(p => Col(p.Name)));
             var values = string.Join(", ", _columns.Select(p => "@" + p.Name));
             sql = $"INSERT INTO {TableName} ({columns}) VALUES ({values})";
         }
         else {
-            sql = BuildMergeUpsert(keys);
+            sql = BuildMergeUpsert(spec);
         }
 
         await unitOfWork.ExecuteAsync(sql, ToParameters(entity, _columns), ct);
@@ -201,7 +199,7 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// <inheritdoc />
     public Task BulkInsertAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork, CancellationToken ct = default) =>
         _bulkInserter.BulkInsertAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
-            GetUpsertKeyColumns(), ct);
+            GetUpsertSpec(), ct);
 
     /// <inheritdoc />
     public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
@@ -214,7 +212,7 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
     public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
         CancellationToken ct = default) =>
         _bulkInserter.BulkInsertChunkedAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
-            Options.BulkInsertChunkSize, GetUpsertKeyColumns(), ct);
+            Options.BulkInsertChunkSize, GetUpsertSpec(), ct);
 
     /// <inheritdoc />
     public Task BulkUpdateAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
@@ -248,23 +246,15 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
     }
 
     /// <summary>
-    ///     Template method das colunas-chave de upsert — aplicadas de forma consistente tanto no
-    ///     <see cref="SaveAsync(TEntity,CancellationToken)" /> (MERGE single-row) quanto nas operações de
-    ///     bulk (<see cref="BulkInsertAsync(IEnumerable{TEntity},CancellationToken)" /> e
-    ///     <see cref="BulkInsertChunkedAsync(IEnumerable{TEntity},CancellationToken)" />, via MERGE sobre
-    ///     staging). Padrão <c>null</c> (insert simples). Sobrescreva para habilitar upsert, ex.:
-    ///     <c>protected override IReadOnlyList&lt;string&gt;? GetUpsertKeyColumns() => UpsertKeys("Id");</c>.
+    ///     Template method da especificação de upsert <strong>agnóstica de provider</strong> — aplicada de
+    ///     forma consistente tanto no <see cref="SaveAsync(TEntity,CancellationToken)" /> (MERGE single-row)
+    ///     quanto nas operações de bulk (via MERGE sobre staging). Padrão <c>null</c> (insert simples).
+    ///     Sobrescreva com uma <see cref="UpsertSpec" /> — a mesma que vale no provider PostgreSQL, sem
+    ///     refatoração ao trocar de banco, ex.:
+    ///     <c>protected override UpsertSpec? GetUpsertSpec() => UpsertSpec.OnKey("Id");</c> ou, com guarda
+    ///     condicional, <c>… .SetServerUtcNow("UpdatedAt").When(g => g.Newer("ObservedAt").AndNotDeleted());</c>.
     /// </summary>
-    protected virtual IReadOnlyList<string>? GetUpsertKeyColumns() => null;
-
-    /// <summary>
-    ///     Resolve as propriedades de conflito informadas para nomes de coluna (pela convenção de nomes),
-    ///     validados como identificadores SQL — evitando injeção mesmo se vierem de origem dinâmica. Sem
-    ///     argumentos, assume a chave <c>Id</c>.
-    /// </summary>
-    protected IReadOnlyList<string> UpsertKeys(params string[] conflictProperties) =>
-        (conflictProperties.Length > 0 ? conflictProperties : ["Id"])
-        .Select(p => SqlIdentifier.Validate(RawCol(p))).ToArray();
+    protected virtual UpsertSpec? GetUpsertSpec() => null;
 
 
     private async Task<T> InReadSessionAsync<T>(Func<IUnitOfWork, CancellationToken, Task<T>> action,
@@ -298,28 +288,20 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// <summary>
     ///     Monta um <c>MERGE</c> single-row (fonte <c>VALUES</c> parametrizada) para o upsert do
     ///     <see cref="SaveAsync(TEntity,CancellationToken)" />, com <c>HOLDLOCK</c> para serializar a
-    ///     verificação-e-inserção e evitar corrida sob concorrência.
+    ///     verificação-e-inserção e evitar corrida sob concorrência. As cláusulas <c>WHEN MATCHED</c>/
+    ///     <c>WHEN NOT MATCHED</c> (incluindo a guarda condicional) vêm do <see cref="SqlServerUpsertCompiler" />,
+    ///     a mesma fonte usada no caminho de bulk — garantindo Save e bulk idênticos.
     /// </summary>
-    private string BuildMergeUpsert(IReadOnlyList<string> keyColumns) {
-        var keys = new HashSet<string>(keyColumns, StringComparer.OrdinalIgnoreCase);
-        var columns = _columns.Select(p => RawCol(p.Name)).ToList();
-        var updateColumns = columns.Where(column => !keys.Contains(column)).ToList();
+    private string BuildMergeUpsert(UpsertSpec spec) {
+        var allColumns = _columns.Select(p => RawCol(p.Name)).ToList();
+        var keyColumns = spec.KeyProperties.Select(RawCol).ToList();
 
-        var sourceColumns = string.Join(", ", columns.Select(column => $"[{column}]"));
+        var sourceColumns = string.Join(", ", allColumns.Select(column => $"[{column}]"));
         var sourceValues = string.Join(", ", _columns.Select(p => "@" + p.Name));
         var on = string.Join(" AND ", keyColumns.Select(key => $"t.[{key}] = s.[{key}]"));
-        var insertColumns = string.Join(", ", columns.Select(column => $"[{column}]"));
-        var insertValues = string.Join(", ", columns.Select(column => $"s.[{column}]"));
+        var tail = SqlServerUpsertCompiler.BuildMergeTail(spec, allColumns, keyColumns, RawCol);
 
-        var builder = new StringBuilder();
-        builder.Append($"MERGE INTO {TableName} WITH (HOLDLOCK) AS t USING (VALUES ({sourceValues})) AS s ({sourceColumns}) ON {on} ");
-        if (updateColumns.Count > 0) {
-            var set = string.Join(", ", updateColumns.Select(column => $"t.[{column}] = s.[{column}]"));
-            builder.Append($"WHEN MATCHED THEN UPDATE SET {set} ");
-        }
-
-        builder.Append($"WHEN NOT MATCHED BY TARGET THEN INSERT ({insertColumns}) VALUES ({insertValues});");
-        return builder.ToString();
+        return $"MERGE INTO {TableName} WITH (HOLDLOCK) AS t USING (VALUES ({sourceValues})) AS s ({sourceColumns}) ON {on} {tail}";
     }
 
     /// <summary>

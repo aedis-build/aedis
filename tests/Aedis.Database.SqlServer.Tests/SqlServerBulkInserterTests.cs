@@ -49,19 +49,19 @@ public sealed class SqlServerBulkInserterTests : IClassFixture<SqlServerBulkInse
         Skip.IfNot(_fixture.Enabled, "Defina AEDIS_SQLSERVER_IT=1 para rodar a integração SQL Server.");
         var table = await _fixture.CreateTableAsync();
         var ids = Enumerable.Range(0, 5_000).Select(_ => Guid.NewGuid()).ToList();
-        string[] keys = ["id"];
+        var upsert = UpsertSpec.OnKey("Id");
 
         var first = ids.Select((id, i) => BulkItem.WithId(id, i, "v1")).ToList();
         await using (var uow = await _fixture.Factory.CreateWriteSessionAsync()) {
             await _fixture.Inserter.BulkInsertChunkedAsync(uow, table, Props, first, _fixture.Naming,
-                _fixture.Options, 1_000, keys);
+                _fixture.Options, 1_000, upsert);
             await uow.CommitAsync();
         }
 
         var second = ids.Select((id, i) => BulkItem.WithId(id, i, "v2")).ToList();
         await using (var uow = await _fixture.Factory.CreateWriteSessionAsync()) {
             await _fixture.Inserter.BulkInsertChunkedAsync(uow, table, Props, second, _fixture.Naming,
-                _fixture.Options, 1_000, keys);
+                _fixture.Options, 1_000, upsert);
             await uow.CommitAsync();
         }
 

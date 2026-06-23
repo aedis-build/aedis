@@ -133,6 +133,48 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         (await Value()).Should().Be(20, "linha soft-deleted não é atualizada");
     }
 
+    /// <summary>
+    ///     Mesma semântica do caso acima, mas declarada pela <see cref="UpsertSpec" /> portável (idêntica ao
+    ///     repo equivalente no provider SQL Server) em vez do <c>ON CONFLICT</c> literal — prova que o mesmo
+    ///     <c>GetUpsertSpec()</c> roda no Postgres sem refatoração.
+    /// </summary>
+    [Fact]
+    public async Task Upsert_condicional_pela_spec_portavel_equivale_ao_on_conflict() {
+        var table = $"metrics_spec_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($@"CREATE TABLE {table} (
+            id uuid PRIMARY KEY, value numeric, source_seq bigint,
+            observed_at timestamptz, created_at timestamptz, updated_at timestamptz,
+            is_deleted boolean NOT NULL DEFAULT false)");
+        var repo = new SpecMetricRepository(_fixture.Factory, _fixture.Naming, _fixture.OptionsAccessor,
+            _fixture.Inserter, table);
+
+        var id = Guid.NewGuid();
+        var created = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
+        var t0 = DateTimeOffset.Parse("2026-03-01T00:00:00Z");
+
+        await repo.SaveAsync(new Metric { Id = id, Value = 10, SourceSeq = 1, ObservedAt = t0, CreatedAt = created });
+
+        Task<decimal> Value() => _fixture.ScalarAsync<decimal>($"SELECT value FROM {table} WHERE id = '{id}'");
+
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 20, SourceSeq = 2, ObservedAt = t0.AddDays(10), CreatedAt = DateTimeOffset.UtcNow }
+        ]);
+        (await Value()).Should().Be(20, "dado mais novo atualiza");
+        (await _fixture.ScalarAsync<DateTime>($"SELECT created_at FROM {table} WHERE id = '{id}'"))
+            .Should().Be(created.UtcDateTime, "created_at é preservado pela spec");
+
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 99, SourceSeq = 1, ObservedAt = t0.AddDays(-10), CreatedAt = created }
+        ]);
+        (await Value()).Should().Be(20, "dado mais velho é ignorado");
+
+        await _fixture.ExecAsync($"UPDATE {table} SET is_deleted = true WHERE id = '{id}'");
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 77, SourceSeq = 9, ObservedAt = t0.AddDays(99), CreatedAt = created }
+        ]);
+        (await Value()).Should().Be(20, "linha soft-deleted não é atualizada");
+    }
+
     [Fact]
     public async Task Arrays_postgres_em_save_bulk_e_query_com_operadores_gin() {
         var table = $"tagged_{Guid.NewGuid():N}";
@@ -369,6 +411,21 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
                     > COALESCE({TableName}.source_seq, -9223372036854775808)
             )
             AND {TableName}.is_deleted = false";
+    }
+
+    /// <summary>
+    ///     Equivalente ao <see cref="ConditionalMetricRepository" />, mas via <see cref="UpsertSpec" />
+    ///     portável — o MESMO override que roda no provider SQL Server, sem uma linha de SQL.
+    /// </summary>
+    private sealed class SpecMetricRepository(IUnitOfWorkFactory factory, NamingStrategyResolver naming,
+        IOptions<DatabaseOptions> options, PostgresBulkInserter inserter, string table)
+        : PostgresRepository<Metric, Guid>(factory, NullLogger<PostgresRepository<Metric, Guid>>.Instance, naming,
+            options, inserter, table)
+    {
+        protected override UpsertSpec? GetUpsertSpec() => UpsertSpec.OnKey("Id")
+            .Preserve("CreatedAt")
+            .SetServerUtcNow("UpdatedAt")
+            .When(g => g.Newer("ObservedAt").OrGreater("SourceSeq").AndNotDeleted());
     }
 
     /// <summary>Repositório de teste cujo template de upsert vale para Save e bulk.</summary>

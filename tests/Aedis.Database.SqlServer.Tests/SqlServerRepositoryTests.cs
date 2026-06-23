@@ -187,6 +187,72 @@ public sealed class SqlServerRepositoryTests : IClassFixture<SqlServerRepository
             .Should().Be("joana", "o usuário logado é carimbado automaticamente pela cadeia de DI");
     }
 
+    /// <summary>
+    ///     Upsert condicional pela <see cref="UpsertSpec" /> portável (a MESMA usada no provider PostgreSQL):
+    ///     só atualiza se a linha que entra for mais nova (observed_at OU source_seq), preserva
+    ///     <c>created_at</c> e ignora linhas soft-deleted. O mesmo spec dirige Save e BulkInsertChunked.
+    /// </summary>
+    [SkippableFact]
+    public async Task Upsert_condicional_so_atualiza_se_mais_novo_preserva_created_e_ignora_deletado() {
+        Skip.IfNot(_fixture.Enabled, "Defina AEDIS_SQLSERVER_IT=1 para rodar a integração SQL Server.");
+        var table = $"metrics_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($@"CREATE TABLE {table} (
+            id UNIQUEIDENTIFIER PRIMARY KEY, [value] DECIMAL(18,4), source_seq BIGINT,
+            observed_at DATETIMEOFFSET, created_at DATETIMEOFFSET, updated_at DATETIMEOFFSET,
+            is_deleted BIT NOT NULL DEFAULT 0)");
+        var repo = new ConditionalMetricRepository(_fixture.Factory, _fixture.Naming, _fixture.OptionsAccessor,
+            _fixture.Inserter, table);
+
+        var id = Guid.NewGuid();
+        var created = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
+        var t0 = DateTimeOffset.Parse("2026-03-01T00:00:00Z");
+
+        await repo.SaveAsync(new Metric { Id = id, Value = 10, SourceSeq = 1, ObservedAt = t0, CreatedAt = created });
+
+        Task<decimal> Value() => _fixture.ScalarAsync<decimal>($"SELECT [value] FROM {table} WHERE id = '{id}'");
+
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 20, SourceSeq = 2, ObservedAt = t0.AddDays(10), CreatedAt = DateTimeOffset.UtcNow }
+        ]);
+        (await Value()).Should().Be(20, "dado mais novo atualiza");
+        (await _fixture.ScalarAsync<DateTimeOffset>($"SELECT created_at FROM {table} WHERE id = '{id}'"))
+            .Should().Be(created, "created_at é preservado");
+
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 99, SourceSeq = 1, ObservedAt = t0.AddDays(-10), CreatedAt = created }
+        ]);
+        (await Value()).Should().Be(20, "dado mais velho é ignorado");
+
+        await _fixture.ExecAsync($"UPDATE {table} SET is_deleted = 1 WHERE id = '{id}'");
+        await repo.BulkInsertChunkedAsync([
+            new Metric { Id = id, Value = 77, SourceSeq = 9, ObservedAt = t0.AddDays(99), CreatedAt = created }
+        ]);
+        (await Value()).Should().Be(20, "linha soft-deleted não é atualizada");
+    }
+
+    public sealed class Metric
+    {
+        public Guid Id { get; set; }
+        public decimal Value { get; set; }
+        public long SourceSeq { get; set; }
+        public DateTimeOffset ObservedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
+    /// <summary>O guard condicional é declarado uma vez, de forma agnóstica — idêntico ao repo equivalente no Postgres.</summary>
+    private sealed class ConditionalMetricRepository(IUnitOfWorkFactory factory, NamingStrategyResolver naming,
+        IOptions<DatabaseOptions> options, SqlServerBulkInserter inserter, string table)
+        : SqlServerRepository<Metric, Guid>(factory, NullLogger<SqlServerRepository<Metric, Guid>>.Instance, naming,
+            options, inserter, table)
+    {
+        protected override UpsertSpec? GetUpsertSpec() => UpsertSpec.OnKey("Id")
+            .Preserve("CreatedAt")
+            .SetServerUtcNow("UpdatedAt")
+            .When(g => g.Newer("ObservedAt").OrGreater("SourceSeq").AndNotDeleted());
+    }
+
     private sealed record FakeAudit(string? CurrentActor, DateTimeOffset Now, string? Reason) : IAuditContext;
 
     public sealed class Audited
@@ -227,7 +293,7 @@ public sealed class SqlServerRepositoryTests : IClassFixture<SqlServerRepository
         : SqlServerRepository<Order, Guid>(factory, NullLogger<SqlServerRepository<Order, Guid>>.Instance, naming,
             options, inserter, table)
     {
-        protected override IReadOnlyList<string>? GetUpsertKeyColumns() => UpsertKeys("Id");
+        protected override UpsertSpec? GetUpsertSpec() => UpsertSpec.OnKey("Id");
     }
 
     public sealed class RepoFixture : IAsyncLifetime

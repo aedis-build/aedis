@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using Aedis.Database.Abstractions;
 using Aedis.Database.SqlServer.Internal;
 using Aedis.Database.SqlServer.Naming;
@@ -19,16 +18,16 @@ public sealed class SqlServerBulkInserter(ILogger<SqlServerBulkInserter> logger)
     private const int DefaultBatchSize = 5_000;
 
     /// <summary>
-    ///     Insere (ou faz upsert, se <paramref name="upsertKeyColumns" /> for informado) em uma passagem.
+    ///     Insere (ou faz upsert, se <paramref name="upsert" /> for informado) em uma passagem.
     /// </summary>
     public async Task BulkInsertAsync<TEntity>(IUnitOfWork unitOfWork, string tableName, PropertyInfo[] properties,
         IEnumerable<TEntity> entities, NamingStrategyResolver namingResolver, DatabaseOptions options,
-        IReadOnlyList<string>? upsertKeyColumns = null, CancellationToken ct = default) where TEntity : class {
+        UpsertSpec? upsert = null, CancellationToken ct = default) where TEntity : class {
         var columns = BuildColumns(properties, namingResolver, options);
         var connection = ResolveConnection(unitOfWork);
         var transaction = ResolveTransaction(unitOfWork);
 
-        if (upsertKeyColumns is null or { Count: 0 }) {
+        if (upsert is null) {
             await BulkCopyAsync(connection, transaction, tableName, columns, properties, entities, options.BulkInsertChunkSize, ct);
             return;
         }
@@ -36,7 +35,7 @@ public sealed class SqlServerBulkInserter(ILogger<SqlServerBulkInserter> logger)
         var staging = StagingTableName(tableName);
         await unitOfWork.ExecuteAsync($"SELECT TOP 0 * INTO {staging} FROM {tableName}", null, ct);
         await BulkCopyAsync(connection, transaction, staging, columns, properties, entities, options.BulkInsertChunkSize, ct);
-        await unitOfWork.ExecuteAsync(BuildMerge(tableName, staging, columns, upsertKeyColumns), null, ct);
+        await unitOfWork.ExecuteAsync(BuildMerge(tableName, staging, columns, upsert, namingResolver, options), null, ct);
         await unitOfWork.ExecuteAsync($"DROP TABLE {staging}", null, ct);
     }
 
@@ -46,19 +45,19 @@ public sealed class SqlServerBulkInserter(ILogger<SqlServerBulkInserter> logger)
     /// </summary>
     public async Task BulkInsertChunkedAsync<TEntity>(IUnitOfWork unitOfWork, string tableName, PropertyInfo[] properties,
         IEnumerable<TEntity> entities, NamingStrategyResolver namingResolver, DatabaseOptions options, int chunkSize,
-        IReadOnlyList<string>? upsertKeyColumns = null, CancellationToken ct = default) where TEntity : class {
+        UpsertSpec? upsert = null, CancellationToken ct = default) where TEntity : class {
         var columns = BuildColumns(properties, namingResolver, options);
         var connection = ResolveConnection(unitOfWork);
         var transaction = ResolveTransaction(unitOfWork);
 
-        if (upsertKeyColumns is null or { Count: 0 }) {
+        if (upsert is null) {
             await BulkCopyAsync(connection, transaction, tableName, columns, properties, entities, chunkSize, ct);
             return;
         }
 
         var staging = StagingTableName(tableName);
         await unitOfWork.ExecuteAsync($"SELECT TOP 0 * INTO {staging} FROM {tableName}", null, ct);
-        var merge = BuildMerge(tableName, staging, columns, upsertKeyColumns);
+        var merge = BuildMerge(tableName, staging, columns, upsert, namingResolver, options);
 
         var chunkCount = 0;
         foreach (var chunk in Chunk(entities, chunkSize)) {
@@ -90,31 +89,25 @@ public sealed class SqlServerBulkInserter(ILogger<SqlServerBulkInserter> logger)
         await bulkCopy.WriteToServerAsync(reader, ct);
     }
 
-    private static string BuildMerge(string tableName, string staging, IReadOnlyList<BulkColumn> columns, IReadOnlyList<string> keyColumns) {
-        var keys = new HashSet<string>(keyColumns, StringComparer.OrdinalIgnoreCase);
+    private static string BuildMerge(string tableName, string staging, IReadOnlyList<BulkColumn> columns,
+        UpsertSpec upsert, NamingStrategyResolver namingResolver, DatabaseOptions options) {
+        string Column(string property) => ResolveColumn(property, namingResolver, options);
+
         var allColumns = columns.Select(column => column.Column).ToList();
-        var updateColumns = allColumns.Where(column => !keys.Contains(column)).ToList();
-
+        var keyColumns = upsert.KeyProperties.Select(Column).ToList();
         var on = string.Join(" AND ", keyColumns.Select(key => $"t.[{key}] = s.[{key}]"));
-        var insertColumns = string.Join(", ", allColumns.Select(column => $"[{column}]"));
-        var insertValues = string.Join(", ", allColumns.Select(column => $"s.[{column}]"));
+        var tail = SqlServerUpsertCompiler.BuildMergeTail(upsert, allColumns, keyColumns, Column);
 
-        var builder = new StringBuilder();
-        builder.Append($"MERGE INTO {tableName} WITH (HOLDLOCK) AS t USING {staging} AS s ON {on} ");
-        if (updateColumns.Count > 0) {
-            var set = string.Join(", ", updateColumns.Select(column => $"t.[{column}] = s.[{column}]"));
-            builder.Append($"WHEN MATCHED THEN UPDATE SET {set} ");
-        }
-
-        builder.Append($"WHEN NOT MATCHED BY TARGET THEN INSERT ({insertColumns}) VALUES ({insertValues});");
-        return builder.ToString();
+        return $"MERGE INTO {tableName} WITH (HOLDLOCK) AS t USING {staging} AS s ON {on} {tail}";
     }
 
     private static IReadOnlyList<BulkColumn> BuildColumns(PropertyInfo[] properties, NamingStrategyResolver namingResolver, DatabaseOptions options) =>
-        properties.Select(property => {
-            var context = NamingContext.ForColumn(options.NamingConvention, property.Name);
-            return new BulkColumn(property, namingResolver.GetStrategy(context).Convert(context));
-        }).ToList();
+        properties.Select(property => new BulkColumn(property, ResolveColumn(property.Name, namingResolver, options))).ToList();
+
+    private static string ResolveColumn(string property, NamingStrategyResolver namingResolver, DatabaseOptions options) {
+        var context = NamingContext.ForColumn(options.NamingConvention, property);
+        return namingResolver.GetStrategy(context).Convert(context);
+    }
 
     private static string StagingTableName(string tableName) {
         var bare = tableName.Replace("[", string.Empty).Replace("]", string.Empty);
