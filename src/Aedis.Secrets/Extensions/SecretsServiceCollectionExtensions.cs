@@ -1,5 +1,6 @@
 using Aedis.Secrets;
 using Aedis.Secrets.Abstractions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
@@ -8,6 +9,19 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>Registro de DI dos serviços agnósticos de segredos do Aedis.</summary>
 public static class SecretsServiceCollectionExtensions
 {
+    /// <summary>
+    ///     Registra o <see cref="ISecretsProvider" /> que lê do próprio <see cref="IConfiguration" />
+    ///     (<see cref="ConfigurationSecretsProvider" />) — fallback para desenvolvimento local sem cofre
+    ///     externo. Não aplica cache (a configuração já está em memória). Procura segredos sob
+    ///     <paramref name="sectionPrefix" /> (padrão <c>Secrets</c>).
+    /// </summary>
+    public static IServiceCollection AddAedisConfigurationSecrets(this IServiceCollection services,
+        string? sectionPrefix = "Secrets") {
+        services.TryAddSingleton<ISecretsProvider>(sp =>
+            new ConfigurationSecretsProvider(sp.GetRequiredService<IConfiguration>(), sectionPrefix));
+        return services;
+    }
+
     /// <summary>
     ///     Registra o provider interno <typeparamref name="TInner" /> e expõe <see cref="ISecretsProvider" />
     ///     decorado com cache em memória (<see cref="CachingSecretsProvider" />) quando

@@ -40,6 +40,8 @@
     <Project Path="src/Aedis.Secrets.Abstractions/Aedis.Secrets.Abstractions.csproj" />
     <Project Path="src/Aedis.Secrets/Aedis.Secrets.csproj" />
     <Project Path="src/Aedis.Secrets.AwsSecretsManager/Aedis.Secrets.AwsSecretsManager.csproj" />
+    <Project Path="src/Aedis.Secrets.AzureKeyVault/Aedis.Secrets.AzureKeyVault.csproj" />
+    <Project Path="src/Aedis.Secrets.Vault/Aedis.Secrets.Vault.csproj" />
     <Project Path="src/Aedis.Security/Aedis.Security.csproj" />
     <Project Path="src/Aedis.Security.Abstractions/Aedis.Security.Abstractions.csproj" />
     <Project Path="src/Aedis.Security.Keycloak/Aedis.Security.Keycloak.csproj" />
@@ -73,6 +75,8 @@
     <Project Path="tests/Aedis.Pdf.QuestPdf.Tests/Aedis.Pdf.QuestPdf.Tests.csproj" />
     <Project Path="tests/Aedis.Scheduling.Hangfire.Tests/Aedis.Scheduling.Hangfire.Tests.csproj" />
     <Project Path="tests/Aedis.Secrets.AwsSecretsManager.Tests/Aedis.Secrets.AwsSecretsManager.Tests.csproj" />
+    <Project Path="tests/Aedis.Secrets.AzureKeyVault.Tests/Aedis.Secrets.AzureKeyVault.Tests.csproj" />
+    <Project Path="tests/Aedis.Secrets.Vault.Tests/Aedis.Secrets.Vault.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Keycloak.Tests/Aedis.Security.Keycloak.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Web.Tests/Aedis.Security.Web.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Tests/Aedis.Security.Tests.csproj" />

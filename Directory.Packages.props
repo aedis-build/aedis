@@ -29,6 +29,12 @@
     <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.4" />
   </ItemGroup>
 
+  <ItemGroup Label="Secrets">
+    <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
+    <PackageVersion Include="VaultSharp" Version="1.17.5.1" />
+  </ItemGroup>
+
   <ItemGroup Label="Database">
     <PackageVersion Include="Dapper" Version="2.1.79" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />

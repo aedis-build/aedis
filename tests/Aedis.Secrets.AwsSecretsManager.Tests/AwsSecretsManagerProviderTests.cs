@@ -20,17 +20,18 @@ public sealed class AwsSecretsManagerProviderTests
 
     [Fact]
     public async Task Mapeia_valor_e_metadados() {
+        const string versionId = "00000000-0000-0000-0000-000000000001";
         var created = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
         var client = Substitute.For<IAmazonSecretsManager>();
         client.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new GetSecretValueResponse { SecretString = "v", VersionId = "ver-1", CreatedDate = created });
+            .Returns(new GetSecretValueResponse { SecretString = "v", VersionId = versionId, CreatedDate = created });
 
         var secret = await Build(client).GetSecretWithMetadataAsync("k");
 
         secret.Should().NotBeNull();
         secret!.Name.Should().Be("k");
         secret.Value.Should().Be("v");
-        secret.Version.Should().Be("ver-1");
+        secret.Version.Should().Be(versionId);
         secret.RotatedAt.Should().Be(new DateTimeOffset(created));
     }
 

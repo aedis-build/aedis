@@ -44,17 +44,18 @@ public sealed class CachingSecretsProviderTests
     public async Task Single_flight_colapsa_chamadas_concorrentes() {
         var inner = Substitute.For<ISecretsProvider>();
         inner.GetSecretWithMetadataAsync("k", Arg.Any<CancellationToken>())
-            .Returns(async _ => {
-                await Task.Delay(50);
-                SecretValue? value = new SecretValue("k", "v", null, null);
-                return value;
-            });
+            .Returns(_ => DelayedSecretAsync());
         var provider = new CachingSecretsProvider(inner, OneHour);
 
         var results = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => provider.GetSecretAsync("k")));
 
         results.Should().AllBe("v");
         await inner.Received(1).GetSecretWithMetadataAsync("k", Arg.Any<CancellationToken>());
+    }
+
+    private static async Task<SecretValue?> DelayedSecretAsync() {
+        await Task.Delay(50);
+        return new SecretValue("k", "v", null, null);
     }
 
     [Fact]
