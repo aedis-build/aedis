@@ -37,6 +37,9 @@
     <Project Path="src/Aedis.Pdf.QuestPdf/Aedis.Pdf.QuestPdf.csproj" />
     <Project Path="src/Aedis.Scheduling.Abstractions/Aedis.Scheduling.Abstractions.csproj" />
     <Project Path="src/Aedis.Scheduling.Hangfire/Aedis.Scheduling.Hangfire.csproj" />
+    <Project Path="src/Aedis.Secrets.Abstractions/Aedis.Secrets.Abstractions.csproj" />
+    <Project Path="src/Aedis.Secrets/Aedis.Secrets.csproj" />
+    <Project Path="src/Aedis.Secrets.AwsSecretsManager/Aedis.Secrets.AwsSecretsManager.csproj" />
     <Project Path="src/Aedis.Security/Aedis.Security.csproj" />
     <Project Path="src/Aedis.Security.Abstractions/Aedis.Security.Abstractions.csproj" />
     <Project Path="src/Aedis.Security.Keycloak/Aedis.Security.Keycloak.csproj" />
@@ -69,6 +72,7 @@
     <Project Path="tests/Aedis.Observability.Tests/Aedis.Observability.Tests.csproj" />
     <Project Path="tests/Aedis.Pdf.QuestPdf.Tests/Aedis.Pdf.QuestPdf.Tests.csproj" />
     <Project Path="tests/Aedis.Scheduling.Hangfire.Tests/Aedis.Scheduling.Hangfire.Tests.csproj" />
+    <Project Path="tests/Aedis.Secrets.AwsSecretsManager.Tests/Aedis.Secrets.AwsSecretsManager.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Keycloak.Tests/Aedis.Security.Keycloak.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Web.Tests/Aedis.Security.Web.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Tests/Aedis.Security.Tests.csproj" />

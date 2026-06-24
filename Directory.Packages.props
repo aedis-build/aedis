@@ -21,8 +21,9 @@
     <PackageVersion Include="IBMMQDotnetClient" Version="9.4.5" />
     <!-- Override de transitivo vulnerável (Newtonsoft.Json 11 via IBMMQDotnetClient) -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
-    <!-- Override de transitivo vulnerável (AWSSDK.Core 4.0.3.1 via AWSSDK.S3 — GHSA-9cvc-h2w8-phrp, corrigido em 4.0.3.3; pinado em 4.0.7.1 para respeitar o piso exigido por AWSSDK.Extensions.NETCore.Setup e unificar a versão entre todos os projetos) -->
-    <PackageVersion Include="AWSSDK.Core" Version="4.0.7.1" />
+    <!-- Override de transitivo vulnerável (AWSSDK.Core 4.0.3.1 via AWSSDK.S3 — GHSA-9cvc-h2w8-phrp, corrigido em 4.0.3.3; elevado para 4.0.9.7 para respeitar o piso exigido por AWSSDK.SecretsManager 4.0.5.8 e unificar a versão entre todos os projetos AWS) -->
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.9.7" />
+    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.5.8" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.2.1" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.2.17" />
     <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.4" />
