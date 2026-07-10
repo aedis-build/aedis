@@ -158,10 +158,10 @@ public sealed class AwsSqsConsumerManager(
     /// <summary>
     ///     Extrai o payload, o content-type e o content-encoding: se for envelope do SNS, usa a mensagem
     ///     interna e os atributos do envelope; senão usa o corpo direto (ex.: webhook externo) e os atributos
-    ///     da mensagem SQS. Content-type aceita tanto <c>Content-Type</c> quanto o legado <c>ContentType</c>.
+    ///     da mensagem SQS.
     /// </summary>
     private static (string raw, string? contentType, string? contentEncoding) ExtractPayload(Message sqsMessage) {
-        var attrContentType = ReadAttribute(sqsMessage, "Content-Type") ?? ReadAttribute(sqsMessage, "ContentType");
+        var attrContentType = ReadAttribute(sqsMessage, "Content-Type");
         var attrContentEncoding = ReadAttribute(sqsMessage, "Content-Encoding");
 
         if (AwsPubSubEnvelopeParser.IsSnsEnvelope(sqsMessage.Body)) {

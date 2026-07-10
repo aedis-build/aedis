@@ -42,8 +42,7 @@ public static class AwsPubSubEnvelopeParser
             ? attrs
             : null;
 
-        var contentType = ReadEnvelopeAttribute(attributes, "Content-Type")
-                          ?? ReadEnvelopeAttribute(attributes, "ContentType");
+        var contentType = ReadEnvelopeAttribute(attributes, "Content-Type");
         var contentEncoding = ReadEnvelopeAttribute(attributes, "Content-Encoding");
 
         return new SnsSqsEnvelope(rawMessage, contentType, contentEncoding);

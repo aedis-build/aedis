@@ -142,7 +142,6 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
             Subject = string.IsNullOrWhiteSpace(routingKey) ? null : routingKey,
             MessageAttributes = new Dictionary<string, SnsMessageAttributeValue> {
                 ["Content-Type"] = new() { DataType = "String", StringValue = contentType },
-                ["ContentType"] = new() { DataType = "String", StringValue = contentType },
                 ["Content-Encoding"] = new() { DataType = "String", StringValue = contentEncoding },
                 ["Content-Transfer-Encoding"] = new() { DataType = "String", StringValue = "base64" },
                 ["RoutingKey"] = new() { DataType = "String", StringValue = routingKey ?? string.Empty },
@@ -168,7 +167,6 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
             MessageBody = body,
             MessageAttributes = new Dictionary<string, SqsMessageAttributeValue> {
                 ["Content-Type"] = new() { DataType = "String", StringValue = contentType },
-                ["ContentType"] = new() { DataType = "String", StringValue = contentType },
                 ["Content-Encoding"] = new() { DataType = "String", StringValue = contentEncoding },
                 ["Content-Transfer-Encoding"] = new() { DataType = "String", StringValue = "base64" },
                 ["CorrelationId"] = new() { DataType = "String", StringValue = correlationId }
