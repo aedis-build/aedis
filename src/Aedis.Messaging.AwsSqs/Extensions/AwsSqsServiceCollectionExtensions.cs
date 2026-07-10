@@ -31,14 +31,16 @@ public static class AwsSqsServiceCollectionExtensions
             sp.GetRequiredService<IAwsPubSubFactory>(),
             sp.GetRequiredService<Options.IOptions<AwsSqsOptions>>(),
             sp.GetRequiredService<ILogger<AwsSqsConsumerManager>>(),
-            sp.GetService<MessageSerializerResolver>() ?? MessageSerializerResolver.CreateDefault()));
+            sp.GetService<MessageSerializerResolver>() ?? MessageSerializerResolver.CreateDefault(),
+            ResolveEncoders(sp)));
 
         services.TryAddSingleton(sp => new AwsSqsMessageBrokerService(
             sp.GetRequiredService<IAwsPubSubFactory>(),
             sp.GetRequiredService<ILogger<AwsSqsMessageBrokerService>>(),
             sp.GetRequiredService<AwsSqsAdministrationHelper>(),
             sp.GetRequiredService<AwsSqsConsumerManager>(),
-            sp.GetService<MessageSerializerResolver>()));
+            sp.GetService<MessageSerializerResolver>(),
+            ResolveEncoders(sp)));
 
         services.TryAddSingleton<IMessageBrokerService>(sp => sp.GetRequiredService<AwsSqsMessageBrokerService>());
         services.AddKeyedSingleton<IMessageBrokerService>("awssqs",
@@ -48,5 +50,14 @@ public static class AwsSqsServiceCollectionExtensions
             .AddCheck<AwsSqsHealthCheck>("awssqs", tags: ["ready"], timeout: TimeSpan.FromSeconds(30));
 
         return services;
+    }
+
+    private static MessageEncoderResolver ResolveEncoders(IServiceProvider sp) {
+        if (sp.GetService<MessageEncoderResolver>() is { } registered)
+            return registered;
+
+        var options = sp.GetRequiredService<Options.IOptions<AwsSqsOptions>>().Value;
+        return new MessageEncoderResolver([new IdentityMessageEncoder(), new GzipMessageEncoder()],
+            options.CompressionEnabled, options.CompressionThresholdBytes);
     }
 }

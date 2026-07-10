@@ -2,8 +2,8 @@ using System.Text.Json;
 
 namespace Aedis.Messaging.AwsSqs;
 
-/// <summary>Conteúdo extraído de um envelope SNS→SQS: a mensagem interna (crua) e seu content-type.</summary>
-public sealed record SnsSqsEnvelope(string Message, string? ContentType);
+/// <summary>Conteúdo extraído de um envelope SNS→SQS: a mensagem interna (crua), o content-type e o content-encoding.</summary>
+public sealed record SnsSqsEnvelope(string Message, string? ContentType, string? ContentEncoding);
 
 /// <summary>
 ///     Quando uma mensagem é entregue de um SNS Topic para uma SQS Queue, o corpo da SQS é um envelope
@@ -37,16 +37,25 @@ public static class AwsPubSubEnvelopeParser
         var rawMessage = root.GetProperty("Message").GetString()
                          ?? throw new InvalidOperationException("Envelope SNS sem o campo 'Message'.");
 
-        string? contentType = null;
-        if (root.TryGetProperty("MessageAttributes", out var attrs)
-            && attrs.ValueKind == JsonValueKind.Object
-            && attrs.TryGetProperty("ContentType", out var ct)
-            && ct.ValueKind == JsonValueKind.Object
-            && ct.TryGetProperty("Value", out var ctValue))
-            contentType = ctValue.GetString();
+        JsonElement? attributes = root.TryGetProperty("MessageAttributes", out var attrs)
+                                  && attrs.ValueKind == JsonValueKind.Object
+            ? attrs
+            : null;
 
-        return new SnsSqsEnvelope(rawMessage, contentType);
+        var contentType = ReadEnvelopeAttribute(attributes, "Content-Type")
+                          ?? ReadEnvelopeAttribute(attributes, "ContentType");
+        var contentEncoding = ReadEnvelopeAttribute(attributes, "Content-Encoding");
+
+        return new SnsSqsEnvelope(rawMessage, contentType, contentEncoding);
     }
+
+    private static string? ReadEnvelopeAttribute(JsonElement? attributes, string name) =>
+        attributes is { } attrs
+        && attrs.TryGetProperty(name, out var attr)
+        && attr.ValueKind == JsonValueKind.Object
+        && attr.TryGetProperty("Value", out var value)
+            ? value.GetString()
+            : null;
 
     /// <summary>Decodifica base64→bytes se a string for base64 válido; senão devolve null.</summary>
     public static byte[]? TryFromBase64(string value) {

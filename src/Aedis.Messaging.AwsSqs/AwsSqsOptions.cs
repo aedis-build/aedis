@@ -52,4 +52,18 @@ public sealed class AwsSqsOptions
     /// <summary>Timeout das operações AWS em segundos (1–300). Padrão 30.</summary>
     [Range(1, 300)]
     public int ConnectionTimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    ///     Comprime (gzip) o payload no publish quando ele atinge <see cref="CompressionThresholdBytes" />,
+    ///     sinalizando <c>Content-Encoding: gzip</c> para o consumer reverter. Reduz custo/latência de objetos
+    ///     grandes e ajuda a caber no limite de 256 KB do SQS/SNS. Padrão ligado.
+    /// </summary>
+    public bool CompressionEnabled { get; set; } = true;
+
+    /// <summary>
+    ///     Tamanho mínimo (em bytes) do payload serializado para comprimir. Abaixo disso o gzip não compensa
+    ///     (overhead + base64). Padrão 1024.
+    /// </summary>
+    [Range(0, int.MaxValue)]
+    public int CompressionThresholdBytes { get; set; } = 1024;
 }

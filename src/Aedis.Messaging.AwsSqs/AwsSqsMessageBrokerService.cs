@@ -19,23 +19,25 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
 {
     private readonly AwsSqsAdministrationHelper _adminHelper;
     private readonly AwsSqsConsumerManager _consumerManager;
+    private readonly MessageEncoderResolver _encoders;
     private readonly IAwsPubSubFactory _factory;
     private readonly ILogger<AwsSqsMessageBrokerService> _logger;
     private readonly MessageSerializerResolver _serializers;
 
     /// <summary>
     ///     Cria o broker AWS SQS/SNS com a factory de clientes compartilhada, o admin helper de
-    ///     auto-provisionamento, o gerenciador de consumidores e o resolvedor de serializadores (usa o
-    ///     default quando ausente).
+    ///     auto-provisionamento, o gerenciador de consumidores, o resolvedor de serializadores e o resolvedor
+    ///     de content-encoding (usam o default quando ausentes).
     /// </summary>
     public AwsSqsMessageBrokerService(IAwsPubSubFactory factory, ILogger<AwsSqsMessageBrokerService> logger,
         AwsSqsAdministrationHelper adminHelper, AwsSqsConsumerManager consumerManager,
-        MessageSerializerResolver? serializers = null) {
+        MessageSerializerResolver? serializers = null, MessageEncoderResolver? encoders = null) {
         _factory = factory;
         _logger = logger;
         _adminHelper = adminHelper;
         _consumerManager = consumerManager;
         _serializers = serializers ?? MessageSerializerResolver.CreateDefault();
+        _encoders = encoders ?? MessageEncoderResolver.CreateDefault();
     }
 
     /// <summary>
@@ -48,10 +50,12 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
 
         var data = message.ToData();
         var serializer = _serializers.ResolveForSerialize(data);
-        var body = Convert.ToBase64String(serializer.Serialize(data).ToArray());
+        var serialized = serializer.Serialize(data);
+        var encoder = _encoders.ResolveForEncode(serialized.Length);
+        var body = Convert.ToBase64String(encoder.Encode(serialized).ToArray());
 
-        await PublishBodyAsync(exchange, routingKey, body, serializer.ContentType, message.CorrelationId,
-            cancellationToken);
+        await PublishBodyAsync(exchange, routingKey, body, serializer.ContentType, encoder.Encoding,
+            message.CorrelationId, cancellationToken);
     }
 
     /// <summary>
@@ -61,9 +65,10 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
     public async Task PublishRawAsync(string exchange, string routingKey, ReadOnlyMemory<byte> payload,
         string contentType = "application/octet-stream", string? correlationId = null,
         CancellationToken cancellationToken = default) {
-        var body = Convert.ToBase64String(payload.ToArray());
-        await PublishBodyAsync(exchange, routingKey, body, contentType, correlationId ?? Guid.NewGuid().ToString(),
-            cancellationToken);
+        var encoder = _encoders.ResolveForEncode(payload.Length);
+        var body = Convert.ToBase64String(encoder.Encode(payload).ToArray());
+        await PublishBodyAsync(exchange, routingKey, body, contentType, encoder.Encoding,
+            correlationId ?? Guid.NewGuid().ToString(), cancellationToken);
     }
 
     /// <summary>
@@ -114,19 +119,20 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
     }
 
     private async Task PublishBodyAsync(string exchange, string routingKey, string body, string contentType,
-        string correlationId, CancellationToken ct) {
+        string contentEncoding, string correlationId, CancellationToken ct) {
         var exchangeType = await _factory.DetectExchangeTypeAsync(exchange, ct);
 
         if (exchangeType == AwsSqsBaseService.ExchangeType.Topic)
-            await PublishToSnsAsync(exchange, routingKey, body, contentType, correlationId, ct);
+            await PublishToSnsAsync(exchange, routingKey, body, contentType, contentEncoding, correlationId, ct);
         else
-            await PublishToSqsAsync(exchange, body, contentType, correlationId, ct);
+            await PublishToSqsAsync(exchange, body, contentType, contentEncoding, correlationId, ct);
 
-        _logger.LogDebug("Mensagem publicada em {ExchangeType} '{Exchange}'.", exchangeType, exchange);
+        _logger.LogDebug("Mensagem publicada em {ExchangeType} '{Exchange}' (encoding {Encoding}).",
+            exchangeType, exchange, contentEncoding);
     }
 
     private async Task PublishToSnsAsync(string topicName, string routingKey, string body, string contentType,
-        string correlationId, CancellationToken ct) {
+        string contentEncoding, string correlationId, CancellationToken ct) {
         var topicArn = await _adminHelper.EnsureTopicExistsAsync(topicName, ct);
         var snsClient = await _factory.GetSnsClientAsync(ct);
 
@@ -135,7 +141,10 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
             Message = body,
             Subject = string.IsNullOrWhiteSpace(routingKey) ? null : routingKey,
             MessageAttributes = new Dictionary<string, SnsMessageAttributeValue> {
+                ["Content-Type"] = new() { DataType = "String", StringValue = contentType },
                 ["ContentType"] = new() { DataType = "String", StringValue = contentType },
+                ["Content-Encoding"] = new() { DataType = "String", StringValue = contentEncoding },
+                ["Content-Transfer-Encoding"] = new() { DataType = "String", StringValue = "base64" },
                 ["RoutingKey"] = new() { DataType = "String", StringValue = routingKey ?? string.Empty },
                 ["CorrelationId"] = new() { DataType = "String", StringValue = correlationId }
             }
@@ -149,8 +158,8 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
         await snsClient.PublishAsync(request, ct);
     }
 
-    private async Task PublishToSqsAsync(string queueName, string body, string contentType, string correlationId,
-        CancellationToken ct) {
+    private async Task PublishToSqsAsync(string queueName, string body, string contentType, string contentEncoding,
+        string correlationId, CancellationToken ct) {
         var queueUrl = await _adminHelper.EnsureQueueExistsAsync(queueName, false, ct);
         var sqsClient = await _factory.GetSqsClientAsync(ct);
 
@@ -158,7 +167,10 @@ public sealed class AwsSqsMessageBrokerService : IMessageBrokerService
             QueueUrl = queueUrl,
             MessageBody = body,
             MessageAttributes = new Dictionary<string, SqsMessageAttributeValue> {
+                ["Content-Type"] = new() { DataType = "String", StringValue = contentType },
                 ["ContentType"] = new() { DataType = "String", StringValue = contentType },
+                ["Content-Encoding"] = new() { DataType = "String", StringValue = contentEncoding },
+                ["Content-Transfer-Encoding"] = new() { DataType = "String", StringValue = "base64" },
                 ["CorrelationId"] = new() { DataType = "String", StringValue = correlationId }
             }
         };

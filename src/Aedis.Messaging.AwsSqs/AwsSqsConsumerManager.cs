@@ -18,7 +18,8 @@ public sealed class AwsSqsConsumerManager(
     IAwsPubSubFactory factory,
     IOptions<AwsSqsOptions> options,
     ILogger<AwsSqsConsumerManager> logger,
-    MessageSerializerResolver serializers)
+    MessageSerializerResolver serializers,
+    MessageEncoderResolver encoders)
 {
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _consumers = new();
     private readonly AwsSqsOptions _options = options.Value;
@@ -138,8 +139,10 @@ public sealed class AwsSqsConsumerManager(
     }
 
     private T? Deserialize<T>(Message sqsMessage) where T : class, IMessage {
-        var (rawMessage, contentType) = ExtractPayload(sqsMessage);
-        var bytes = AwsPubSubEnvelopeParser.TryFromBase64(rawMessage) ?? Encoding.UTF8.GetBytes(rawMessage);
+        var (rawMessage, contentType, contentEncoding) = ExtractPayload(sqsMessage);
+        var transported = AwsPubSubEnvelopeParser.TryFromBase64(rawMessage) ?? Encoding.UTF8.GetBytes(rawMessage);
+        var encoder = encoders.ResolveForContentEncoding(contentEncoding);
+        var bytes = encoder.Decode(transported).ToArray();
 
         if (typeof(IRawMessage).IsAssignableFrom(typeof(T))) {
             var instance = Activator.CreateInstance<T>();
@@ -153,18 +156,21 @@ public sealed class AwsSqsConsumerManager(
     }
 
     /// <summary>
-    ///     Extrai o payload e o content-type: se for envelope do SNS, usa a mensagem interna; senão usa o
-    ///     corpo direto (ex.: webhook externo). O content-type vem do atributo da mensagem.
+    ///     Extrai o payload, o content-type e o content-encoding: se for envelope do SNS, usa a mensagem
+    ///     interna e os atributos do envelope; senão usa o corpo direto (ex.: webhook externo) e os atributos
+    ///     da mensagem SQS. Content-type aceita tanto <c>Content-Type</c> quanto o legado <c>ContentType</c>.
     /// </summary>
-    private static (string raw, string? contentType) ExtractPayload(Message sqsMessage) {
-        var attrContentType = ReadAttribute(sqsMessage, "ContentType");
+    private static (string raw, string? contentType, string? contentEncoding) ExtractPayload(Message sqsMessage) {
+        var attrContentType = ReadAttribute(sqsMessage, "Content-Type") ?? ReadAttribute(sqsMessage, "ContentType");
+        var attrContentEncoding = ReadAttribute(sqsMessage, "Content-Encoding");
 
         if (AwsPubSubEnvelopeParser.IsSnsEnvelope(sqsMessage.Body)) {
             var envelope = AwsPubSubEnvelopeParser.Parse(sqsMessage.Body);
-            return (envelope.Message, envelope.ContentType ?? attrContentType);
+            return (envelope.Message, envelope.ContentType ?? attrContentType,
+                envelope.ContentEncoding ?? attrContentEncoding);
         }
 
-        return (sqsMessage.Body, attrContentType);
+        return (sqsMessage.Body, attrContentType, attrContentEncoding);
     }
 
     private static string? ReadAttribute(Message sqsMessage, string name) =>
