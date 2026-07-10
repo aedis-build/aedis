@@ -29,16 +29,18 @@ public sealed class AwsSqsUnitTests
     }
 
     [Fact]
-    public void Parse_extrai_mensagem_interna_e_content_type() {
+    public void Parse_extrai_mensagem_content_type_e_content_encoding() {
         var body = """
         {"Type":"Notification","Message":"cGF5bG9hZA==",
-         "MessageAttributes":{"ContentType":{"Type":"String","Value":"application/json"}}}
+         "MessageAttributes":{"Content-Type":{"Type":"String","Value":"application/json"},
+                              "Content-Encoding":{"Type":"String","Value":"gzip"}}}
         """;
 
         var envelope = AwsPubSubEnvelopeParser.Parse(body);
 
         envelope.Message.Should().Be("cGF5bG9hZA==");
         envelope.ContentType.Should().Be("application/json");
+        envelope.ContentEncoding.Should().Be("gzip");
     }
 
     [Fact]
