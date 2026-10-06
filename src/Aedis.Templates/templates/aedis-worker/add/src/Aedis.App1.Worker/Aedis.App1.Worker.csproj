@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aedis.Hosting.Worker" Version="AEDIS_PKG_VERSION" />
+    <PackageReference Include="Aedis.Messaging" Version="AEDIS_PKG_VERSION" />
     <PackageReference Include="Aedis.Messaging.RabbitMq" Version="AEDIS_PKG_VERSION" />
   </ItemGroup>
 

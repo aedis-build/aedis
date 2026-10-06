@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Aedis.Domain\Aedis.Domain.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Commands\Aedis.Commands.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Messaging.Abstractions\Aedis.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Aedis.Messaging\Aedis.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

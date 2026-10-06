@@ -25,6 +25,7 @@
     <Project Path="src/Aedis.Http.Abstractions/Aedis.Http.Abstractions.csproj" />
     <Project Path="src/Aedis.Http.Cache/Aedis.Http.Cache.csproj" />
     <Project Path="src/Aedis.Http.Flurl/Aedis.Http.Flurl.csproj" />
+    <Project Path="src/Aedis.Messaging/Aedis.Messaging.csproj" />
     <Project Path="src/Aedis.Messaging.Abstractions/Aedis.Messaging.Abstractions.csproj" />
     <Project Path="src/Aedis.Messaging.AwsSqs/Aedis.Messaging.AwsSqs.csproj" />
     <Project Path="src/Aedis.Messaging.AzureServiceBus/Aedis.Messaging.AzureServiceBus.csproj" />

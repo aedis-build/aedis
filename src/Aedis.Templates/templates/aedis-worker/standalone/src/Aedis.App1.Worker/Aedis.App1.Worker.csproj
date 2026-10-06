@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aedis.Hosting.Worker" />
+    <PackageReference Include="Aedis.Messaging" />
     <PackageReference Include="Aedis.Messaging.RabbitMq" />
   </ItemGroup>
 

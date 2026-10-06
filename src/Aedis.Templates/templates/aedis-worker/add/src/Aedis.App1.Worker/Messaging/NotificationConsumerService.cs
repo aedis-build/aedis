@@ -1,3 +1,4 @@
+using Aedis.Messaging;
 using Aedis.Messaging.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

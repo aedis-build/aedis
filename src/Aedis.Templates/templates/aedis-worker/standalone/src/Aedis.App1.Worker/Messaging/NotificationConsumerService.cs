@@ -1,5 +1,6 @@
 using Aedis.App1.Application.Notifications;
 using Aedis.App1.Application.Notifications.Events;
+using Aedis.Messaging;
 using Aedis.Messaging.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

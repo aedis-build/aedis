@@ -13,6 +13,7 @@
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="coverlet.msbuild">
       <PrivateAssets>all</PrivateAssets>
@@ -21,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Aedis.Messaging.Abstractions\Aedis.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Aedis.Messaging\Aedis.Messaging.csproj" />
   </ItemGroup>
 
 </Project>
