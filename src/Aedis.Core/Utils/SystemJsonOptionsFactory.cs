@@ -5,45 +5,48 @@ using System.Text.Json.Serialization;
 namespace Aedis.Core.Utils;
 
 /// <summary>
-///     Factory for creating standardized System.Text.Json options across the framework.
-///     Provides consistent JSON serialization settings for HTTP APIs, storage, and logging.
+///     Factory for the framework-standard System.Text.Json settings shared by HTTP APIs, storage and logging:
+///     camelCase names, nulls omitted, relaxed escaping, case-insensitive reads and the
+///     <see cref="FriendlyEnumConverterFactory" /> so invalid enum input never leaks CLR type names.
 /// </summary>
 public static class SystemJsonOptionsFactory
 {
     /// <summary>
-    ///     Creates JsonSerializerOptions with framework-standard configuration for HTTP APIs.
-    ///     Compact format (WriteIndented = false) for network efficiency.
+    ///     Creates options for HTTP APIs: compact output (<c>WriteIndented = false</c>) for network efficiency.
     /// </summary>
-    /// <returns>Configured JsonSerializerOptions instance</returns>
+    /// <returns>A new, fully configured <see cref="JsonSerializerOptions" /> instance.</returns>
     public static JsonSerializerOptions Create() {
-        return new JsonSerializerOptions {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = false,
-            PropertyNameCaseInsensitive = true,
-            Converters = {
-                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
-            }
-        };
+        var options = new JsonSerializerOptions();
+        Configure(options);
+        return options;
     }
 
     /// <summary>
-    ///     Creates JsonSerializerOptions for storage and debugging.
-    ///     Indented format (WriteIndented = true) for better human readability.
-    ///     Use for: S3 persistence, file storage, audit logs, debugging.
+    ///     Creates options for storage and debugging: indented output for human readability.
+    ///     Use for object storage, file persistence, audit logs and debugging.
     /// </summary>
-    /// <returns>Configured JsonSerializerOptions instance with indentation</returns>
+    /// <returns>A new, fully configured <see cref="JsonSerializerOptions" /> instance with indentation.</returns>
     public static JsonSerializerOptions CreateForStorage() {
-        return new JsonSerializerOptions {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = true,
-            PropertyNameCaseInsensitive = true,
-            Converters = {
-                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
-            }
-        };
+        var options = Create();
+        options.WriteIndented = true;
+        return options;
+    }
+
+    /// <summary>
+    ///     Applies the framework-standard settings to an existing instance. This is the entry point for hosts,
+    ///     whose MVC and minimal-API options objects cannot be replaced, only mutated in place. Safe to call
+    ///     more than once: the enum converter is added only when absent.
+    /// </summary>
+    /// <param name="options">The options instance to configure.</param>
+    public static void Configure(JsonSerializerOptions options) {
+        ArgumentNullException.ThrowIfNull(options);
+
+        options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+        options.PropertyNameCaseInsensitive = true;
+
+        if (!options.Converters.Any(converter => converter is FriendlyEnumConverterFactory))
+            options.Converters.Add(new FriendlyEnumConverterFactory(JsonNamingPolicy.CamelCase));
     }
 }

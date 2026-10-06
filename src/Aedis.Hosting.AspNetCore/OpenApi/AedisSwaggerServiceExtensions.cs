@@ -36,6 +36,7 @@ public static class AedisSwaggerServiceExtensions
                 AddBearerSecurity(swagger);
 
             IncludeEntryAssemblyXmlComments(swagger);
+            swagger.OperationFilter<DeprecatedOperationFilter>();
             configure?.Invoke(swagger);
         });
 

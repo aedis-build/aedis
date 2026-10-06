@@ -123,7 +123,10 @@ public abstract class AedisApiHost
         services.AddResponseCompression(options => options.EnableForHttps = true);
 
         services.AddAedisProblemDetails();
-        services.AddControllers();
+        services.AddAedisCommands();
+        services.AddControllers()
+            .AddJsonOptions(options => SystemJsonOptionsFactory.Configure(options.JsonSerializerOptions));
+        services.ConfigureHttpJsonOptions(options => SystemJsonOptionsFactory.Configure(options.SerializerOptions));
         services.AddAedisApiValidation();
 
         if (EnableSwagger)
