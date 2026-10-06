@@ -347,7 +347,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             var value = property.GetValue(entity);
             if (value is not null) {
                 var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                if (type.IsEnum) value = value.ToString()!.ToUpperInvariant();
+                if (type.IsEnum) value = Aedis.Database.Abstractions.EnumPersistence.ToStoredName((Enum)value);
             }
 
             parameters.Add("@" + property.Name, value);

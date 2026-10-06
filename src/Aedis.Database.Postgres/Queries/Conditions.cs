@@ -112,7 +112,7 @@ internal static class ParameterWriter
     /// </summary>
     public static string Add(object? value, ref int index, Dictionary<string, object> parameters) {
         var name = $"p{index++}";
-        parameters[name] = value is Enum e ? e.ToString()!.ToUpperInvariant() : value!;
+        parameters[name] = value is Enum e ? Aedis.Database.Abstractions.EnumPersistence.ToStoredName(e) : value!;
         return "@" + name;
     }
 }
