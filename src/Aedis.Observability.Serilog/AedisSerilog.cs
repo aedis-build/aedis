@@ -1,6 +1,7 @@
 using Aedis.Core.Utils;
 using Microsoft.Extensions.Configuration;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
 
@@ -55,9 +56,22 @@ public static class AedisSerilog
             .Enrich.WithProperty("application", ApplicationInfo.Name)
             .Enrich.FromLogContext()
             .Enrich.With(new RedactionEnricher(redaction))
+            .WriteTo.Sink(CreateRedactingSinks(redaction, configuration));
+    }
+
+    /// <summary>
+    ///     Monta os sinks reais (Console sempre; OTLP opt-in) atrás do <see cref="RedactingSink" />, que reescreve
+    ///     o template da mensagem antes de qualquer saída. O logger interno aceita todos os níveis: a filtragem
+    ///     já aconteceu no logger externo.
+    /// </summary>
+    private static ILogEventSink CreateRedactingSinks(RedactionOptions redaction, IConfiguration configuration) {
+        var inner = new LoggerConfiguration()
+            .MinimumLevel.Verbose()
             .WriteTo.Console(new CompactJsonFormatter());
 
-        ConfigureOpenTelemetrySink(loggerConfiguration, configuration);
+        ConfigureOpenTelemetrySink(inner, configuration);
+
+        return new RedactingSink(inner.CreateLogger(), redaction);
     }
 
     private static void ApplyConfiguredLevels(LoggerConfiguration loggerConfiguration, IConfiguration configuration) {

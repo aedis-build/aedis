@@ -27,6 +27,15 @@ public sealed class RedactionOptions {
     /// <summary>Chave usada pela estratégia <see cref="RedactionStrategy.Hash" /> (HMAC). Sem ela, Hash recai em máscara total.</summary>
     public string? HashKey { get; set; }
 
+    /// <summary>
+    ///     Procura segredos em texto livre — o template da mensagem e os valores string das propriedades — e os
+    ///     substitui pelo <see cref="Placeholder" />: credenciais <c>Bearer</c>/<c>Basic</c>, pares
+    ///     <c>senha=valor</c>/<c>token: valor</c>/<c>api-key=valor</c>, blocos PEM de chave privada e access keys
+    ///     de nuvem. Cobre o que o enriquecimento por nome de campo não alcança (strings interpoladas, URLs,
+    ///     mensagens de erro). Padrão: ligado.
+    /// </summary>
+    public bool MaskSecretsInText { get; set; } = true;
+
     /// <summary>Nomes (normalizados) tratados como segredo. Inclui os padrão; adicione mais via configuração.</summary>
     public HashSet<string> SecretKeys { get; } = [
         "authorization", "proxyauthorization", "password", "passwd", "pwd", "secret", "clientsecret",
@@ -63,7 +72,7 @@ public sealed class RedactionOptions {
     /// <summary>
     ///     Lê as opções da seção <c>Logging:Redaction</c>, mesclando com os padrões. Aceita
     ///     <c>Enabled</c>, <c>Placeholder</c>, <c>KeepLast</c>, <c>SecretStrategy</c>, <c>PiiStrategy</c>,
-    ///     <c>HashKey</c>, <c>AdditionalSecretKeys</c> e <c>AdditionalPiiKeys</c>.
+    ///     <c>HashKey</c>, <c>MaskSecretsInText</c>, <c>AdditionalSecretKeys</c> e <c>AdditionalPiiKeys</c>.
     /// </summary>
     /// <param name="configuration">Configuração da aplicação.</param>
     public static RedactionOptions FromConfiguration(IConfiguration configuration) {
@@ -95,6 +104,10 @@ public sealed class RedactionOptions {
 
         if (!string.IsNullOrEmpty(section["HashKey"])) {
             options.HashKey = section["HashKey"];
+        }
+
+        if (bool.TryParse(section["MaskSecretsInText"], out var maskSecretsInText)) {
+            options.MaskSecretsInText = maskSecretsInText;
         }
 
         foreach (var child in section.GetSection("AdditionalSecretKeys").GetChildren()) {
