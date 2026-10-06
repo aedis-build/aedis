@@ -72,7 +72,7 @@ public static class WebSecurityServiceCollectionExtensions
 
             if (forwarded.TrustAllProxies) {
                 o.KnownProxies.Clear();
-                o.KnownNetworks.Clear();
+                o.KnownIPNetworks.Clear();
                 return;
             }
 
@@ -80,11 +80,9 @@ public static class WebSecurityServiceCollectionExtensions
                 if (IPAddress.TryParse(proxy, out var address))
                     o.KnownProxies.Add(address);
 
-            foreach (var network in forwarded.KnownNetworks) {
-                var parts = network.Split('/');
-                if (parts.Length == 2 && IPAddress.TryParse(parts[0], out var prefix) && int.TryParse(parts[1], out var prefixLength))
-                    o.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(prefix, prefixLength));
-            }
+            foreach (var network in forwarded.KnownNetworks)
+                if (System.Net.IPNetwork.TryParse(network, out var ipNetwork))
+                    o.KnownIPNetworks.Add(ipNetwork);
         });
     }
 

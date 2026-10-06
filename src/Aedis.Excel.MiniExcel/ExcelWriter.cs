@@ -7,7 +7,7 @@ using MiniExcelLibs;
 namespace Aedis.Excel.MiniExcel;
 
 /// <summary>
-///     Implementação de <see cref="IExcelWriter" /> sobre a biblioteca MiniExcel. Projeta as linhas a partir
+///     Implementação de <see cref="Abstractions.IExcelWriter" /> sobre a biblioteca MiniExcel. Projeta as linhas a partir
 ///     das colunas declaradas, escolhe o backing do stream pelo volume estimado (memória até o limiar,
 ///     arquivo temporário com <c>DeleteOnClose</c> acima dele, para não estourar a heap em exportações grandes)
 ///     e produz XLSX (via MiniExcel) ou CSV (com delimitador/escaping próprios). O nome do arquivo é sanitizado.
