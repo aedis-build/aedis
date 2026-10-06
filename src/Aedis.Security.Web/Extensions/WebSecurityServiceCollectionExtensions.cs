@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -29,14 +30,37 @@ public static class WebSecurityServiceCollectionExtensions
         var section = configuration.GetSection(WebSecurityOptions.SectionName);
 
         services.AddOptions<WebSecurityOptions>().Bind(section).ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<WebSecurityOptions>, WebSecurityOptionsValidator>());
 
         var options = section.Get<WebSecurityOptions>() ?? new WebSecurityOptions();
 
         ConfigureForwardedHeaders(services, options.ForwardedHeaders);
         ConfigureHsts(services, options.Https);
         ConfigureRateLimiter(services, options.RateLimiting);
+        ConfigureCors(services, options.Cors);
 
         return services;
+    }
+
+    private static void ConfigureCors(IServiceCollection services, CorsOptions cors) {
+        if (!cors.Enabled)
+            return;
+
+        services.AddCors(o => o.AddPolicy(CorsOptions.PolicyName, policy => {
+            if (cors.AllowsAnyOrigin)
+                policy.AllowAnyOrigin();
+            else
+                policy.WithOrigins(cors.AllowedOrigins.Where(origin => !string.IsNullOrWhiteSpace(origin)).ToArray())
+                    .SetIsOriginAllowedToAllowWildcardSubdomains();
+
+            policy.WithMethods(cors.AllowedMethods.ToArray())
+                .WithHeaders(cors.AllowedHeaders.ToArray())
+                .WithExposedHeaders(cors.ExposedHeaders.ToArray())
+                .SetPreflightMaxAge(cors.PreflightMaxAge);
+
+            if (cors.AllowCredentials)
+                policy.AllowCredentials();
+        }));
     }
 
     private static void ConfigureForwardedHeaders(IServiceCollection services, ForwardedHeadersHardeningOptions forwarded) {

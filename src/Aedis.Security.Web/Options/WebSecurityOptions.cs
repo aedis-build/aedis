@@ -3,9 +3,9 @@ namespace Aedis.Security.Web.Options;
 /// <summary>
 ///     Raiz de configuração da camada de segurança HTTP do Aedis, vinculada à seção <c>Security</c> do
 ///     <c>IConfiguration</c>. Agrega os controles secure-by-default (todos ligados): cabeçalhos de segurança,
-///     TLS/HSTS, rate limiting, proteção de Host, endurecimento do Kestrel e cabeçalhos encaminhados. Cada
-///     subseção mapeia para a classe de opções correspondente e pode ser ajustada ou desligada
-///     individualmente sem afetar as demais.
+///     TLS/HSTS, rate limiting, proteção de Host, endurecimento do Kestrel e cabeçalhos encaminhados — e o
+///     CORS, que é opt-in por lista de origens. Cada subseção mapeia para a classe de opções correspondente e
+///     pode ser ajustada ou desligada individualmente sem afetar as demais.
 /// </summary>
 /// <example>
 ///     <code>
@@ -37,4 +37,7 @@ public sealed class WebSecurityOptions
 
     /// <summary>Interpretação de cabeçalhos <c>X-Forwarded-*</c> de proxy/ingress.</summary>
     public ForwardedHeadersHardeningOptions ForwardedHeaders { get; set; } = new();
+
+    /// <summary>CORS por lista explícita de origens (opt-in; desligado por padrão).</summary>
+    public CorsOptions Cors { get; set; } = new();
 }
