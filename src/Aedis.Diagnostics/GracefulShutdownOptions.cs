@@ -13,4 +13,12 @@ public sealed class GracefulShutdownOptions
     ///     Padrão: 5 segundos. Use <see cref="TimeSpan.Zero" /> para descartar imediatamente.
     /// </summary>
     public TimeSpan DrainDelay { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    ///     Tempo máximo que o host aguarda os serviços hospedados pararem (propagado para
+    ///     <c>HostOptions.ShutdownTimeout</c>). Precisa cobrir <see cref="DrainDelay" /> mais o descarte dos
+    ///     recursos; se for menor, o host aborta o desligamento no meio da drenagem — por isso a validação
+    ///     exige <c>ShutdownTimeout &gt;= DrainDelay</c>. Padrão: 30 segundos.
+    /// </summary>
+    public TimeSpan ShutdownTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
