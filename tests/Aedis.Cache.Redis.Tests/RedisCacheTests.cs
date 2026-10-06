@@ -5,6 +5,7 @@ using Aedis.Hosting.Abstractions;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 using Testcontainers.Redis;
 using Xunit;
 
@@ -123,11 +124,21 @@ public sealed class RedisCacheTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task IncrementAsync_conta_e_define_ttl_no_primeiro() {
+    public async Task IncrementAsync_conta_e_define_ttl_so_no_primeiro_incremento() {
         var cache = CreateCache("instance-a");
         var key = $"cnt-{Guid.NewGuid():N}";
+        await using var raw = await ConnectionMultiplexer.ConnectAsync(_container.GetConnectionString());
+        var database = raw.GetDatabase();
 
         (await cache.IncrementAsync(key, TimeSpan.FromMinutes(1))).Should().Be(1);
-        (await cache.IncrementAsync(key, TimeSpan.FromMinutes(1))).Should().Be(2);
+        var ttlAposPrimeiro = await database.KeyTimeToLiveAsync(key);
+        ttlAposPrimeiro.Should().NotBeNull("o primeiro incremento define o TTL na mesma operação atômica");
+        ttlAposPrimeiro!.Value.Should().BeLessThanOrEqualTo(TimeSpan.FromMinutes(1));
+
+        (await cache.IncrementAsync(key, TimeSpan.FromHours(1))).Should().Be(2);
+        var ttlAposSegundo = await database.KeyTimeToLiveAsync(key);
+        ttlAposSegundo.Should().NotBeNull();
+        ttlAposSegundo!.Value.Should().BeLessThanOrEqualTo(TimeSpan.FromMinutes(1),
+            "incrementos seguintes não redefinem o TTL original");
     }
 }

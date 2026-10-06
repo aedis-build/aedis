@@ -164,14 +164,25 @@ public sealed class RedisCache : ICache
     }
 
     /// <summary>
+    ///     Script Lua que incrementa e, só no primeiro incremento, aplica o TTL — um único round-trip atômico, sem
+    ///     a janela entre o INCR e o EXPIRE em que a chave ficaria sem expiração se o processo caísse.
+    /// </summary>
+    private const string IncrementWithTtlScript =
+        "local value = redis.call('INCR', KEYS[1]) " +
+        "if value == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end " +
+        "return value";
+
+    /// <summary>
     ///     Incrementa atomicamente o contador da <paramref name="key" /> e devolve o novo valor. No primeiro
-    ///     incremento (retorno == 1), define o TTL <paramref name="ttl" /> da chave.
+    ///     incremento (retorno == 1), define o TTL <paramref name="ttl" /> da chave na mesma operação.
     /// </summary>
     public async Task<long> IncrementAsync(string key, TimeSpan ttl, CancellationToken cancellationToken = default) {
-        var value = await Database.StringIncrementAsync(key).ConfigureAwait(false);
-        if (value == 1)
-            await Database.KeyExpireAsync(key, ttl).ConfigureAwait(false);
-        return value;
+        var result = await Database.ScriptEvaluateAsync(
+            IncrementWithTtlScript,
+            [(RedisKey)key],
+            [(RedisValue)(long)ttl.TotalMilliseconds]).ConfigureAwait(false);
+
+        return (long)result;
     }
 
     /// <summary>
