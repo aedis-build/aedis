@@ -16,13 +16,17 @@ namespace Aedis.Database.SqlServer;
 ///     em sessão somente leitura; escritas em sessão transacional. O
 ///     <see cref="SaveAsync(TEntity,CancellationToken)" /> é um upsert via <c>MERGE</c> quando há chave de
 ///     conflito declarada. Bulk insert delega ao <see cref="SqlServerBulkInserter" /> (SqlBulkCopy em
-///     streaming + MERGE). Enums são persistidos como string maiúscula, em paridade com o caminho de bulk.
+///     streaming + MERGE). Enums são persistidos pelo nome declarado (<see cref="EnumPersistence" />), em
+///     paridade com o caminho de bulk. Erros do banco são normalizados em <see cref="DatabaseError" /> e passam
+///     por <see cref="OnDatabaseError" />, pelo <see cref="IDatabaseErrorMapper" /> registrado e, por fim,
+///     pelo mapeamento padrão do framework.
 /// </summary>
 public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
     where TEntity : class
     where TId : notnull
 {
     private readonly IAuditContext? _audit;
+    private readonly IDatabaseErrorMapper? _errorMapper;
     private readonly AuditColumns _auditColumns;
     private readonly SqlServerBulkInserter _bulkInserter;
     private readonly PropertyInfo[] _columns;
@@ -51,10 +55,12 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// <param name="bulkInserter">Inseridor em massa via SqlBulkCopy em streaming, usado pelas operações de bulk.</param>
     /// <param name="tableName">Nome de tabela explícito; quando <c>null</c>, deriva-se do nome da entidade pela convenção.</param>
     /// <param name="auditContext">Contexto de auditoria opcional; quando presente, carimba as colunas de auditoria existentes.</param>
+    /// <param name="errorMapper">Mapeador opcional de erros do banco, consultado após <see cref="OnDatabaseError" />.</param>
     public SqlServerRepository(IUnitOfWorkFactory sessionFactory, ILogger<SqlServerRepository<TEntity, TId>> logger,
         NamingStrategyResolver naming, IOptions<DatabaseOptions> options, SqlServerBulkInserter bulkInserter,
-        string? tableName = null, IAuditContext? auditContext = null) {
+        string? tableName = null, IAuditContext? auditContext = null, IDatabaseErrorMapper? errorMapper = null) {
         _sessionFactory = sessionFactory;
+        _errorMapper = errorMapper;
         _logger = logger;
         _naming = naming;
         Options = options.Value;
@@ -256,6 +262,23 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// </summary>
     protected virtual UpsertSpec? GetUpsertSpec() => null;
 
+    /// <summary>
+    ///     Hook de tradução de erros do banco: recebe o erro normalizado e pode devolver a exceção que o
+    ///     repositório deve lançar — tipicamente uma <c>BusinessException</c> com a regra violada. Devolva
+    ///     <c>null</c> para seguir a cadeia padrão: o <see cref="IDatabaseErrorMapper" /> registrado e, por fim,
+    ///     o mapeamento do framework. Erros que o provider não reconhece não chegam aqui e são relançados como
+    ///     estão. A sessão já foi revertida quando a exceção devolvida é lançada.
+    /// </summary>
+    /// <param name="error">Erro normalizado pelo provider.</param>
+    protected virtual Exception? OnDatabaseError(DatabaseError error) => null;
+
+    private Exception? TranslateDatabaseError(Exception exception) {
+        var error = SqlServerDatabaseErrorTranslator.TryTranslate(exception);
+        if (error is null) return null;
+
+        return OnDatabaseError(error) ?? _errorMapper?.Map(error) ?? DefaultDatabaseErrorMapping.Map(error);
+    }
+
 
     private async Task<T> InReadSessionAsync<T>(Func<IUnitOfWork, CancellationToken, Task<T>> action,
         CancellationToken ct) {
@@ -264,6 +287,10 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
             var result = await action(uow, ct);
             await uow.CommitAsync(ct);
             return result;
+        }
+        catch (Exception exception) when (TranslateDatabaseError(exception) is { } translated) {
+            await uow.RollbackAsync(ct);
+            throw translated;
         }
         catch {
             await uow.RollbackAsync(ct);
@@ -278,6 +305,10 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
             var result = await action(uow, ct);
             await uow.CommitAsync(ct);
             return result;
+        }
+        catch (Exception exception) when (TranslateDatabaseError(exception) is { } translated) {
+            await uow.RollbackAsync(ct);
+            throw translated;
         }
         catch {
             await uow.RollbackAsync(ct);
