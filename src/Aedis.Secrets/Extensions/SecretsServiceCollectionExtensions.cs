@@ -25,7 +25,9 @@ public static class SecretsServiceCollectionExtensions
     /// <summary>
     ///     Registra o provider interno <typeparamref name="TInner" /> e expõe <see cref="ISecretsProvider" />
     ///     decorado com cache em memória (<see cref="CachingSecretsProvider" />) quando
-    ///     <see cref="SecretsCachingOptions.CacheEnabled" /> está ligado. Os providers concretos (ex.: AWS
+    ///     <see cref="SecretsCachingOptions.CacheEnabled" /> está ligado. Se <typeparamref name="TInner" />
+    ///     também implementa <see cref="ISecretsWriter" />, expõe o writer decorado para invalidar o cache a
+    ///     cada escrita (<see cref="CacheInvalidatingSecretsWriter" />). Os providers concretos (ex.: AWS
     ///     Secrets Manager) chamam este helper para herdar o caching sem reimplementá-lo.
     /// </summary>
     public static IServiceCollection AddAedisSecretsCaching<TInner>(this IServiceCollection services)
@@ -36,6 +38,15 @@ public static class SecretsServiceCollectionExtensions
             var options = sp.GetService<IOptions<SecretsCachingOptions>>()?.Value ?? new SecretsCachingOptions();
             return options.CacheEnabled ? new CachingSecretsProvider(inner, options.CacheTtl) : inner;
         });
+
+        if (typeof(ISecretsWriter).IsAssignableFrom(typeof(TInner)))
+            services.TryAddSingleton<ISecretsWriter>(sp => {
+                var writer = (ISecretsWriter)sp.GetRequiredService<TInner>();
+                return sp.GetRequiredService<ISecretsProvider>() is CachingSecretsProvider cache
+                    ? new CacheInvalidatingSecretsWriter(writer, cache)
+                    : writer;
+            });
+
         return services;
     }
 }

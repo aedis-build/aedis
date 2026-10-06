@@ -12,9 +12,11 @@ namespace Aedis.Secrets.Vault;
 ///     Provider de segredos sobre o HashiCorp Vault (KV v2). Lê o segredo no path informado e devolve o
 ///     campo <see cref="VaultOptions.ValueKey" />, com metadados (versão e <c>CreatedTime</c> como rotação).
 ///     Segredo inexistente (HTTP 404) devolve <c>null</c>; falhas transitórias do Vault sobem para o
-///     chamador. Normalmente é envolvido pelo <c>CachingSecretsProvider</c> via DI.
+///     chamador. Também implementa <see cref="ISecretsWriter" />: grava <c>{ ValueKey: valor }</c> como
+///     nova versão do path e a remoção é o soft delete da versão corrente (recuperável via <c>undelete</c>).
+///     Normalmente é envolvido pelo <c>CachingSecretsProvider</c> via DI.
 /// </summary>
-public sealed class VaultSecretsProvider : ISecretsProvider
+public sealed class VaultSecretsProvider : ISecretsProvider, ISecretsWriter
 {
     private readonly IVaultClient _client;
     private readonly ILogger<VaultSecretsProvider> _logger;
@@ -56,6 +58,24 @@ public sealed class VaultSecretsProvider : ISecretsProvider
         catch (VaultApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound) {
             _logger.LogDebug("Segredo '{Secret}' não encontrado no Vault.", name);
             return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SetSecretAsync(string name, string value, CancellationToken cancellationToken = default) {
+        var data = new Dictionary<string, object> { [_valueKey] = value };
+        await _client.V1.Secrets.KeyValue.V2.WriteSecretAsync(name, data, mountPoint: _mountPoint);
+        _logger.LogDebug("Segredo '{Secret}' gravado no Vault.", name);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteSecretAsync(string name, CancellationToken cancellationToken = default) {
+        try {
+            await _client.V1.Secrets.KeyValue.V2.DeleteSecretAsync(name, mountPoint: _mountPoint);
+            _logger.LogDebug("Versão corrente do segredo '{Secret}' removida no Vault.", name);
+        }
+        catch (VaultApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound) {
+            _logger.LogDebug("Segredo '{Secret}' já não existia no Vault.", name);
         }
     }
 }

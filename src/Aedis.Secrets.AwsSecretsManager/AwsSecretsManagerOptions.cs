@@ -22,4 +22,23 @@ public sealed class AwsSecretsManagerOptions
 
     /// <summary>Override opcional de secret key. Só usado em conjunto com <see cref="AccessKeyId" />.</summary>
     public string? SecretAccessKey { get; set; }
+
+    /// <summary>
+    ///     Chave KMS (id, ARN ou alias) usada ao <strong>criar</strong> segredos pelo <c>ISecretsWriter</c>.
+    ///     Vazio = chave gerenciada pela AWS do serviço. Não afeta leituras nem versões de segredos existentes.
+    /// </summary>
+    public string? KmsKeyId { get; set; }
+
+    /// <summary>
+    ///     Janela de recuperação, em dias, aplicada ao remover segredos pelo <c>ISecretsWriter</c> (7 a 30).
+    ///     Padrão 30. A remoção imediata sem recuperação não é exposta.
+    /// </summary>
+    public int DeletionRecoveryWindowDays { get; set; } = 30;
+
+    /// <summary>
+    ///     Segredo usado como canário pelo health check (<c>DescribeSecret</c>, sem ler o valor). Quando
+    ///     definido, ele precisa existir. Quando vazio, o probe descreve um nome sentinela e trata
+    ///     "não encontrado" como saudável — prova conectividade e autenticação sem exigir <c>ListSecrets</c>.
+    /// </summary>
+    public string? HealthCheckSecretName { get; set; }
 }

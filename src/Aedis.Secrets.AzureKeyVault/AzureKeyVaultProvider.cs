@@ -9,9 +9,11 @@ namespace Aedis.Secrets.AzureKeyVault;
 /// <summary>
 ///     Provider de segredos sobre o Azure Key Vault. Lê o valor e expõe metadados (versão, <c>UpdatedOn</c>
 ///     como rotação). Segredo inexistente (HTTP 404) devolve <c>null</c>; falhas transitórias do Azure
-///     sobem para o chamador. Normalmente é envolvido pelo <c>CachingSecretsProvider</c> via DI.
+///     sobem para o chamador. Também implementa <see cref="ISecretsWriter" />: <c>SetSecret</c> cria ou
+///     versiona, e a remoção é o soft delete do cofre (recuperável conforme a retenção configurada nele).
+///     Normalmente é envolvido pelo <c>CachingSecretsProvider</c> via DI.
 /// </summary>
-public sealed class AzureKeyVaultProvider : ISecretsProvider
+public sealed class AzureKeyVaultProvider : ISecretsProvider, ISecretsWriter
 {
     private readonly SecretClient _client;
     private readonly ILogger<AzureKeyVaultProvider> _logger;
@@ -44,6 +46,23 @@ public sealed class AzureKeyVaultProvider : ISecretsProvider
         catch (RequestFailedException ex) when (ex.Status == 404) {
             _logger.LogDebug("Segredo '{Secret}' não encontrado no Azure Key Vault.", name);
             return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SetSecretAsync(string name, string value, CancellationToken cancellationToken = default) {
+        await _client.SetSecretAsync(name, value, cancellationToken);
+        _logger.LogDebug("Segredo '{Secret}' gravado no Azure Key Vault.", name);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteSecretAsync(string name, CancellationToken cancellationToken = default) {
+        try {
+            await _client.StartDeleteSecretAsync(name, cancellationToken);
+            _logger.LogDebug("Remoção do segredo '{Secret}' iniciada no Azure Key Vault.", name);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404) {
+            _logger.LogDebug("Segredo '{Secret}' já não existia no Azure Key Vault.", name);
         }
     }
 }
