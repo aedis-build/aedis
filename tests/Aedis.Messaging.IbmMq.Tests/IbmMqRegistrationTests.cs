@@ -26,7 +26,11 @@ public sealed class IbmMqRegistrationTests
             ["IBMMQ:MessageType"] = "Request",
             ["IBMMQ:EnableReports"] = "true",
             ["IBMMQ:Reports:Coa"] = "true",
-            ["IBMMQ:Reports:Cod"] = "true"
+            ["IBMMQ:Reports:Cod"] = "true",
+            ["IBMMQ:MaxConnections"] = "12",
+            ["IBMMQ:PublisherPoolSize"] = "2",
+            ["IBMMQ:ConsumerConcurrency"] = "2",
+            ["IBMMQ:QueueConcurrency:FILA.ALTA"] = "6"
         }).Build();
 
     [Fact]
@@ -40,6 +44,53 @@ public sealed class IbmMqRegistrationTests
         options.Reports.Coa.Should().BeTrue();
         options.Reports.Cod.Should().BeTrue();
         options.Reports.Exception.Should().BeFalse("só o que foi configurado é ativado");
+    }
+
+    [Fact]
+    public void AddAedisIbmMq_vincula_teto_e_concorrencia_por_fila() {
+        var provider = new ServiceCollection().AddLogging().AddAedisIbmMq(Config()).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<IbmMqOptions>>().Value;
+
+        options.MaxConnections.Should().Be(12);
+        options.PublisherPoolSize.Should().Be(2);
+        options.ConsumerConcurrency.Should().Be(2);
+        options.QueueConcurrency.Should().ContainKey("FILA.ALTA").WhoseValue.Should().Be(6);
+    }
+
+    [Fact]
+    public void Teto_menor_que_o_publisher_falha_a_validacao() {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["IBMMQ:QueueManager"] = "QM1",
+            ["IBMMQ:Channel"] = "DEV.APP.SVRCONN",
+            ["IBMMQ:ConnectionNameList"] = "localhost(1414)",
+            ["IBMMQ:UserId"] = "app",
+            ["IBMMQ:Password"] = "passw0rd",
+            ["IBMMQ:MaxConnections"] = "2",
+            ["IBMMQ:PublisherPoolSize"] = "2"
+        }).Build();
+        var provider = new ServiceCollection().AddLogging().AddAedisIbmMq(config).BuildServiceProvider();
+
+        var act = () => provider.GetRequiredService<IOptions<IbmMqOptions>>().Value;
+
+        act.Should().Throw<OptionsValidationException>().WithMessage("*MaxConnections*");
+    }
+
+    [Fact]
+    public void Dead_letter_ligada_sem_fila_falha_a_validacao() {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["IBMMQ:QueueManager"] = "QM1",
+            ["IBMMQ:Channel"] = "DEV.APP.SVRCONN",
+            ["IBMMQ:ConnectionNameList"] = "localhost(1414)",
+            ["IBMMQ:UserId"] = "app",
+            ["IBMMQ:Password"] = "passw0rd",
+            ["IBMMQ:EnableDeadLetterQueue"] = "true"
+        }).Build();
+        var provider = new ServiceCollection().AddLogging().AddAedisIbmMq(config).BuildServiceProvider();
+
+        var act = () => provider.GetRequiredService<IOptions<IbmMqOptions>>().Value;
+
+        act.Should().Throw<OptionsValidationException>().WithMessage("*DeadLetterQueueName*");
     }
 
     [Fact]
