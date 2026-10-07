@@ -12,12 +12,15 @@ namespace Aedis.Messaging.AwsSqs;
 
 /// <summary>
 ///     Base dos serviços AWS SQS/SNS: mantém clientes SQS e SNS únicos (thread-safe), normaliza nomes de
-///     fila/tópico e detecta de forma transparente se um "exchange" é um SNS Topic (pub/sub) ou uma SQS
-///     Queue (point-to-point), com cache. Credenciais explícitas são opcionais (senão usa a cadeia do
+///     fila/tópico (preservando o sufixo <c>.fifo</c> e aplicando-o quando <see cref="AwsSqsOptions.UseFifoQueues" />
+///     está ligado) e resolve se um "exchange" é um SNS Topic ou uma SQS Queue com o mínimo de permissões:
+///     nunca <c>ListQueues</c>/<c>ListTopics</c>. Credenciais explícitas são opcionais (senão usa a cadeia do
 ///     ambiente — IAM Role/IRSA).
 /// </summary>
 public abstract partial class AwsSqsBaseService : IAsyncDisposable
 {
+    private const string FifoSuffix = ".fifo";
+
     /// <summary>Logger compartilhado com as subclasses para diagnósticos de conexão e publicação.</summary>
     protected readonly ILogger Logger;
 
@@ -31,10 +34,7 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
     private IAmazonSimpleNotificationService? _snsClient;
     private IAmazonSQS? _sqsClient;
 
-    /// <summary>
-    ///     Prepara o serviço com as opções e o logger; os clientes SQS/SNS são criados de forma preguiçosa no
-    ///     primeiro uso.
-    /// </summary>
+    /// <summary>Prepara o serviço com as opções e o logger; os clientes SQS/SNS são criados no primeiro uso.</summary>
     protected AwsSqsBaseService(IOptions<AwsSqsOptions> options, ILogger logger) {
         Options = options.Value;
         Logger = logger;
@@ -50,10 +50,7 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
         Queue
     }
 
-    /// <summary>
-    ///     Devolve o cliente SQS único, criando-o de forma preguiçosa e thread-safe (double-checked lock)
-    ///     no primeiro uso. Usa credenciais estáticas se informadas, senão a cadeia do ambiente.
-    /// </summary>
+    /// <summary>Devolve o cliente SQS único, criando-o de forma preguiçosa e thread-safe no primeiro uso.</summary>
     public async Task<IAmazonSQS> GetSqsClientAsync(CancellationToken ct = default) {
         if (_sqsClient != null) return _sqsClient;
 
@@ -76,10 +73,7 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    ///     Devolve o cliente SNS único, criando-o de forma preguiçosa e thread-safe (double-checked lock)
-    ///     no primeiro uso. Usa credenciais estáticas se informadas, senão a cadeia do ambiente.
-    /// </summary>
+    /// <summary>Devolve o cliente SNS único, criando-o de forma preguiçosa e thread-safe no primeiro uso.</summary>
     public async Task<IAmazonSimpleNotificationService> GetSnsClientAsync(CancellationToken ct = default) {
         if (_snsClient != null) return _snsClient;
 
@@ -104,60 +98,80 @@ public abstract partial class AwsSqsBaseService : IAsyncDisposable
         }
     }
 
-    /// <summary>Normaliza o nome (minúsculas, caracteres inválidos viram hífen) para as convenções AWS.</summary>
+    /// <summary>
+    ///     Normaliza o nome para as convenções AWS (minúsculas, caracteres inválidos viram hífen), preservando
+    ///     um sufixo <c>.fifo</c> explícito.
+    /// </summary>
     public string NormalizeName(string name) {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("O nome não pode ser nulo ou vazio.", nameof(name));
 
-        var normalized = InvalidChars().Replace(name.Trim().ToLowerInvariant(), "-");
-        normalized = MultipleHyphens().Replace(normalized, "-");
-        return normalized.Trim('-');
+        var trimmed = name.Trim();
+        var fifo = trimmed.EndsWith(FifoSuffix, StringComparison.OrdinalIgnoreCase);
+        if (fifo) trimmed = trimmed[..^FifoSuffix.Length];
+
+        var normalized = InvalidChars().Replace(trimmed.ToLowerInvariant(), "-");
+        normalized = MultipleHyphens().Replace(normalized, "-").Trim('-');
+        return fifo ? normalized + FifoSuffix : normalized;
+    }
+
+    /// <summary>
+    ///     Nome efetivo do recurso: normalizado e com o sufixo <c>.fifo</c> aplicado quando
+    ///     <see cref="AwsSqsOptions.UseFifoQueues" /> está ligado. É o único nome usado para criar, consultar e
+    ///     consumir — publisher, admin e consumer concordam sempre.
+    /// </summary>
+    public string ResolveQueueName(string name) {
+        var normalized = NormalizeName(name);
+        return Options.UseFifoQueues && !IsFifoQueue(normalized) ? normalized + FifoSuffix : normalized;
     }
 
     /// <summary>Indica se o nome corresponde a uma fila/tópico FIFO (sufixo <c>.fifo</c>).</summary>
-    public bool IsFifoQueue(string name) => name.EndsWith(".fifo", StringComparison.OrdinalIgnoreCase);
+    public bool IsFifoQueue(string name) => name.EndsWith(FifoSuffix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    ///     Detecta se o exchange é uma SQS Queue (consulta GetQueueUrl, permissão restrita ao recurso) ou,
-    ///     caso não exista, assume o default de <see cref="AwsSqsOptions.UseTopics" />. Resultado em cache.
+    ///     Resolve o tipo do exchange com o mínimo de permissões. Com <see cref="AwsSqsOptions.UseTopics" />
+    ///     ligado, é Topic por configuração — sem sondar o SQS. Desligado, sonda a fila por
+    ///     <c>GetQueueUrl</c> (permissão restrita ao recurso) e cai em Queue se ela não existe. Em cache.
     /// </summary>
     public async Task<ExchangeType> DetectExchangeTypeAsync(string exchange, CancellationToken ct = default) {
-        var normalized = NormalizeName(exchange);
+        var name = ResolveQueueName(exchange);
 
-        if (_exchangeTypeCache.TryGetValue(normalized, out var cached))
+        if (_exchangeTypeCache.TryGetValue(name, out var cached))
             return cached;
+
+        if (Options.UseTopics) {
+            _exchangeTypeCache[name] = ExchangeType.Topic;
+            Logger.LogDebug("Exchange '{Exchange}' resolvido como SNS Topic por configuração (UseTopics=true).", name);
+            return ExchangeType.Topic;
+        }
 
         try {
             var sqsClient = await GetSqsClientAsync(ct);
-            await sqsClient.GetQueueUrlAsync(normalized, ct);
-            _exchangeTypeCache[normalized] = ExchangeType.Queue;
-            Logger.LogDebug("Exchange '{Exchange}' detectado como SQS Queue.", normalized);
-            return ExchangeType.Queue;
+            await sqsClient.GetQueueUrlAsync(name, ct);
+            Logger.LogDebug("Exchange '{Exchange}' detectado como SQS Queue existente.", name);
         }
         catch (QueueDoesNotExistException) {
+            Logger.LogDebug("Exchange '{Exchange}' ainda não existe; tratado como SQS Queue.", name);
         }
         catch (Exception ex) {
-            Logger.LogWarning(ex, "Erro ao verificar a fila SQS '{Exchange}'.", normalized);
+            Logger.LogWarning(ex, "Erro ao verificar a fila SQS '{Exchange}'; tratado como SQS Queue.", name);
         }
 
-        var defaultType = Options.UseTopics ? ExchangeType.Topic : ExchangeType.Queue;
-        _exchangeTypeCache[normalized] = defaultType;
-        Logger.LogDebug("Exchange '{Exchange}' não encontrado — usando o default {Type} (UseTopics={UseTopics}).",
-            normalized, defaultType, Options.UseTopics);
-        return defaultType;
+        _exchangeTypeCache[name] = ExchangeType.Queue;
+        return ExchangeType.Queue;
     }
 
     /// <summary>Limpa o cache de tipos de exchange — útil em testes ou após recriar recursos.</summary>
     public void ClearExchangeTypeCache() => _exchangeTypeCache.Clear();
 
     /// <summary>Descarta os clientes SQS/SNS e os semáforos de inicialização.</summary>
-    public async ValueTask DisposeAsync() {
+    public ValueTask DisposeAsync() {
         _sqsClient?.Dispose();
         _snsClient?.Dispose();
         _sqsClientLock.Dispose();
         _snsClientLock.Dispose();
-        await Task.CompletedTask;
         GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
     }
 
     private bool HasStaticCredentials() =>

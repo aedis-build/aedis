@@ -57,7 +57,8 @@ public static class AwsSqsServiceCollectionExtensions
             return registered;
 
         var options = sp.GetRequiredService<Options.IOptions<AwsSqsOptions>>().Value;
-        return new MessageEncoderResolver([new IdentityMessageEncoder(), new GzipMessageEncoder()],
+        return new MessageEncoderResolver(
+            [new IdentityMessageEncoder(), new GzipMessageEncoder(options.MaxDecompressedPayloadBytes)],
             options.CompressionEnabled, options.CompressionThresholdBytes);
     }
 }
