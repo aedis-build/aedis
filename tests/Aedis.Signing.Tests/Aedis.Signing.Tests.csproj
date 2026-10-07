@@ -10,9 +10,12 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="NetArchTest.Rules" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="coverlet.msbuild">
       <PrivateAssets>all</PrivateAssets>
@@ -20,12 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Aedis.Core\Aedis.Core.csproj" />
-    <ProjectReference Include="..\..\src\Aedis.Domain\Aedis.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Aedis.Commands\Aedis.Commands.csproj" />
-    <ProjectReference Include="..\..\src\Aedis.Messaging.Abstractions\Aedis.Messaging.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Signing\Aedis.Signing.csproj" />
-    <ProjectReference Include="..\..\src\Aedis.Messaging\Aedis.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\Aedis.Http.Abstractions\Aedis.Http.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

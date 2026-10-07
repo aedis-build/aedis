@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Signing.Abstractions</PackageId>
+    <Description>Aedis.Signing.Abstractions — contratos de assinatura de mensagens HTTP (RFC 9421) com chave assimétrica: provider de chave, provedor de assinatura, JWKS e verificação.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Exceptions\Aedis.Exceptions.csproj" />
+  </ItemGroup>
+
+</Project>
