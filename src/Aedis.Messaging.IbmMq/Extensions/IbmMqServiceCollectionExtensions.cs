@@ -24,6 +24,12 @@ public static class IbmMqServiceCollectionExtensions
         services.AddOptions<IbmMqOptions>()
             .Bind(configuration.GetSection(IbmMqOptions.SectionName))
             .ValidateDataAnnotations()
+            .Validate(o => o.MaxConnections > o.PublisherPoolSize,
+                "IBMMQ:MaxConnections precisa ser maior que IBMMQ:PublisherPoolSize para sobrar conexão para consumers.")
+            .Validate(o => o.PublisherPoolSize >= 1 && o.ConsumerConcurrency >= 1 && o.QueueConcurrency.Values.All(c => c >= 1),
+                "IBMMQ:PublisherPoolSize, ConsumerConcurrency e QueueConcurrency precisam ser >= 1.")
+            .Validate(o => !o.EnableDeadLetterQueue || !string.IsNullOrWhiteSpace(o.DeadLetterQueueName),
+                "IBMMQ:DeadLetterQueueName é obrigatório quando EnableDeadLetterQueue está ligado.")
             .ValidateOnStart();
 
         services.TryAddSingleton(sp => new IbmMqMessageBrokerService(

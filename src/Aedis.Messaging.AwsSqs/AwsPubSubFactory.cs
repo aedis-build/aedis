@@ -30,8 +30,14 @@ public interface IAwsPubSubFactory
     /// <summary>Indica se o nome corresponde a uma fila/tópico FIFO (sufixo <c>.fifo</c>).</summary>
     bool IsFifoQueue(string name);
 
-    /// <summary>Normaliza o nome para as convenções AWS (minúsculas, caracteres inválidos viram hífen).</summary>
+    /// <summary>Normaliza o nome para as convenções AWS (minúsculas, caracteres inválidos viram hífen), preservando <c>.fifo</c>.</summary>
     string NormalizeName(string name);
+
+    /// <summary>
+    ///     Nome efetivo do recurso: normalizado e com <c>.fifo</c> aplicado quando
+    ///     <see cref="AwsSqsOptions.UseFifoQueues" /> está ligado. Publisher, admin e consumer usam só este nome.
+    /// </summary>
+    string ResolveQueueName(string name);
 }
 
 /// <summary>Implementação singleton da factory — reusa os clientes da <see cref="AwsSqsBaseService" />.</summary>

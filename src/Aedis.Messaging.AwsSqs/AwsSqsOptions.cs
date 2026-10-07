@@ -24,7 +24,10 @@ public sealed class AwsSqsOptions
     /// <summary>Endpoint customizado (ex.: LocalStack <c>http://localhost:4566</c>) para testes/dev.</summary>
     public string? ServiceUrl { get; set; }
 
-    /// <summary>Máximo de mensagens por ReceiveMessage (1–10). Padrão 10.</summary>
+    /// <summary>
+    ///     Máximo de mensagens em voo por fila (1–10). É o teto do pump de consumo: cada ReceiveMessage pede só
+    ///     o que cabe nos slots livres e um slot é reposto assim que a mensagem conclui. Padrão 10.
+    /// </summary>
     [Range(1, 10)]
     public int MaxNumberOfMessages { get; set; } = 10;
 
@@ -32,16 +35,20 @@ public sealed class AwsSqsOptions
     [Range(0, 20)]
     public int WaitTimeSeconds { get; set; } = 20;
 
-    /// <summary>Visibility timeout em segundos (1–43200). Padrão 30.</summary>
+    /// <summary>
+    ///     Visibility timeout em segundos (1–43200). Padrão 60 — margem para handlers que legitimamente
+    ///     passam de 30 s (banco + chamadas externas) sem reentrega enquanto a mensagem ainda é processada.
+    /// </summary>
     [Range(1, 43200)]
-    public int VisibilityTimeout { get; set; } = 30;
+    public int VisibilityTimeout { get; set; } = 60;
 
     /// <summary>Usa filas FIFO (.fifo) para ordem estrita. Padrão false (standard).</summary>
-    public bool UseFifoQueues { get; set; } = false;
+    public bool UseFifoQueues { get; set; }
 
     /// <summary>
-    ///     Default ao publicar/assinar quando o recurso não existe: SNS Topic (pub/sub) se true, SQS Queue
-    ///     (point-to-point) se false. O provider detecta automaticamente via API quando o recurso existe.
+    ///     Semântica dos "exchanges": SNS Topic (pub/sub) quando true, SQS Queue (point-to-point) quando false.
+    ///     Com true o provider não sonda o SQS para decidir (menos permissões, menos chamadas); com false sonda
+    ///     a fila por <c>GetQueueUrl</c> (permissão restrita ao recurso) e cai em Queue se ela não existe.
     /// </summary>
     public bool UseTopics { get; set; } = true;
 
@@ -52,6 +59,13 @@ public sealed class AwsSqsOptions
     /// <summary>Timeout das operações AWS em segundos (1–300). Padrão 30.</summary>
     [Range(1, 300)]
     public int ConnectionTimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    ///     Espera, em milissegundos, antes de voltar ao ReceiveMessage após um erro no loop de consumo (ex.:
+    ///     falha de rede ou de credencial). Padrão 5000.
+    /// </summary>
+    [Range(0, int.MaxValue)]
+    public int ReceiveErrorBackoffMs { get; set; } = 5000;
 
     /// <summary>
     ///     Comprime (gzip) o payload no publish quando ele atinge <see cref="CompressionThresholdBytes" />,
@@ -66,4 +80,11 @@ public sealed class AwsSqsOptions
     /// </summary>
     [Range(0, int.MaxValue)]
     public int CompressionThresholdBytes { get; set; } = 1024;
+
+    /// <summary>
+    ///     Tamanho máximo do payload após descompressão, em bytes. Protege o consumidor contra payloads
+    ///     comprimidos hostis (decompression bomb): ao exceder, a mensagem é rejeitada. Padrão 4 MiB.
+    /// </summary>
+    [Range(1, int.MaxValue)]
+    public int MaxDecompressedPayloadBytes { get; set; } = 4 * 1024 * 1024;
 }

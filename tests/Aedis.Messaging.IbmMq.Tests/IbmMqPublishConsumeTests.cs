@@ -38,6 +38,7 @@ public sealed class IbmMqPublishConsumeTests : IClassFixture<IbmMqPublishConsume
 
         received.OrderId.Should().Be(42);
         received.Customer.Should().Be("aedis");
+        handler.HandledOnThreadPoolThread.Should().BeFalse("o worker roda em thread dedicada, não no thread pool");
     }
 
     [Fact]
@@ -95,7 +96,10 @@ public sealed class IbmMqPublishConsumeTests : IClassFixture<IbmMqPublishConsume
     {
         private readonly TaskCompletionSource<T> _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public bool HandledOnThreadPoolThread { get; private set; }
+
         public Task HandleAsync(T message, CancellationToken cancellationToken) {
+            HandledOnThreadPoolThread = Thread.CurrentThread.IsThreadPoolThread;
             _tcs.TrySetResult(message);
             return Task.CompletedTask;
         }
@@ -132,7 +136,10 @@ public sealed class IbmMqPublishConsumeTests : IClassFixture<IbmMqPublishConsume
                 ConnectionNameList = $"{_container.Hostname}({_container.GetMappedPublicPort(1414)})",
                 UserId = "app",
                 Password = AppPassword,
-                Format = MqMessageFormat.None
+                Format = MqMessageFormat.None,
+                MaxConnections = 3,
+                PublisherPoolSize = 1,
+                ConsumerHealthCheckIntervalMs = 1000
             });
             return new IbmMqMessageBrokerService(options, NullLogger<IbmMqMessageBrokerService>.Instance);
         }

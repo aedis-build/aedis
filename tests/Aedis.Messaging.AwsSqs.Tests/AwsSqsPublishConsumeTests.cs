@@ -95,7 +95,7 @@ public sealed class AwsSqsPublishConsumeTests : IClassFixture<AwsSqsPublishConsu
 
         public async Task InitializeAsync() {
             if (!Enabled) return;
-            _container = new LocalStackBuilder().WithImage("localstack/localstack:latest").Build();
+            _container = new LocalStackBuilder().WithImage("localstack/localstack:3.8.1").Build();
             await _container.StartAsync();
         }
 
