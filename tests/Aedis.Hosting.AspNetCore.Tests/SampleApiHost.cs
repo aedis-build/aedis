@@ -60,6 +60,12 @@ public sealed class SwaggerSampleApiHost : AedisApiHost
     protected override void ConfigureServices(IConfiguration configuration, IServiceCollection services) {
         services.Configure<GracefulShutdownOptions>(options => options.DrainDelay = TimeSpan.Zero);
     }
+
+    /// <summary>Expõe um endpoint obsoleto para demonstrar que ele sai como <c>deprecated</c> no documento.</summary>
+    protected override void ConfigureMiddleware(WebApplication app) {
+        app.MapGet("/legado", [Obsolete("Use /ping no lugar.")] () => Results.Ok(new { message = "legado" }));
+        app.MapGet("/ping", () => Results.Ok(new { message = "pong" }));
+    }
 }
 
 /// <summary>Modelo de entrada do exemplo, validado por <see cref="SampleInputValidator" />.</summary>

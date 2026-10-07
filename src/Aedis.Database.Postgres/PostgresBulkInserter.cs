@@ -130,7 +130,7 @@ public sealed class PostgresBulkInserter(ILogger<PostgresBulkInserter> logger)
 
                 var effectiveType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
                 if (effectiveType.IsEnum) {
-                    await writer.WriteAsync(value.ToString()!.ToUpperInvariant(), ct);
+                    await writer.WriteAsync(Aedis.Database.Abstractions.EnumPersistence.ToStoredName((Enum)value), ct);
                     continue;
                 }
 

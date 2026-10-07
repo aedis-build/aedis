@@ -32,7 +32,7 @@ internal sealed class ObjectDataReader<T> : IDataReader where T : class {
 
         var type = Nullable.GetUnderlyingType(_properties[i].PropertyType) ?? _properties[i].PropertyType;
         return value switch {
-            _ when type.IsEnum => value.ToString()!.ToUpperInvariant(),
+            _ when type.IsEnum => Aedis.Database.Abstractions.EnumPersistence.ToStoredName((Enum)value),
             DateOnly dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
             TimeOnly timeOnly => timeOnly.ToTimeSpan(),
             _ => value

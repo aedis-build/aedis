@@ -40,4 +40,15 @@ public class DependencyRuleTests
         result.IsSuccessful.Should().BeTrue(
             "Aedis.Messaging.Abstractions deve permanecer agnóstica: a semântica de broker desce para o pacote do provider");
     }
+
+    [Fact]
+    public void Messaging_neutro_nao_depende_de_provider_nem_de_AspNetCore() {
+        var result = Types.InAssembly(typeof(Aedis.Messaging.ScopedMessageHandler<>).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("IBM.WMQ", "RabbitMQ.Client", "Amazon", "Azure.Messaging.ServiceBus", "Microsoft.AspNetCore")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.Messaging é a implementação neutra sobre IMessageBrokerService: nenhum SDK de broker nem ASP.NET Core");
+    }
 }

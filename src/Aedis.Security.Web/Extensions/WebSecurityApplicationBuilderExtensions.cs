@@ -8,9 +8,9 @@ namespace Microsoft.AspNetCore.Builder;
 
 /// <summary>
 ///     Liga, na ordem correta, a camada de segurança HTTP do Aedis registrada por <c>AddAedisWebSecurity</c>:
-///     cabeçalhos encaminhados → HSTS/HTTPS-redirect → cabeçalhos de segurança → proteção de Host → rate
-///     limiter. Coloque <c>UseAedisWebSecurity</c> cedo no pipeline, logo após o tratamento global de
-///     exceções e antes da autenticação.
+///     cabeçalhos encaminhados → HSTS/HTTPS-redirect → cabeçalhos de segurança → proteção de Host → CORS
+///     (quando ligado) → rate limiter. Coloque <c>UseAedisWebSecurity</c> cedo no pipeline, logo após o
+///     tratamento global de exceções e antes da autenticação.
 /// </summary>
 public static class WebSecurityApplicationBuilderExtensions
 {
@@ -35,6 +35,9 @@ public static class WebSecurityApplicationBuilderExtensions
 
         app.UseAedisSecurityHeaders();
         app.UseAedisHostHeaderProtection();
+
+        if (options.Cors.Enabled)
+            app.UseCors(CorsOptions.PolicyName);
 
         if (options.RateLimiting.Enabled)
             app.UseRateLimiter();

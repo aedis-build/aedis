@@ -2,6 +2,8 @@ using Aedis.Diagnostics;
 using Aedis.Hosting.Abstractions;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -19,7 +21,9 @@ public static class DiagnosticsServiceCollectionExtensions
     ///     Registra os diagnósticos do Aedis no contêiner: health checks de processo, o
     ///     <see cref="IDisposableRegistry" /> e o serviço de desligamento gracioso. Chame uma vez na
     ///     composição da aplicação; use <paramref name="configure" /> para ajustar o
-    ///     <see cref="GracefulShutdownOptions" /> (ex.: o atraso de drenagem).
+    ///     <see cref="GracefulShutdownOptions" /> (atraso de drenagem e tempo máximo de desligamento). O
+    ///     <see cref="GracefulShutdownOptions.ShutdownTimeout" /> é propagado para o
+    ///     <see cref="HostOptions.ShutdownTimeout" />, para o host não abortar no meio da drenagem.
     /// </summary>
     /// <param name="services">Coleção de serviços a configurar.</param>
     /// <param name="configure">Configuração opcional das opções de desligamento gracioso.</param>
@@ -29,9 +33,16 @@ public static class DiagnosticsServiceCollectionExtensions
         services.TryAddSingleton<ShutdownHealthCheck>();
         services.TryAddSingleton<IDisposableRegistry, DisposableRegistry>();
 
-        var options = services.AddOptions<GracefulShutdownOptions>();
+        var options = services.AddOptions<GracefulShutdownOptions>()
+            .Validate(graceful => graceful.ShutdownTimeout >= graceful.DrainDelay,
+                "GracefulShutdownOptions.ShutdownTimeout deve ser maior ou igual a DrainDelay; caso contrário o host aborta o desligamento antes de a drenagem terminar.")
+            .ValidateOnStart();
         if (configure is not null)
             options.Configure(configure);
+
+        services.AddOptions<HostOptions>()
+            .Configure<IOptions<GracefulShutdownOptions>>(
+                (host, graceful) => host.ShutdownTimeout = graceful.Value.ShutdownTimeout);
 
         services.AddHostedService<GracefulShutdownHostedService>();
 

@@ -16,14 +16,17 @@ namespace Aedis.Database.Postgres;
 ///     como chave e detecta soft-delete pela presença de uma propriedade <c>IsDeleted</c>. Leituras vão
 ///     em sessão somente leitura; escritas em sessão transacional. O <see cref="SaveAsync(TEntity,CancellationToken)" />
 ///     é um upsert (<c>INSERT … ON CONFLICT (id) DO UPDATE</c>). Bulk insert delega ao
-///     <see cref="PostgresBulkInserter" /> (COPY binário). Enums são persistidos como string maiúscula,
-///     em paridade com o caminho de bulk.
+///     <see cref="PostgresBulkInserter" /> (COPY binário). Enums são persistidos pelo nome declarado
+///     (<see cref="EnumPersistence" />), em paridade com o caminho de bulk. Erros do banco são normalizados em
+///     <see cref="DatabaseError" /> e passam por <see cref="OnDatabaseError" />, pelo
+///     <see cref="IDatabaseErrorMapper" /> registrado e, por fim, pelo mapeamento padrão do framework.
 /// </summary>
 public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     where TEntity : class
     where TId : notnull
 {
     private readonly IAuditContext? _audit;
+    private readonly IDatabaseErrorMapper? _errorMapper;
     private readonly AuditColumns _auditColumns;
     private readonly PostgresBulkInserter _bulkInserter;
     private readonly PropertyInfo[] _columns;
@@ -52,15 +55,17 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// <param name="bulkInserter">Inseridor em massa via COPY binário, usado pelas operações de bulk.</param>
     /// <param name="tableName">Nome de tabela explícito; quando <c>null</c>, deriva-se do nome da entidade pela convenção.</param>
     /// <param name="auditContext">Contexto de auditoria opcional; quando presente, carimba as colunas de auditoria existentes.</param>
+    /// <param name="errorMapper">Mapeador opcional de erros do banco, consultado após <see cref="OnDatabaseError" />.</param>
     public PostgresRepository(IUnitOfWorkFactory sessionFactory, ILogger<PostgresRepository<TEntity, TId>> logger,
         NamingStrategyResolver naming, IOptions<DatabaseOptions> options, PostgresBulkInserter bulkInserter,
-        string? tableName = null, IAuditContext? auditContext = null) {
+        string? tableName = null, IAuditContext? auditContext = null, IDatabaseErrorMapper? errorMapper = null) {
         _sessionFactory = sessionFactory;
         _logger = logger;
         _naming = naming;
         Options = options.Value;
         _bulkInserter = bulkInserter;
         _audit = auditContext;
+        _errorMapper = errorMapper;
         _auditColumns = AuditColumns.For(typeof(TEntity));
 
         var entityType = typeof(TEntity);
@@ -262,6 +267,23 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
     protected virtual string? GetOnConflictClause() => null;
 
     /// <summary>
+    ///     Hook de tradução de erros do banco: recebe o erro normalizado e pode devolver a exceção que o
+    ///     repositório deve lançar — tipicamente uma <c>BusinessException</c> com a regra violada. Devolva
+    ///     <c>null</c> para seguir a cadeia padrão: o <see cref="IDatabaseErrorMapper" /> registrado e, por fim,
+    ///     o mapeamento do framework. Erros que o provider não reconhece não chegam aqui e são relançados como
+    ///     estão. A sessão já foi revertida quando a exceção devolvida é lançada.
+    /// </summary>
+    /// <param name="error">Erro normalizado pelo provider.</param>
+    protected virtual Exception? OnDatabaseError(DatabaseError error) => null;
+
+    private Exception? TranslateDatabaseError(Exception exception) {
+        var error = PostgresDatabaseErrorTranslator.TryTranslate(exception);
+        if (error is null) return null;
+
+        return OnDatabaseError(error) ?? _errorMapper?.Map(error) ?? DefaultDatabaseErrorMapping.Map(error);
+    }
+
+    /// <summary>
     ///     Resolve a cláusula <c>ON CONFLICT</c> efetiva: compila a <see cref="GetUpsertSpec" /> portável
     ///     quando presente; caso contrário, recai no <see cref="GetOnConflictClause" /> literal.
     /// </summary>
@@ -301,6 +323,10 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             await uow.CommitAsync(ct);
             return result;
         }
+        catch (Exception exception) when (TranslateDatabaseError(exception) is { } translated) {
+            await uow.RollbackAsync(ct);
+            throw translated;
+        }
         catch {
             await uow.RollbackAsync(ct);
             throw;
@@ -314,6 +340,10 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             var result = await action(uow, ct);
             await uow.CommitAsync(ct);
             return result;
+        }
+        catch (Exception exception) when (TranslateDatabaseError(exception) is { } translated) {
+            await uow.RollbackAsync(ct);
+            throw translated;
         }
         catch {
             await uow.RollbackAsync(ct);
@@ -347,7 +377,7 @@ public class PostgresRepository<TEntity, TId> : IRepository<TEntity, TId>
             var value = property.GetValue(entity);
             if (value is not null) {
                 var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                if (type.IsEnum) value = value.ToString()!.ToUpperInvariant();
+                if (type.IsEnum) value = Aedis.Database.Abstractions.EnumPersistence.ToStoredName((Enum)value);
             }
 
             parameters.Add("@" + property.Name, value);

@@ -1,5 +1,6 @@
 using System.Reflection;
 using Aedis.Hosting.AspNetCore.ErrorHandling;
+using Aedis.Hosting.AspNetCore.Validation;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Http;
@@ -29,9 +30,7 @@ public static class ApiValidationExtensions
             options.InvalidModelStateResponseFactory = context => {
                 var factory = context.HttpContext.RequestServices.GetRequiredService<IProblemDetailsFactory>();
 
-                var errors = context.ModelState
-                    .Where(entry => entry.Value is { Errors.Count: > 0 })
-                    .ToDictionary(entry => entry.Key, entry => entry.Value!.Errors.Select(error => error.ErrorMessage).ToArray());
+                var errors = ModelStateSanitizer.SanitizeModelState(context.ModelState);
 
                 var problem = factory.Create(
                     context.HttpContext,
