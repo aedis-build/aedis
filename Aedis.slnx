@@ -47,6 +47,9 @@
     <Project Path="src/Aedis.Security.Abstractions/Aedis.Security.Abstractions.csproj" />
     <Project Path="src/Aedis.Security.Keycloak/Aedis.Security.Keycloak.csproj" />
     <Project Path="src/Aedis.Security.Web/Aedis.Security.Web.csproj" />
+    <Project Path="src/Aedis.Signing/Aedis.Signing.csproj" />
+    <Project Path="src/Aedis.Signing.Abstractions/Aedis.Signing.Abstractions.csproj" />
+    <Project Path="src/Aedis.Signing.AspNetCore/Aedis.Signing.AspNetCore.csproj" />
     <Project Path="src/Aedis.Storage.Abstractions/Aedis.Storage.Abstractions.csproj" />
     <Project Path="src/Aedis.Storage.AzureBlob/Aedis.Storage.AzureBlob.csproj" />
     <Project Path="src/Aedis.Storage.S3/Aedis.Storage.S3.csproj" />
@@ -82,6 +85,8 @@
     <Project Path="tests/Aedis.Security.Keycloak.Tests/Aedis.Security.Keycloak.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Web.Tests/Aedis.Security.Web.Tests.csproj" />
     <Project Path="tests/Aedis.Security.Tests/Aedis.Security.Tests.csproj" />
+    <Project Path="tests/Aedis.Signing.Tests/Aedis.Signing.Tests.csproj" />
+    <Project Path="tests/Aedis.Signing.AspNetCore.Tests/Aedis.Signing.AspNetCore.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.AzureBlob.Tests/Aedis.Storage.AzureBlob.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.S3.Tests/Aedis.Storage.S3.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.Tests/Aedis.Storage.Tests.csproj" />
