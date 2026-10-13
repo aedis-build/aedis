@@ -8,14 +8,16 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 ///     Registra a geração do documento OpenAPI/Swagger do Aedis a partir da seção <c>Swagger</c>. Chamado
-///     pelo host apenas quando o Swagger está habilitado (opt-in). Inclui o esquema de segurança Bearer e os
-///     comentários XML do assembly de entrada para uma documentação rica.
+///     pelo host apenas quando o Swagger está habilitado (opt-in). Inclui o esquema de segurança Bearer, os
+///     comentários XML do assembly de entrada, <c>[Obsolete]</c> como <c>deprecated</c>, os erros padrão de
+///     <c>[ProducesStandardErrors]</c> e as actions <c>QUERY</c> via <c>x-oai-additionalOperations</c>.
 /// </summary>
 public static class AedisSwaggerServiceExtensions
 {
     /// <summary>
-    ///     Configura <c>AddSwaggerGen</c> com o documento, o esquema Bearer (quando habilitado) e os XML
-    ///     comments do assembly de entrada. Use <paramref name="configure" /> para ajustes adicionais.
+    ///     Configura <c>AddSwaggerGen</c> com o documento, o esquema Bearer (quando habilitado), os XML
+    ///     comments do assembly de entrada e os filtros do Aedis. Use <paramref name="configure" /> para ajustes
+    ///     adicionais.
     /// </summary>
     public static IServiceCollection AddAedisSwagger(
         this IServiceCollection services,
@@ -36,7 +38,10 @@ public static class AedisSwaggerServiceExtensions
                 AddBearerSecurity(swagger);
 
             IncludeEntryAssemblyXmlComments(swagger);
+            swagger.DocInclusionPredicate((_, api) => !QueryOperationsDocumentFilter.IsQuery(api));
             swagger.OperationFilter<DeprecatedOperationFilter>();
+            swagger.OperationFilter<StandardErrorsOperationFilter>();
+            swagger.DocumentFilter<QueryOperationsDocumentFilter>();
             configure?.Invoke(swagger);
         });
 
