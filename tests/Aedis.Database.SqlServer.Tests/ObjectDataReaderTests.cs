@@ -9,7 +9,7 @@ namespace Aedis.Database.SqlServer.Tests;
 /// <summary>
 ///     <see cref="ObjectDataReader{T}" /> (o <see cref="IDataReader" /> em streaming que alimenta o
 ///     SqlBulkCopy): projeta as linhas sob demanda e aplica as mesmas conversões do write path — enum vira
-///     string maiúscula, <see cref="DateOnly" />/<see cref="TimeOnly" /> viram tipos do SQL Server e nulos
+///     string PascalCase (<c>EnumPersistence</c>), <see cref="DateOnly" />/<see cref="TimeOnly" /> viram tipos do SQL Server e nulos
 ///     viram <see cref="DBNull" />.
 /// </summary>
 public sealed class ObjectDataReaderTests
@@ -41,7 +41,7 @@ public sealed class ObjectDataReaderTests
         using var reader = new ObjectDataReader<Item>(Props, new[] { item });
         reader.Read().Should().BeTrue();
 
-        Value(reader, "Kind").Should().Be("SETTLED");
+        Value(reader, "Kind").Should().Be("Settled");
         Value(reader, "Name").Should().Be(DBNull.Value);
         Value(reader, "Day").Should().Be(new DateTime(2026, 1, 15));
         Value(reader, "At").Should().Be(new TimeSpan(13, 30, 0));
