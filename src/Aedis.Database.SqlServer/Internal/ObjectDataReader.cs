@@ -35,6 +35,8 @@ internal sealed class ObjectDataReader<T> : IDataReader where T : class {
             _ when type.IsEnum => Aedis.Database.Abstractions.EnumPersistence.ToStoredName((Enum)value),
             DateOnly dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
             TimeOnly timeOnly => timeOnly.ToTimeSpan(),
+            IEnumerable<KeyValuePair<string, string?>> dictionary =>
+                TypeHandlers.JsonDictionaryTypeHandler<Dictionary<string, string?>>.Serialize(dictionary),
             _ => value
         };
     }
@@ -61,6 +63,10 @@ internal sealed class ObjectDataReader<T> : IDataReader where T : class {
 
         if (type == typeof(DateOnly)) {
             return typeof(DateTime);
+        }
+
+        if (typeof(IEnumerable<KeyValuePair<string, string?>>).IsAssignableFrom(type)) {
+            return typeof(string);
         }
 
         return type == typeof(TimeOnly) ? typeof(TimeSpan) : type;

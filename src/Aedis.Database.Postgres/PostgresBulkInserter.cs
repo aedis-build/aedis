@@ -134,6 +134,12 @@ public sealed class PostgresBulkInserter(ILogger<PostgresBulkInserter> logger)
                     continue;
                 }
 
+                if (value is IEnumerable<KeyValuePair<string, string?>> dictionary) {
+                    await writer.WriteAsync(TypeHandlers.JsonDictionaryTypeHandler<Dictionary<string, string?>>.Serialize(dictionary),
+                        NpgsqlTypes.NpgsqlDbType.Jsonb, ct);
+                    continue;
+                }
+
                 await writer.WriteAsync(value, ct);
             }
         }
