@@ -1,6 +1,8 @@
 using Aedis.Messaging;
 using Aedis.Messaging.Abstractions;
 using Aedis.Messaging.Telemetry;
+using Aedis.Messaging.BusinessEvents;
+using Aedis.Observability.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -68,6 +70,28 @@ public static class MessagingServiceCollectionExtensions
                 sp.GetRequiredService<ILogger<MessageConsumerService<TMessage>>>());
         });
 
+        return services;
+    }
+
+    /// <summary>
+    ///     Liga a trilha de auditoria dos eventos de negócio (seção <c>Messaging:BusinessEventAudit</c>): com
+    ///     <c>Enabled</c>, registra o sink que enfileira os eventos auditáveis e o publisher hospedado que os
+    ///     publica pelo <see cref="IMessageBrokerService" /> em <c>Exchange</c>/<c>RoutingKey</c>. Requer
+    ///     <c>AddAedisBusinessEvents</c> (é o logger que entrega aos sinks). Desligado, não registra nada além
+    ///     das opções.
+    /// </summary>
+    public static IServiceCollection AddAedisBusinessEventAudit(this IServiceCollection services, IConfiguration configuration) {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var options = configuration.GetSection(BusinessEventAuditOptions.SectionName).Get<BusinessEventAuditOptions>()
+                      ?? new BusinessEventAuditOptions();
+        services.TryAddSingleton(options);
+        if (!options.Enabled) return services;
+
+        services.TryAddSingleton(new BusinessEventAuditQueue(options.QueueCapacity));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IBusinessEventSink, BusinessEventAuditSink>());
+        services.AddHostedService<BusinessEventAuditPublisher>();
         return services;
     }
 }
