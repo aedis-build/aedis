@@ -12,3 +12,10 @@ public sealed class LogTypeEnricher(string logType) : ILogEventEnricher
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory) =>
         logEvent.AddPropertyIfAbsent(_property);
 }
+
+/// <summary>Enriquecedor que não faz nada — ocupa o lugar de um enriquecedor opcional desligado.</summary>
+internal sealed class NoOpEnricher : ILogEventEnricher
+{
+    /// <inheritdoc />
+    public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory) { }
+}
