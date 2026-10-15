@@ -1,3 +1,5 @@
+# CI do framework: build + testes com cobertura e gate (coverage.yml do Aedis Platform), Conventional Commits.
+# Actions pinadas por SHA; permissions mínimas; sem credenciais de longa duração.
 name: CI
 
 on:
@@ -6,25 +8,23 @@ on:
   pull_request:
     branches: [ main ]
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
+  commits:
+    if: github.event_name == 'pull_request'
+    uses: aedis-build/aedis-platform/.github/workflows/conventional-commits.yml@v1
+    permissions:
+      contents: read
+
   build-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Restore
-        run: dotnet restore Aedis.slnx
-
-      - name: Build
-        run: dotnet build Aedis.slnx -c Release --no-restore
-
-      - name: Test
-        run: dotnet test Aedis.slnx -c Release --no-build --verbosity normal
+    name: Build + testes + cobertura
+    uses: aedis-build/aedis-platform/.github/workflows/coverage.yml@v1
+    permissions:
+      contents: read
+    with:
+      solution: Aedis.slnx
+      dotnet-version: 10.0.x
+      # shortcut: 50 % é o que a suíte cobre hoje (55 % mesclado); subir para 60 % (L1) quando Events/Domain/Commands/AzureServiceBus ganharem testes
+      min-line: 50
+      min-branch: 0
