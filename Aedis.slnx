@@ -64,6 +64,7 @@
     <Project Path="tests/Aedis.Cache.Redis.Tests/Aedis.Cache.Redis.Tests.csproj" />
     <Project Path="tests/Aedis.Commands.Tests/Aedis.Commands.Tests.csproj" />
     <Project Path="tests/Aedis.Core.Tests/Aedis.Core.Tests.csproj" />
+    <Project Path="tests/Aedis.Exceptions.Tests/Aedis.Exceptions.Tests.csproj" />
     <Project Path="tests/Aedis.Domain.Tests/Aedis.Domain.Tests.csproj" />
     <Project Path="tests/Aedis.Events.Tests/Aedis.Events.Tests.csproj" />
     <Project Path="tests/Aedis.Database.Postgres.Tests/Aedis.Database.Postgres.Tests.csproj" />
