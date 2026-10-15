@@ -2,22 +2,39 @@ using System.Text.Json;
 
 namespace Aedis.Messaging.AwsSqs;
 
-/// <summary>Conteúdo extraído de um envelope SNS→SQS: a mensagem interna (crua), o content-type e o content-encoding.</summary>
-public sealed record SnsSqsEnvelope(string Message, string? ContentType, string? ContentEncoding);
+/// <summary>
+///     Conteúdo extraído de um envelope SNS→SQS: a mensagem interna (crua, sem decodificar) e os atributos de
+///     transporte que viajaram no envelope — content-type, content-encoding, content-transfer-encoding,
+///     correlação e contexto de trace W3C.
+/// </summary>
+public sealed record SnsSqsEnvelope(
+    string Message,
+    string? ContentType,
+    string? ContentEncoding,
+    string? ContentTransferEncoding = null,
+    string? CorrelationId = null,
+    string? TraceParent = null,
+    string? TraceState = null);
 
 /// <summary>
-///     Quando uma mensagem é entregue de um SNS Topic para uma SQS Queue, o corpo da SQS é um envelope
-///     JSON do SNS. Este parser extrai a mensagem interna (sem decodificar) e o content-type a partir dos
-///     <c>MessageAttributes</c>. A decodificação base64→bytes fica a cargo do consumer.
+///     Quando uma mensagem é entregue de um SNS Topic para uma SQS Queue, o corpo da SQS é um envelope JSON
+///     do SNS (<c>Type = Notification</c>). Este parser reconhece só esse envelope — um JSON cru de um
+///     produtor externo (webhook) não é desembrulhado — e extrai a mensagem interna e os atributos de
+///     transporte dos <c>MessageAttributes</c>, aceitando os nomes com e sem hífen. A decodificação
+///     base64/gzip fica a cargo do consumer.
 /// </summary>
 public static class AwsPubSubEnvelopeParser
 {
-    /// <summary>Indica se o corpo é um envelope de notificação do SNS.</summary>
+    /// <summary>Indica se o corpo é um envelope de notificação do SNS (<c>Type == "Notification"</c> com <c>Message</c>).</summary>
     public static bool IsSnsEnvelope(string sqsBody) {
+        if (string.IsNullOrWhiteSpace(sqsBody)) return false;
+
         try {
             using var doc = JsonDocument.Parse(sqsBody);
             var root = doc.RootElement;
-            return root.TryGetProperty("Type", out var type)
+            return root.ValueKind == JsonValueKind.Object
+                   && root.TryGetProperty("Type", out var type)
+                   && type.ValueKind == JsonValueKind.String
                    && type.GetString() == "Notification"
                    && root.TryGetProperty("Message", out _);
         }
@@ -27,8 +44,8 @@ public static class AwsPubSubEnvelopeParser
     }
 
     /// <summary>
-    ///     Extrai do envelope SNS a mensagem interna (crua, sem decodificar) e o content-type lido dos
-    ///     <c>MessageAttributes</c>. Use após <see cref="IsSnsEnvelope" /> confirmar que o corpo é um envelope.
+    ///     Extrai do envelope SNS a mensagem interna (crua) e os atributos de transporte. Use após
+    ///     <see cref="IsSnsEnvelope" /> confirmar que o corpo é um envelope.
     /// </summary>
     public static SnsSqsEnvelope Parse(string sqsBody) {
         using var doc = JsonDocument.Parse(sqsBody);
@@ -42,19 +59,15 @@ public static class AwsPubSubEnvelopeParser
             ? attrs
             : null;
 
-        var contentType = ReadEnvelopeAttribute(attributes, "Content-Type");
-        var contentEncoding = ReadEnvelopeAttribute(attributes, "Content-Encoding");
-
-        return new SnsSqsEnvelope(rawMessage, contentType, contentEncoding);
+        return new SnsSqsEnvelope(
+            rawMessage,
+            ReadEnvelopeAttribute(attributes, "Content-Type", "ContentType"),
+            ReadEnvelopeAttribute(attributes, "Content-Encoding", "ContentEncoding"),
+            ReadEnvelopeAttribute(attributes, "Content-Transfer-Encoding", "ContentTransferEncoding"),
+            ReadEnvelopeAttribute(attributes, "CorrelationId"),
+            ReadEnvelopeAttribute(attributes, "traceparent"),
+            ReadEnvelopeAttribute(attributes, "tracestate"));
     }
-
-    private static string? ReadEnvelopeAttribute(JsonElement? attributes, string name) =>
-        attributes is { } attrs
-        && attrs.TryGetProperty(name, out var attr)
-        && attr.ValueKind == JsonValueKind.Object
-        && attr.TryGetProperty("Value", out var value)
-            ? value.GetString()
-            : null;
 
     /// <summary>Decodifica base64→bytes se a string for base64 válido; senão devolve null.</summary>
     public static byte[]? TryFromBase64(string value) {
@@ -72,5 +85,18 @@ public static class AwsPubSubEnvelopeParser
         catch {
             return null;
         }
+    }
+
+    private static string? ReadEnvelopeAttribute(JsonElement? attributes, params string[] names) {
+        if (attributes is not { } attrs) return null;
+
+        foreach (var name in names)
+            if (attrs.TryGetProperty(name, out var attr)
+                && attr.ValueKind == JsonValueKind.Object
+                && attr.TryGetProperty("Value", out var value)
+                && value.ValueKind == JsonValueKind.String)
+                return value.GetString();
+
+        return null;
     }
 }

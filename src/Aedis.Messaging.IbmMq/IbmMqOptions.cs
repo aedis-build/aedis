@@ -3,7 +3,11 @@ using System.ComponentModel.DataAnnotations;
 namespace Aedis.Messaging.IbmMq;
 
 /// <summary>
-///     Opções do provider IBM MQ do Aedis. Lidas da seção <c>IBMMQ</c> da configuração.
+///     Opções do provider IBM MQ do Aedis, lidas da seção <c>IBMMQ</c>. Toda conexão do cliente é um canal
+///     no queue manager, e o QM tem um teto global de canais compartilhado por todas as réplicas — por isso o
+///     provider trabalha com um <strong>teto duro por processo</strong> (<see cref="MaxConnections" />) que
+///     precisa comportar <c>Σ(concorrência de cada fila) + PublisherPoolSize</c>. Configuração que não cabe
+///     derruba o host na subida, com a conta na mensagem, em vez de degradar em silêncio.
 /// </summary>
 public sealed class IbmMqOptions
 {
@@ -25,38 +29,65 @@ public sealed class IbmMqOptions
     /// <summary>Senha usada na autenticação MQCSP.</summary>
     [Required] public string Password { get; set; } = null!;
 
-    /// <summary>Número máximo de sessões mantidas pelo provider.</summary>
-    public int MaxSessions { get; set; } = 8;
-
-    /// <summary>Timeout de sessão, em segundos.</summary>
-    public int SessionTimeoutSeconds { get; set; } = 30;
-
-    /// <summary>Base do backoff exponencial de reconexão, em milissegundos.</summary>
-    public int BackoffBaseMs { get; set; } = 500;
-
-    /// <summary>Teto do backoff exponencial de reconexão, em milissegundos.</summary>
-    public int BackoffMaxMs { get; set; } = 5000;
-
-    /// <summary>Número de backouts (MQMD.BackoutCount) a partir do qual a mensagem vai para a fila de backout/DLQ.</summary>
-    public int BackoutThreshold { get; set; } = 5;
-
-    /// <summary>Fila de backout para mensagens que excedem o <see cref="BackoutThreshold" />.</summary>
-    public string BackoutQueue { get; set; } = "DEV.BOQ";
-
-    /// <summary>Serializa o JSON com indentação (legibilidade) em vez de compacto. Padrão false.</summary>
-    public bool UseIndentedJson { get; set; } = false;
+    /// <summary>
+    ///     Teto duro de conexões (canais) que este processo abre no queue manager, contando o pool do
+    ///     publisher e os workers de todos os consumers. A reserva acontece na alocação (publisher ao subir,
+    ///     cada fila ao assinar); quem não cabe falha na subida. Padrão 8.
+    /// </summary>
+    public int MaxConnections { get; set; } = 8;
 
     /// <summary>
-    ///     Preenche o <c>ReplyToQueueName</c> do MQMD com <see cref="ReplyToReportQueueAlias" />. O IBM MQ
-    ///     entrega as confirmações (COA/COD) à fila informada no ReplyTo.
+    ///     Tamanho do pool de conexões usado para publicar. Cada publicação empresta uma conexão, faz
+    ///     <c>Put + Commit</c> isolado e a devolve. Entra no teto de <see cref="MaxConnections" />. Padrão 2.
     /// </summary>
-    public bool EnableReplyToQueue { get; set; } = false;
+    public int PublisherPoolSize { get; set; } = 2;
+
+    /// <summary>
+    ///     Número padrão de workers (conexões dedicadas) por fila consumida, quando a fila não aparece em
+    ///     <see cref="QueueConcurrency" />. Cada worker faz <c>Get → handler → Commit</c> na própria conexão,
+    ///     então workers paralelos processam a fila concorrentemente (sem preservar ordem). Padrão 1.
+    /// </summary>
+    public int ConsumerConcurrency { get; set; } = 1;
+
+    /// <summary>
+    ///     Concorrência por fila (nome → nº de workers), sobrepondo <see cref="ConsumerConcurrency" /> só para
+    ///     as filas listadas — ex.: <c>IBMMQ:QueueConcurrency:FILA.ALTA = 10</c>.
+    /// </summary>
+    public Dictionary<string, int> QueueConcurrency { get; set; } = new();
+
+    /// <summary>Intervalo de espera do GET em modo WAIT, em milissegundos (o loop alterna WAIT/DRAIN). Padrão 5000.</summary>
+    public int ConsumerWaitIntervalMs { get; set; } = 5000;
+
+    /// <summary>Espera do worker após um erro MQ não crítico antes de voltar ao GET, em milissegundos. Padrão 1000.</summary>
+    public int ConsumerBackoffMs { get; set; } = 1000;
+
+    /// <summary>Intervalo entre verificações de saúde do consumer (religa workers mortos), em milissegundos. Padrão 60000.</summary>
+    public int ConsumerHealthCheckIntervalMs { get; set; } = 60000;
+
+    /// <summary>Usa syncpoint (transação) no PUT e no GET. Padrão true: a mensagem só sai da fila após o handler concluir.</summary>
+    public bool UseSyncpoint { get; set; } = true;
+
+    /// <summary>
+    ///     Desvio opcional para dead-letter: mensagens cujo <c>MQMD.BackoutCount</c> atinge
+    ///     <see cref="BackoutThreshold" /> são movidas para <see cref="DeadLetterQueueName" /> e confirmadas.
+    ///     Desligado por padrão — a aplicação decide o destino de mensagens problemáticas no handler.
+    /// </summary>
+    public bool EnableDeadLetterQueue { get; set; }
+
+    /// <summary>Fila de dead-letter; obrigatória quando <see cref="EnableDeadLetterQueue" /> está ligado.</summary>
+    public string? DeadLetterQueueName { get; set; }
+
+    /// <summary>Número de backouts a partir do qual a mensagem vai para a dead-letter. Padrão 5.</summary>
+    public int BackoutThreshold { get; set; } = 5;
+
+    /// <summary>Preenche o <c>ReplyToQueueName</c> do MQMD com <see cref="ReplyToReportQueueAlias" />.</summary>
+    public bool EnableReplyToQueue { get; set; }
 
     /// <summary>Preenche o <c>ReplyToQueueManagerName</c> do MQMD com <see cref="ReplyToReportQueueManager" />.</summary>
-    public bool EnableReplyToQueueManager { get; set; } = false;
+    public bool EnableReplyToQueueManager { get; set; }
 
-    /// <summary>Liga os report options do MQMD. Quais reports são pedidos é definido em <see cref="Reports" />.</summary>
-    public bool EnableReports { get; set; } = true;
+    /// <summary>Liga os report options do MQMD definidos em <see cref="Reports" />. Desligado por padrão.</summary>
+    public bool EnableReports { get; set; }
 
     /// <summary>Queue Manager de destino das confirmações/reports (usado com <see cref="EnableReplyToQueueManager" />).</summary>
     public string? ReplyToReportQueueManager { get; set; }
@@ -64,16 +95,10 @@ public sealed class IbmMqOptions
     /// <summary>Fila (alias) de destino das confirmações/reports (usado com <see cref="EnableReplyToQueue" />).</summary>
     public string? ReplyToReportQueueAlias { get; set; }
 
-    /// <summary>
-    ///     Lista de ativação dos report options do MQMD (COA, COD, exceção, …) — substitui o conjunto
-    ///     fixo que era embutido no código. Só tem efeito com <see cref="EnableReports" /> ligado.
-    /// </summary>
+    /// <summary>Lista de ativação dos report options do MQMD (COA, COD, exceção, …). Só tem efeito com <see cref="EnableReports" />.</summary>
     public MqReportOptions Reports { get; set; } = new();
 
-    /// <summary>
-    ///     Tipo do MQMD das mensagens publicadas. O default é <see cref="MqMessageType.Datagram" /> (neutro);
-    ///     fluxos com COA/COD costumam usar <see cref="MqMessageType.Request" />, definido por configuração.
-    /// </summary>
+    /// <summary>Tipo do MQMD das mensagens publicadas. Padrão <see cref="MqMessageType.Datagram" />.</summary>
     public MqMessageType MessageType { get; set; } = MqMessageType.Datagram;
 
     /// <summary>Persistência do MQMD das mensagens publicadas. Padrão <see cref="MqPersistence.Persistent" />.</summary>
@@ -82,38 +107,9 @@ public sealed class IbmMqOptions
     /// <summary>Formato do corpo no MQMD das mensagens publicadas. Padrão <see cref="MqMessageFormat.None" /> (bytes brutos).</summary>
     public MqMessageFormat Format { get; set; } = MqMessageFormat.None;
 
-    /// <summary>Usa syncpoint (transação) no PUT e no GET. Padrão true (entrega transacional).</summary>
-    public bool UseSyncpoint { get; set; } = true;
-
-    /// <summary>Intervalo de espera do GET em modo WAIT, em milissegundos (o loop alterna WAIT/DRAIN).</summary>
-    public int ConsumerWaitIntervalMs { get; set; } = 5000;
-
-    /// <summary>Número máximo de tentativas do consumidor antes de desistir.</summary>
-    public int ConsumerMaxRetries { get; set; } = 3;
-
-    /// <summary>Backoff entre tentativas do consumidor após um erro MQ não crítico, em milissegundos.</summary>
-    public int ConsumerBackoffMs { get; set; } = 1000;
-
-    /// <summary>Intervalo entre verificações de saúde do consumidor, em milissegundos.</summary>
-    public int ConsumerHealthCheckIntervalMs { get; set; } = 60000;
-
-    /// <summary>Habilita o roteamento de mensagens com falha repetida para a fila de backout/DLQ.</summary>
-    public bool EnableDeadLetterQueue { get; set; } = false;
-
-    /// <summary>Fila de dead-letter; quando nula, usa <see cref="BackoutQueue" />.</summary>
-    public string? DeadLetterQueueName { get; set; }
-
-    /// <summary>Número máximo de reentregas de uma mensagem antes de considerá-la falha permanente.</summary>
-    public int MessageMaxRetries { get; set; } = 3;
-
-    /// <summary>Exige ACK explícito da mensagem (consumo transacional). Padrão true.</summary>
-    public bool RequireMessageAck { get; set; } = true;
-
     /// <summary>
-    ///     CCSID (CodedCharSetId) do MQMD para as mensagens enviadas. O padrão 819 (ISO 8859-1, byte único)
-    ///     representa qualquer byte 0x00–0xFF sem "Invalid character" — recomendado para payloads binários.
-    ///     Evite CCSIDs multibyte (ex.: 1208/UTF-8) quando o conteúdo for binário, pois o cliente IBM MQ 9.x
-    ///     pode reinterpretar os bytes.
+    ///     CCSID (CodedCharSetId) do MQMD das mensagens enviadas. Padrão 1208 (UTF-8), adequado a JSON e texto.
+    ///     Para payloads binários com conversão de CCSID no caminho, prefira um CCSID de byte único (ex.: 819).
     /// </summary>
-    public int CodedCharSetId { get; set; } = 819;
+    public int CodedCharSetId { get; set; } = 1208;
 }

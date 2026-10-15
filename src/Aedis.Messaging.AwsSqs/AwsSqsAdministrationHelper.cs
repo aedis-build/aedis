@@ -11,7 +11,9 @@ namespace Aedis.Messaging.AwsSqs;
 /// <summary>
 ///     Auto-provisiona os recursos AWS necessários: cria filas (com DLQ via RedrivePolicy), tópicos SNS,
 ///     inscrições fila→tópico (com filter policy) e a política que autoriza o SNS a entregar na fila.
-///     Operações idempotentes; ARNs em cache.
+///     Operações idempotentes e restritas ao recurso (<c>GetQueueUrl</c>/<c>CreateQueue</c>/<c>CreateTopic</c>
+///     — nunca <c>List*</c>); ARNs em cache. Todos os nomes passam por
+///     <see cref="IAwsPubSubFactory.ResolveQueueName" />, então o consumer encontra exatamente o que foi criado.
 /// </summary>
 public sealed class AwsSqsAdministrationHelper(
     IAwsPubSubFactory factory,
@@ -25,15 +27,12 @@ public sealed class AwsSqsAdministrationHelper(
 
     /// <summary>
     ///     Garante a existência da fila SQS (idempotente) e devolve sua URL. Quando <paramref name="withDlq" />
-    ///     é verdadeiro, provisiona também a DLQ e a vincula via RedrivePolicy. Respeita o sufixo <c>.fifo</c>
-    ///     e os atributos FIFO quando <see cref="AwsSqsOptions.UseFifoQueues" /> está ligado.
+    ///     é verdadeiro, provisiona também a DLQ (<c>&lt;fila&gt;-dlq</c>, ou <c>&lt;fila&gt;-dlq.fifo</c> para
+    ///     FIFO) e a vincula via RedrivePolicy.
     /// </summary>
     public async Task<string> EnsureQueueExistsAsync(string queueName, bool withDlq = true,
         CancellationToken ct = default) {
-        var name = factory.NormalizeName(queueName);
-        if (_options.UseFifoQueues && !factory.IsFifoQueue(name))
-            name += ".fifo";
-
+        var name = factory.ResolveQueueName(queueName);
         var sqsClient = await factory.GetSqsClientAsync(ct);
 
         try {
@@ -43,9 +42,10 @@ public sealed class AwsSqsAdministrationHelper(
         catch (QueueDoesNotExistException) {
         }
 
+        var isFifo = factory.IsFifoQueue(name);
         string? dlqArn = null;
         if (withDlq)
-            dlqArn = await CreateDlqAsync($"{name}-dlq", factory.IsFifoQueue(name), ct);
+            dlqArn = await CreateDlqAsync(DeadLetterName(name, isFifo), isFifo, ct);
 
         var attributes = new Dictionary<string, string> {
             ["MessageRetentionPeriod"] = RetentionFourteenDays,
@@ -59,7 +59,7 @@ public sealed class AwsSqsAdministrationHelper(
                 deadLetterTargetArn = dlqArn
             });
 
-        if (factory.IsFifoQueue(name)) {
+        if (isFifo) {
             attributes["FifoQueue"] = "true";
             attributes["ContentBasedDeduplication"] = "true";
         }
@@ -74,13 +74,11 @@ public sealed class AwsSqsAdministrationHelper(
     }
 
     /// <summary>
-    ///     Garante a existência do tópico SNS (idempotente na AWS) e devolve seu ARN, com cache. Aplica os
-    ///     atributos FIFO quando o nome termina em <c>.fifo</c>.
+    ///     Garante a existência do tópico SNS (<c>CreateTopic</c> é idempotente na AWS) e devolve seu ARN, com
+    ///     cache. Aplica os atributos FIFO quando o nome resolvido termina em <c>.fifo</c>.
     /// </summary>
     public async Task<string> EnsureTopicExistsAsync(string topicName, CancellationToken ct = default) {
-        var name = factory.NormalizeName(topicName);
-        if (_options.UseFifoQueues && !name.EndsWith(".fifo"))
-            name += ".fifo";
+        var name = factory.ResolveQueueName(topicName);
 
         if (_topicArnCache.TryGetValue(name, out var cached))
             return cached;
@@ -130,7 +128,7 @@ public sealed class AwsSqsAdministrationHelper(
 
     /// <summary>Resolve o ARN da fila a partir do nome (com cache), consultando seus atributos no SQS.</summary>
     public async Task<string> GetQueueArnAsync(string queueName, CancellationToken ct = default) {
-        var name = factory.NormalizeName(queueName);
+        var name = factory.ResolveQueueName(queueName);
         if (_queueArnCache.TryGetValue(name, out var cached))
             return cached;
 
@@ -141,6 +139,9 @@ public sealed class AwsSqsAdministrationHelper(
         _queueArnCache[name] = attributes.QueueARN;
         return attributes.QueueARN;
     }
+
+    internal static string DeadLetterName(string resolvedQueueName, bool isFifo) =>
+        isFifo ? resolvedQueueName[..^".fifo".Length] + "-dlq.fifo" : resolvedQueueName + "-dlq";
 
     private async Task<string> CreateDlqAsync(string dlqName, bool isFifo, CancellationToken ct) {
         var sqsClient = await factory.GetSqsClientAsync(ct);

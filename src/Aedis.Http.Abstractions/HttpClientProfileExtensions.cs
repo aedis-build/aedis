@@ -27,7 +27,14 @@ public static class HttpClientProfileExtensions
         if (profile.Ssrf.Enabled)
             handler.ConnectCallback = CreateSsrfGuardedConnect(profile.Ssrf);
 
-        var httpClient = new HttpClient(handler, disposeHandler: true) {
+        HttpMessageHandler pipeline = handler;
+        foreach (var factory in profile.MessageHandlers.Reverse()) {
+            var delegating = factory();
+            delegating.InnerHandler = pipeline;
+            pipeline = delegating;
+        }
+
+        var httpClient = new HttpClient(pipeline, disposeHandler: true) {
             Timeout = profile.Timeout
         };
 

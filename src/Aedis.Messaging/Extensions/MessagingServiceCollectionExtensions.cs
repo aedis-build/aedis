@@ -1,5 +1,7 @@
 using Aedis.Messaging;
 using Aedis.Messaging.Abstractions;
+using Aedis.Messaging.Telemetry;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -7,12 +9,28 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-///     Registro de DI dos consumers de mensagem do Aedis: um <see cref="MessageConsumerService{TMessage}" />
-///     hospedado por assinatura, com o handler adaptado automaticamente para escopo por mensagem quando ele
-///     não é singleton. Requer um <see cref="IMessageBrokerService" /> registrado pelo provider escolhido.
+///     Registro de DI dos serviços neutros de mensageria do Aedis: consumers hospedados
+///     (<see cref="MessageConsumerService{TMessage}" />, um por assinatura, com o handler adaptado para escopo
+///     por mensagem quando ele não é singleton) e a configuração da instrumentação. Requer um
+///     <see cref="IMessageBrokerService" /> registrado pelo provider escolhido.
 /// </summary>
 public static class MessagingServiceCollectionExtensions
 {
+    /// <summary>
+    ///     Vincula <see cref="MessagingTelemetryOptions" /> à seção <c>Messaging:Telemetry</c> e aplica em
+    ///     <see cref="MessagingInstrumentation" />. Opcional: sem a chamada, a instrumentação fica toda ligada.
+    /// </summary>
+    public static IServiceCollection AddAedisMessagingTelemetry(this IServiceCollection services, IConfiguration configuration) {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var section = configuration.GetSection(MessagingTelemetryOptions.SectionName);
+        services.AddOptions<MessagingTelemetryOptions>().Bind(section);
+        MessagingInstrumentation.Configure(section.Get<MessagingTelemetryOptions>() ?? new MessagingTelemetryOptions());
+
+        return services;
+    }
+
     /// <summary>
     ///     Registra <typeparamref name="THandler" /> como <see cref="IMessageHandler{T}" /> de
     ///     <typeparamref name="TMessage" /> (no ciclo de vida <paramref name="handlerLifetime" />, scoped por

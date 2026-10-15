@@ -26,6 +26,13 @@ public sealed class HttpClientProfile
     public IDictionary<string, string> DefaultHeaders { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    ///     Fábricas de <see cref="DelegatingHandler" /> encadeados sobre o transporte (ex.: assinatura de
+    ///     requisições), na ordem informada: o primeiro é o mais externo e o último fica logo antes do
+    ///     transporte — vendo a requisição final. Cada fábrica é chamada uma vez por cliente criado.
+    /// </summary>
+    public IList<Func<DelegatingHandler>> MessageHandlers { get; } = new List<Func<DelegatingHandler>>();
+
+    /// <summary>
     ///     Política anti-SSRF do transporte. Quando habilitada, recusa conexões a endereços internos
     ///     verificando o IP resolvido no momento de conectar (imune a DNS rebinding). Default desligada (opt-in).
     /// </summary>

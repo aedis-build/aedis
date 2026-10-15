@@ -29,7 +29,7 @@ public sealed class CriteriaBuilderTests
         sql.Should().Contain("ORDER BY created_at DESC");
         sql.Should().EndWith("OFFSET 20 ROWS FETCH NEXT 20 ROWS ONLY");
 
-        p["p0"].Should().Be("PENDING", "enums viram string");
+        p["p0"].Should().Be("Pending", "enums viram string pelo nome PascalCase (EnumPersistence)");
         p["p3"].Should().Be("sa");
         p["p4"].Should().Be("na");
     }

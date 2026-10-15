@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Signing</PackageId>
+    <Description>Aedis.Signing — assinaturas HTTP RFC 9421 (Content-Digest, Signature-Input, Signature) com ECDSA P-256, verificador, JWKS, chave em processo e bootstrap/health da chave; a criptografia do cofre vem de pacotes de provider.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Signing.Abstractions\Aedis.Signing.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NSign.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Signing.Tests" />
+  </ItemGroup>
+
+</Project>
