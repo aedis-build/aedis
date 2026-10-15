@@ -99,6 +99,7 @@ public abstract class AedisWorkerHost
 
     private void RegisterServices(IServiceCollection services, IConfiguration configuration) {
         services.AddAedisSerilog(configuration);
+        services.AddAedisBusinessEvents(configuration);
 
         if (EnableTelemetry)
             services.AddAedisTelemetry(configuration, ConfigureMetricsExporters);

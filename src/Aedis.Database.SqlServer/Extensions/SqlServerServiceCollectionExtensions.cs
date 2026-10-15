@@ -15,7 +15,8 @@ public static class SqlServerServiceCollectionExtensions
 {
     /// <summary>
     ///     Registra a <see cref="IUnitOfWorkFactory" /> (sessões de escrita/leitura), as estratégias de
-    ///     nomes e seu resolver, os type handlers de <see cref="DateOnly" />/<see cref="TimeOnly" /> do
+    ///     nomes e seu resolver, os type handlers de <see cref="DateOnly" />/<see cref="TimeOnly" /> e de
+    ///     dicionários <c>string → string</c> (JSON) do
     ///     Dapper e o motor de bulk insert via SqlBulkCopy (<see cref="SqlServerBulkInserter" />). Lê as
     ///     opções da seção <c>Database</c>. Também habilita o casamento de nomes com underscores no Dapper,
     ///     para mapear colunas <c>snake_case</c> em propriedades PascalCase.
@@ -28,6 +29,9 @@ public static class SqlServerServiceCollectionExtensions
 
         SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
         SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
+        SqlMapper.AddTypeHandler(new JsonDictionaryTypeHandler<Dictionary<string, string?>>());
+        SqlMapper.AddTypeHandler(new JsonDictionaryTypeHandler<IDictionary<string, string?>>());
+        SqlMapper.AddTypeHandler(new JsonDictionaryTypeHandler<IReadOnlyDictionary<string, string?>>());
         DefaultTypeMap.MatchNamesWithUnderscores = true;
 
         services.AddSingleton<INamingStrategy, SnakeCaseNamingStrategy>();

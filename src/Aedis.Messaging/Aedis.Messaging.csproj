@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Messaging.Abstractions\Aedis.Messaging.Abstractions.csproj" />
     <ProjectReference Include="..\Aedis.Exceptions\Aedis.Exceptions.csproj" />
+    <ProjectReference Include="..\Aedis.Observability.Abstractions\Aedis.Observability.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

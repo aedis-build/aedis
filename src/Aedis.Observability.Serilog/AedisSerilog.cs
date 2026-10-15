@@ -48,6 +48,7 @@ public static class AedisSerilog
         ApplyConfiguredLevels(loggerConfiguration, configuration);
 
         var redaction = RedactionOptions.FromConfiguration(configuration);
+        var traceCorrelation = TraceCorrelationOptions.FromConfiguration(configuration);
 
         loggerConfiguration
             .Filter.ByExcluding(IsNoise)
@@ -56,6 +57,7 @@ public static class AedisSerilog
             .Enrich.WithProperty("application", ApplicationInfo.Name)
             .Enrich.FromLogContext()
             .Enrich.With(new RedactionEnricher(redaction))
+            .Enrich.With(traceCorrelation.DecimalIds ? new ActivityEnricher(traceCorrelation) : new NoOpEnricher())
             .WriteTo.Sink(CreateRedactingSinks(redaction, configuration));
     }
 

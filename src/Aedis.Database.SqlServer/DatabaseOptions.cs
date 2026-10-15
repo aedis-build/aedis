@@ -40,6 +40,12 @@ public sealed class DatabaseOptions
     public TimeSpan HealthCheckCacheTtl { get; set; } = TimeSpan.FromSeconds(60);
 
     /// <summary>
+    ///     Tempo máximo da sondagem do health check (<c>SELECT 1</c>). Estourado, o check responde <c>Degraded</c> em
+    ///     vez de prender a probe do orquestrador no pool. Padrão 10 s.
+    /// </summary>
+    public TimeSpan HealthCheckTimeout { get; set; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>
     ///     Tamanho de cada chunk em <c>BulkInsertChunkedAsync</c>. Otimizado para cargas grandes:
     ///     cria a tabela temporária uma única vez e a reutiliza com TRUNCATE entre chunks, reduzindo
     ///     overhead de catálogo e I/O distribuído. Padrão 2.000 linhas.

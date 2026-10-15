@@ -61,7 +61,10 @@ public sealed class SqlServerHealthCheck : IHealthCheck
         return false;
     }
 
-    private async Task<HealthCheckResult> ProbeAsync(CancellationToken ct) {
+    private async Task<HealthCheckResult> ProbeAsync(CancellationToken cancellationToken) {
+        using var timeout = new CancellationTokenSource(_options.HealthCheckTimeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        var ct = linked.Token;
         try {
             await using var session = await _factory.CreateReadSessionAsync(ct);
             var value = await session.QuerySingleOrDefaultAsync<int>("SELECT 1", null, ct);
@@ -70,6 +73,10 @@ public sealed class SqlServerHealthCheck : IHealthCheck
             return value == 1
                 ? HealthCheckResult.Healthy("Conexão SQL Server saudável.")
                 : HealthCheckResult.Unhealthy("Resposta inesperada do SQL Server.");
+        }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested) {
+            _logger.LogWarning("Health check do SQL Server excedeu {Timeout}.", _options.HealthCheckTimeout);
+            return HealthCheckResult.Degraded($"Sondagem do SQL Server excedeu {_options.HealthCheckTimeout}.");
         }
         catch (Exception ex) {
             _logger.LogError(ex, "Health check do SQL Server falhou.");

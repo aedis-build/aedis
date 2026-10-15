@@ -114,6 +114,7 @@ public abstract class AedisApiHost
         var configuration = builder.Configuration;
 
         services.AddAedisSerilog(configuration);
+        services.AddAedisBusinessEvents(configuration);
 
         if (EnableTelemetry)
             services.AddAedisTelemetry(configuration, ConfigureMetricsExporters);
