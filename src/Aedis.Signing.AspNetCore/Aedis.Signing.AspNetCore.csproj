@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Signing.AspNetCore</PackageId>
+    <Description>Aedis.Signing.AspNetCore — rota JWKS (MapAedisSigningJwks) e leitura de requisições recebidas para verificação de assinaturas RFC 9421 em ASP.NET Core.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Signing\Aedis.Signing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

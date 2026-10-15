@@ -51,4 +51,26 @@ public class DependencyRuleTests
         result.IsSuccessful.Should().BeTrue(
             "Aedis.Messaging é a implementação neutra sobre IMessageBrokerService: nenhum SDK de broker nem ASP.NET Core");
     }
+
+    [Fact]
+    public void Signing_Abstractions_so_depende_da_BCL_e_das_excecoes() {
+        var result = Types.InAssembly(typeof(Aedis.Signing.Abstractions.ISigningKeyProvider).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("NSign", "Amazon", "Azure", "Microsoft.AspNetCore")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.Signing.Abstractions é só contrato: a biblioteca de assinatura e os SDKs de cofre ficam nos pacotes de implementação");
+    }
+
+    [Fact]
+    public void Signing_neutro_nao_depende_de_cofre_nem_de_AspNetCore() {
+        var result = Types.InAssembly(typeof(Aedis.Signing.HttpMessageSigner).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("Amazon", "Azure", "Microsoft.AspNetCore")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.Signing fala com o cofre só pela costura ISignatureProvider/ISigningKeyProvider dos pacotes de provider");
+    }
 }

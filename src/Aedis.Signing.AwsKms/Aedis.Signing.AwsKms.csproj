@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Signing.AwsKms</PackageId>
+    <Description>Aedis.Signing.AwsKms — provider de chave de assinatura no AWS KMS (ECC_NIST_P256/SIGN_VERIFY): resolução por KeyId ou alias, criação opcional, assinatura de digest no HSM e sondagem de saúde.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Signing\Aedis.Signing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.KeyManagementService" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Signing.AwsKms.Tests" />
+  </ItemGroup>
+
+</Project>
