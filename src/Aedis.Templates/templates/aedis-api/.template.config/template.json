@@ -1,10 +1,16 @@
 {
   "$schema": "http://json.schemastore.org/template",
   "author": "Aedis",
-  "classifications": [ "Web", "API", "Aedis", "Cloud", "DDD" ],
+  "classifications": [
+    "Web",
+    "API",
+    "Aedis",
+    "Cloud",
+    "DDD"
+  ],
   "identity": "Aedis.Templates.Api",
   "name": "Aedis Secure API (camadas + CRUD)",
-  "description": "Solução REST em 4 camadas (Api/Application/Domain/Infrastructure + testes) sobre o AedisApiHost: CRUD de exemplo ponta a ponta com CQRS, repositório PostgreSQL, HATEOAS, validação 422, ProblemDetails e autenticação fail-closed. Inclui Dockerfile e manifesto k8s endurecidos.",
+  "description": "Solução REST em 4 camadas (Api/Application/Domain/Infrastructure + testes) sobre o AedisApiHost: CRUD de exemplo ponta a ponta com CQRS, repositório PostgreSQL, HATEOAS, validação 422, ProblemDetails e autenticação fail-closed. Inclui Dockerfile endurecido, values do chart aedis-app e CI do Aedis Platform.",
   "shortName": "aedis-api",
   "tags": {
     "language": "C#",
@@ -25,6 +31,12 @@
       "valueSource": "name",
       "valueTransform": "lowerCase",
       "replaces": "aedis.app1"
+    },
+    "appNameKebab": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "kebabCase",
+      "replaces": "aedis-app1"
     }
   }
 }

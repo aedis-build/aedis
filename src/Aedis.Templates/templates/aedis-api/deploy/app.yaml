@@ -1,0 +1,20 @@
+# Values do chart aedis-app (Aedis Platform) para esta API. Vai para apps/aedis-app1/app.yaml no repo GitOps.
+name: aedis-app1
+namespace: default
+type: api
+image:
+  repository: ghcr.io/minha-org/aedis-app1
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits: { cpu: 500m, memory: 512Mi }
+# Chaves do Secret <app>-secret, sincronizadas do cofre pelo External Secrets Operator (key sem o prefixo do ambiente).
+secrets:
+  keys:
+    - name: Database__ConnectionString
+      key: aedis-app1
+      property: ConnectionString
+ingress:
+  enabled: false
+  hosts: [aedis-app1.example.com]
+  edge:
+    waf: false

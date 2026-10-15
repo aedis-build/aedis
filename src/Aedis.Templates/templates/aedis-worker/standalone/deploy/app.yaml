@@ -1,0 +1,31 @@
+# Values do chart aedis-app (Aedis Platform) para este worker. Vai para apps/aedis-app1/app.yaml no repo GitOps.
+name: aedis-app1
+namespace: default
+type: worker
+image:
+  repository: ghcr.io/minha-org/aedis-app1
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits: { cpu: 500m, memory: 512Mi }
+secrets:
+  keys:
+    - name: Database__ConnectionString
+      key: aedis-app1
+      property: ConnectionString
+    - name: RABBITMQ__Password
+      key: aedis-app1
+      property: RabbitMqPassword
+    - name: RABBITMQ_HOST
+      key: aedis-app1
+      property: RabbitMqAmqpUrl
+# Escala por fila (KEDA, trigger RabbitMQ). Ligue quando a fila existir.
+autoscaling:
+  keda:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    queues:
+      - kind: rabbitmq
+        queueName: notifications
+        hostFromEnv: RABBITMQ_HOST
+        value: "20"
