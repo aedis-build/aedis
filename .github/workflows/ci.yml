@@ -25,6 +25,7 @@ jobs:
     with:
       solution: Aedis.slnx
       dotnet-version: 10.0.x
-      # shortcut: 50 % é o que a suíte cobre hoje (55 % mesclado); subir para 60 % (L1) quando Events/Domain/Commands/AzureServiceBus ganharem testes
-      min-line: 50
-      min-branch: 0
+      # Mínimo aceitável do framework: 95 % de linhas. Hoje a suíte cobre ~55 % (mesclado, sem os containers de
+      # integração); o check fica vermelho até os pacotes abaixo do piso ganharem testes ou perderem código em excesso.
+      min-line: 95
+      min-branch: 85
