@@ -66,6 +66,16 @@ public abstract class AedisApiHost
     protected virtual bool EnableSwagger => false;
 
     /// <summary>
+    ///     Costura para fontes de configuração adicionais, executada antes de a infraestrutura ler a configuração:
+    ///     é aqui que um app liga segredos do cofre como configuração (<c>AddAedisSecrets</c>) ou um provedor
+    ///     remoto. Os providers padrão (appsettings, ambiente, linha de comando) já estão em
+    ///     <paramref name="configuration" />.
+    /// </summary>
+    /// <param name="configuration">Builder de configuração do host.</param>
+    /// <param name="environment">Ambiente de hospedagem (nome, raiz de conteúdo).</param>
+    protected virtual void ConfigureAppConfiguration(IConfigurationBuilder configuration, IHostEnvironment environment) { }
+
+    /// <summary>
     ///     Constrói, configura e executa a aplicação web até o cancelamento. Cria o logger raiz, compõe a
     ///     infraestrutura segura por default, monta o pipeline e bloqueia em <c>RunAsync</c>. Erros fatais de
     ///     inicialização são logados e propagados; o logger é drenado no encerramento.
@@ -97,6 +107,7 @@ public abstract class AedisApiHost
         Log.Logger = AedisSerilog.CreateLogger(builder.Configuration);
 
         configureBuilder?.Invoke(builder);
+        ConfigureAppConfiguration(builder.Configuration, builder.Environment);
 
         builder.ConfigureAedisKestrelHardening();
         ConfigureInfrastructure(builder);

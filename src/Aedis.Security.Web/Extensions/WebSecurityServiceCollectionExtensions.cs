@@ -70,7 +70,7 @@ public static class WebSecurityServiceCollectionExtensions
         services.Configure<ForwardedHeadersOptions>(o => {
             o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.All;
 
-            if (forwarded.TrustAllProxies) {
+            if (forwarded.EffectivelyTrustsAllProxies) {
                 o.KnownProxies.Clear();
                 o.KnownIPNetworks.Clear();
                 return;

@@ -42,6 +42,15 @@ public abstract class AedisWorkerHost
     protected virtual bool EnableTelemetry => true;
 
     /// <summary>
+    ///     Costura para fontes de configuração adicionais, executada antes de a infraestrutura ler a configuração:
+    ///     é aqui que um worker liga segredos do cofre como configuração (<c>AddAedisSecrets</c>) ou um provedor
+    ///     remoto. Vale para os dois modos (com endpoint de health e headless).
+    /// </summary>
+    /// <param name="configuration">Builder de configuração do host.</param>
+    /// <param name="environment">Ambiente de hospedagem (nome, raiz de conteúdo).</param>
+    protected virtual void ConfigureAppConfiguration(IConfigurationBuilder configuration, IHostEnvironment environment) { }
+
+    /// <summary>
     ///     Constrói e executa o worker até o cancelamento. Usa um servidor mínimo quando há endpoint de health
     ///     ou um host genérico sem HTTP caso contrário; em ambos, drena o logger no encerramento.
     /// </summary>
@@ -78,6 +87,7 @@ public abstract class AedisWorkerHost
         Log.Logger = AedisSerilog.CreateLogger(builder.Configuration);
 
         configureBuilder?.Invoke(builder);
+        ConfigureAppConfiguration(builder.Configuration, builder.Environment);
         RegisterServices(builder.Services, builder.Configuration);
 
         var app = builder.Build();
@@ -90,6 +100,7 @@ public abstract class AedisWorkerHost
         var builder = Host.CreateApplicationBuilder(args);
         Log.Logger = AedisSerilog.CreateLogger(builder.Configuration);
 
+        ConfigureAppConfiguration(builder.Configuration, builder.Environment);
         RegisterServices(builder.Services, builder.Configuration);
 
         var host = builder.Build();
