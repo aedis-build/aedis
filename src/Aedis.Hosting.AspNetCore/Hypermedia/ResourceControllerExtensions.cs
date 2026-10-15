@@ -30,13 +30,18 @@ public static class ResourceControllerExtensions {
 
     /// <summary>
     ///     Envolve uma página em <see cref="ResourceCollection{T}" />: cada item ganha seus próprios
-    ///     <c>_links</c> (quando há provedor registrado) e a coleção recebe os links de paginação. Retorna
-    ///     <c>200 OK</c>.
+    ///     <c>_links</c> (quando há provedor registrado) e a coleção recebe os links de navegação — URL completa
+    ///     em <c>GET</c>, URL limpa com <c>_templates</c> em <c>QUERY</c> — e, se pedido, os de exportação. O
+    ///     request de consulta ecoado nos templates é o capturado pelo filtro da action, salvo quando
+    ///     <paramref name="requestEcho" /> é informado. Retorna <c>200 OK</c>.
     /// </summary>
     /// <typeparam name="T">Tipo de cada item da coleção.</typeparam>
     /// <param name="controller">Controller em execução.</param>
     /// <param name="page">Página de resultados (itens + metadados de paginação).</param>
-    public static IActionResult AsCollection<T>(this ControllerBase controller, PagedResult<T> page) {
+    /// <param name="export">Links de exportação a anunciar; <c>null</c> para nenhum.</param>
+    /// <param name="requestEcho">Request de consulta a ecoar nos <c>_templates</c>; <c>null</c> usa o capturado.</param>
+    public static IActionResult AsCollection<T>(this ControllerBase controller, PagedResult<T> page,
+        ExportLinkOptions? export = null, object? requestEcho = null) {
         ArgumentNullException.ThrowIfNull(controller);
         ArgumentNullException.ThrowIfNull(page);
 
@@ -48,7 +53,7 @@ public static class ResourceControllerExtensions {
             .ToList();
 
         var collection = new ResourceCollection<T>(items, page.Total, page.Page, page.PageSize);
-        PaginationLinks.Apply(collection, httpContext, page.Page, page.PageSize, page.Total);
+        PaginationLinks.Apply(collection, httpContext, page.Page, page.PageSize, page.Total, export, requestEcho);
 
         return controller.Ok(collection);
     }

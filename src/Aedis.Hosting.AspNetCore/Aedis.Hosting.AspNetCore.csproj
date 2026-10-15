@@ -13,6 +13,7 @@
     <ProjectReference Include="..\Aedis.Security.Abstractions\Aedis.Security.Abstractions.csproj" />
     <ProjectReference Include="..\Aedis.Security.Web\Aedis.Security.Web.csproj" />
     <ProjectReference Include="..\Aedis.Diagnostics\Aedis.Diagnostics.csproj" />
+    <ProjectReference Include="..\Aedis.Excel.Abstractions\Aedis.Excel.Abstractions.csproj" />
     <ProjectReference Include="..\Aedis.Observability.Serilog\Aedis.Observability.Serilog.csproj" />
     <ProjectReference Include="..\Aedis.Observability.Otlp\Aedis.Observability.Otlp.csproj" />
   </ItemGroup>

@@ -47,8 +47,10 @@ public abstract class ApiControllerBase : ControllerBase {
     /// </summary>
     /// <typeparam name="TResponse">Tipo de cada item da coleção.</typeparam>
     /// <param name="page">Página de resultados (itens + metadados de paginação).</param>
-    protected IActionResult OkCollection<TResponse>(PagedResult<TResponse> page) {
-        return this.AsCollection(page);
+    /// <param name="export">Links de exportação a anunciar; <c>null</c> para nenhum.</param>
+    /// <param name="requestEcho">Request de consulta a ecoar nos <c>_templates</c>; <c>null</c> usa o capturado pelo filtro.</param>
+    protected IActionResult OkCollection<TResponse>(PagedResult<TResponse> page, ExportLinkOptions? export = null, object? requestEcho = null) {
+        return this.AsCollection(page, export, requestEcho);
     }
 
     /// <summary>

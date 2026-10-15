@@ -13,17 +13,27 @@ public interface IHasLinks {
 }
 
 /// <summary>
-///     Base dos recursos de hipermídia. Mantém o dicionário de links serializado como <c>_links</c> e oferece
-///     <see cref="AddLink" /> para anexar relações. Use os tipos concretos <see cref="Resource{T}" /> (item
-///     único) ou <see cref="ResourceCollection{T}" /> (coleção paginada).
+///     Base dos recursos de hipermídia. Mantém o dicionário de links serializado como <c>_links</c>, as ações
+///     autodescritivas opcionais em <c>_templates</c>, e oferece <see cref="AddLink" />/<see cref="AddTemplate" />
+///     para anexá-los. Use os tipos concretos <see cref="Resource{T}" /> (item único) ou
+///     <see cref="ResourceCollection{T}" /> (coleção paginada).
 /// </summary>
-public abstract class Resource : IHasLinks {
+public abstract class Resource : IHasLinks, IHasTemplates {
     /// <summary>
     ///     Links de hipermídia do recurso, serializados sob <c>_links</c> e posicionados após o corpo de dados.
     /// </summary>
     [JsonPropertyName("_links")]
     [JsonPropertyOrder(100)]
     public IDictionary<string, Link> Links { get; } = new Dictionary<string, Link>();
+
+    /// <summary>
+    ///     Ações autodescritivas do recurso, serializadas sob <c>_templates</c> após os links. Fica <c>null</c>
+    ///     (e é omitida) quando o recurso não anuncia nenhuma.
+    /// </summary>
+    [JsonPropertyName("_templates")]
+    [JsonPropertyOrder(101)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IDictionary<string, HalFormsTemplate>? Templates { get; private set; }
 
     /// <summary>
     ///     Anexa um link ao recurso. Sobrescreve um link já existente para a mesma relação.
@@ -43,6 +53,22 @@ public abstract class Resource : IHasLinks {
         }
 
         Links[rel] = new Link(href, rel, method, templated);
+    }
+
+    /// <summary>
+    ///     Anexa uma ação autodescritiva a <c>_templates</c>; o dicionário nasce sob demanda. Sobrescreve um
+    ///     template já existente com o mesmo nome.
+    /// </summary>
+    /// <param name="name">Nome do template (normalmente o <c>rel</c> do link correspondente).</param>
+    /// <param name="template">Descrição da ação: método, destino e corpo pronto.</param>
+    public void AddTemplate(string name, HalFormsTemplate template) {
+        if (string.IsNullOrWhiteSpace(name)) {
+            throw new ArgumentException("O nome do template não pode ser vazio.", nameof(name));
+        }
+
+        ArgumentNullException.ThrowIfNull(template);
+        Templates ??= new Dictionary<string, HalFormsTemplate>();
+        Templates[name] = template;
     }
 }
 
