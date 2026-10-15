@@ -52,4 +52,40 @@ public sealed class VaultRegistrationTests
 
         act.Should().Throw<OptionsValidationException>();
     }
+
+    [Theory]
+    [InlineData("Kubernetes", "Vault:KubernetesRole")]
+    [InlineData("AppRole", "Vault:AppRoleId")]
+    public void Metodo_de_autenticacao_exige_as_suas_credenciais(string auth, string missing) {
+        var options = new VaultOptions { Address = "http://localhost:8200", Auth = Enum.Parse<VaultAuthMethod>(auth) };
+
+        options.Validate().Should().Contain(missing);
+    }
+
+    [Fact]
+    public void Kubernetes_troca_o_token_projetado_da_ServiceAccount() {
+        var tokenFile = Path.GetTempFileName();
+        File.WriteAllText(tokenFile, "eyJhbGciOi.jwt.projetado\n");
+        try {
+            var options = new VaultOptions {
+                Address = "http://localhost:8200", Auth = VaultAuthMethod.Kubernetes, KubernetesRole = "orders-api", KubernetesTokenPath = tokenFile
+            };
+
+            options.Validate().Should().BeNull();
+            var act = () => VaultSecretsProvider.Create(options);
+            act.Should().NotThrow("o cliente é preguiçoso: só autentica na primeira chamada");
+        }
+        finally {
+            File.Delete(tokenFile);
+        }
+    }
+
+    [Fact]
+    public void AppRole_monta_cliente_sem_token_estatico() {
+        var options = new VaultOptions { Address = "http://localhost:8200", Auth = VaultAuthMethod.AppRole, AppRoleId = "role", AppRoleSecretId = "secret" };
+
+        options.Validate().Should().BeNull();
+        var act = () => VaultSecretsProvider.Create(options);
+        act.Should().NotThrow();
+    }
 }

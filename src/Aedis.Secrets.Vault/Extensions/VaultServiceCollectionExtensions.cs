@@ -14,13 +14,13 @@ public static class VaultServiceCollectionExtensions
     /// <summary>
     ///     Registra o <see cref="ISecretsProvider" /> sobre o HashiCorp Vault (KV v2, com cache em memória
     ///     via <c>CachingSecretsProvider</c>) e o health check <c>secrets</c> com a tag <c>ready</c>. Lê as
-    ///     opções da seção <c>Vault</c> e o TTL de cache da seção <c>Secrets</c>.
+    ///     opções da seção <c>Vault</c> (autenticação por token, Kubernetes ou AppRole) e o TTL de cache da
+    ///     seção <c>Secrets</c>.
     /// </summary>
     public static IServiceCollection AddAedisVault(this IServiceCollection services, IConfiguration configuration) {
         services.AddOptions<VaultOptions>()
             .Bind(configuration.GetSection(VaultOptions.SectionName))
-            .Validate(options => !string.IsNullOrWhiteSpace(options.Address) && !string.IsNullOrWhiteSpace(options.Token),
-                "Vault:Address e Vault:Token são obrigatórios.")
+            .Validate(options => options.Validate() is null, "Vault: Address e as credenciais do método de autenticação (Token, KubernetesRole ou AppRoleId/AppRoleSecretId) são obrigatórios.")
             .ValidateOnStart();
         services.AddOptions<SecretsCachingOptions>()
             .Bind(configuration.GetSection(SecretsCachingOptions.SectionName));

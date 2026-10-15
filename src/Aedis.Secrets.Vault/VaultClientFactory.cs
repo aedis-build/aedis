@@ -1,18 +1,25 @@
 using VaultSharp;
+using VaultSharp.V1.AuthMethods;
+using VaultSharp.V1.AuthMethods.AppRole;
+using VaultSharp.V1.AuthMethods.Kubernetes;
 using VaultSharp.V1.AuthMethods.Token;
 
 namespace Aedis.Secrets.Vault;
 
-/// <summary>Constrói o <see cref="IVaultClient" /> a partir das opções (autenticação por token).</summary>
+/// <summary>Constrói o <see cref="IVaultClient" /> a partir das opções, com o método de autenticação escolhido.</summary>
 internal static class VaultClientFactory
 {
     public static IVaultClient Build(VaultOptions options) {
-        if (string.IsNullOrWhiteSpace(options.Address))
-            throw new InvalidOperationException("Vault:Address é obrigatório.");
-        if (string.IsNullOrWhiteSpace(options.Token))
-            throw new InvalidOperationException("Vault:Token é obrigatório.");
+        if (options.Validate() is { } error)
+            throw new InvalidOperationException(error);
 
-        var settings = new VaultClientSettings(options.Address, new TokenAuthMethodInfo(options.Token));
-        return new VaultClient(settings);
+        return new VaultClient(new VaultClientSettings(options.Address, AuthMethod(options)));
     }
+
+    internal static IAuthMethodInfo AuthMethod(VaultOptions options) => options.Auth switch {
+        VaultAuthMethod.Kubernetes => new KubernetesAuthMethodInfo(options.KubernetesMountPath, options.KubernetesRole,
+            File.ReadAllText(options.KubernetesTokenPath).Trim()),
+        VaultAuthMethod.AppRole => new AppRoleAuthMethodInfo(options.AppRoleMountPath, options.AppRoleId, options.AppRoleSecretId),
+        _ => new TokenAuthMethodInfo(options.Token)
+    };
 }
