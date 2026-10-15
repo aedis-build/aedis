@@ -77,6 +77,7 @@ public sealed class BusinessEventAuditTests
 
         await publisher.StartAsync(CancellationToken.None);
         queue.TryEnqueue(BusinessEventMessage.From(Record())).Should().BeTrue();
+        await WaitForCallsAsync(broker, 1);
         await publisher.StopAsync(CancellationToken.None);
 
         await broker.Received(1).PublishAsync("trilha", "eventos", Arg.Is<BusinessEventMessage>(m => m.Name == "orders.order.confirmed"),
@@ -95,6 +96,7 @@ public sealed class BusinessEventAuditTests
         await publisher.StartAsync(CancellationToken.None);
         queue.TryEnqueue(BusinessEventMessage.From(Record(name: "orders.order.failed")));
         queue.TryEnqueue(BusinessEventMessage.From(Record()));
+        await WaitForCallsAsync(broker, 2);
         await publisher.StopAsync(CancellationToken.None);
 
         await broker.Received(1).PublishAsync(Arg.Any<string>(), Arg.Any<string>(),
@@ -135,6 +137,12 @@ public sealed class BusinessEventAuditTests
         provider.GetServices<IBusinessEventSink>().Should().ContainSingle().Which.Should().BeOfType<BusinessEventAuditSink>();
         provider.GetServices<IHostedService>().Should().ContainSingle().Which.Should().BeOfType<BusinessEventAuditPublisher>();
         provider.GetRequiredService<BusinessEventAuditOptions>().QueueCapacity.Should().Be(7);
+    }
+
+    private static async Task WaitForCallsAsync(IMessageBrokerService broker, int expected) {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (broker.ReceivedCalls().Count() < expected && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
     }
 
     private static IServiceProvider Provider(IMessageBrokerService broker) =>
