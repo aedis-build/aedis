@@ -23,9 +23,10 @@ public abstract class HandlerBase<TRequest, TResponse> : IHandler<TRequest, TRes
     }
 
     /// <summary>
-    ///     Handles the request by first checking if this handler can process it.
-    ///     If CanHandleAsync returns true, processes the request via ProcessAsync.
-    ///     ALWAYS delegates to the next handler (if exists), enabling both Chain of Responsibility and Pipeline patterns.
+    ///     Handles the request: when CanHandleAsync returns true, the response of ProcessAsync is the answer of the
+    ///     chain (Chain of Responsibility). When that response is itself a request and there is a next handler, it
+    ///     is passed along as the transformed request (Pipeline). When this handler cannot process the request, it
+    ///     delegates to the next handler; without one, returns null.
     /// </summary>
     /// <param name="request">The request to be handled</param>
     /// <param name="cancellationToken">Cancellation token for async operations</param>
@@ -33,21 +34,18 @@ public abstract class HandlerBase<TRequest, TResponse> : IHandler<TRequest, TRes
     public virtual async Task<TResponse?> HandleAsync(TRequest request, CancellationToken cancellationToken = default) {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var currentRequest = request;
-
         if (await CanHandleAsync(request, cancellationToken)) {
-            var processedResult = await ProcessAsync(request, cancellationToken);
+            var result = await ProcessAsync(request, cancellationToken);
 
-            if (processedResult is TRequest modifiedRequest) currentRequest = modifiedRequest;
+            if (result is TRequest modifiedRequest && _nextHandler != null)
+                return await _nextHandler.HandleAsync(modifiedRequest, cancellationToken);
+
+            return result;
         }
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_nextHandler != null) return await _nextHandler.HandleAsync(currentRequest, cancellationToken);
-
-        if (currentRequest is TResponse response) return response;
-
-        return default;
+        return _nextHandler != null ? await _nextHandler.HandleAsync(request, cancellationToken) : default;
     }
 
     /// <summary>
