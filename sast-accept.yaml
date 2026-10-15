@@ -1,0 +1,10 @@
+# Aceites de risco do SAST (scripts/sast-summary.py do aedis-platform). Cada item expira em `until`.
+accept:
+  - rule: aedis-platform.semgrep.rules.aedis.dapper-sql-interpolation
+    path: src/Aedis.Database.Postgres/
+    reason: "SQL montado só com identificadores (tabela/coluna) resolvidos pelas naming strategies e quoting do provider; valores sempre parametrizados (new { ... }). Cobertos por DatabaseErrorTranslationTests/CriteriaBuilderTests."
+    until: 2027-10-15
+  - rule: aedis-platform.semgrep.rules.aedis.dapper-sql-interpolation
+    path: src/Aedis.Database.SqlServer/
+    reason: "Idem Postgres: identificadores das naming strategies com quoting [col]; valores parametrizados."
+    until: 2027-10-15
