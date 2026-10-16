@@ -80,6 +80,36 @@ public sealed class BaseMetricsTests
 
         public void Processed(string type) => IncrementCounter(_processed, 1, "type", type);
 
-        public void RecordDuration(double seconds) => RecordHistogram(_duration, seconds);
+        public void RecordDuration(double seconds) => RecordHistogram(_duration, seconds, ("type", "csv"));
+        public void Unknown() => AddToCounter("nao-existe", 1);
+    }
+
+    [Fact]
+    public void Contador_sem_incrementos_publica_zero_e_contador_desconhecido_lanca() {
+        var longMeasurements = new List<(string Name, long Value)>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) => {
+            if (instrument.Meter.Name == MeterName) l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, value, _, _) => longMeasurements.Add((instrument.Name, value)));
+        listener.Start();
+        var metrics = new TestMetrics(MeterFactory());
+
+        listener.RecordObservableInstruments();
+        var act = () => metrics.Unknown();
+
+        longMeasurements.Should().Contain(("test_processed_total", 0L));
+        act.Should().Throw<InvalidOperationException>().WithMessage("*nao-existe*");
+    }
+
+    [Fact]
+    public async Task Dispose_sincrono_e_assincrono_sao_idempotentes() {
+        var metrics = new TestMetrics(MeterFactory());
+        var other = new TestMetrics(MeterFactory());
+
+        metrics.Dispose();
+        metrics.Dispose();
+        await other.DisposeAsync();
+        await other.DisposeAsync();
     }
 }
