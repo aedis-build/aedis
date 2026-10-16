@@ -3,6 +3,9 @@ using Aedis.Cache.Redis;
 using Aedis.Diagnostics;
 using Aedis.Hosting.Abstractions;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
@@ -140,5 +143,72 @@ public sealed class RedisCacheTests : IAsyncLifetime
         ttlAposSegundo.Should().NotBeNull();
         ttlAposSegundo!.Value.Should().BeLessThanOrEqualTo(TimeSpan.FromMinutes(1),
             "incrementos seguintes não redefinem o TTL original");
+    }
+
+    /// <summary>A mesma instância que detém o lock obtém um novo handle (reentrante); outra não.</summary>
+    [Fact]
+    public async Task IsLeaderAsync_e_reentrante_para_a_mesma_instancia() {
+        var cache = CreateCache("instance-a");
+        var key = $"leader-{Guid.NewGuid():N}";
+
+        (await cache.IsLeaderAsync(key, TimeSpan.FromSeconds(30))).Should().NotBeNull();
+        (await cache.IsLeaderAsync(key, TimeSpan.FromSeconds(30)))
+            .Should().NotBeNull("a instância dona do lock continua líder");
+    }
+
+    /// <summary>Liberar um lock que já não pertence à instância não lança (apenas avisa).</summary>
+    [Fact]
+    public async Task Liberar_lock_perdido_nao_lanca() {
+        var cache = CreateCache("instance-a");
+        var key = $"leader-{Guid.NewGuid():N}";
+        var handle = await cache.IsLeaderAsync(key, TimeSpan.FromSeconds(30));
+        handle.Should().NotBeNull();
+        (await cache.GetKeysAsync("*:lock:" + key)).Should().ContainSingle();
+        foreach (var lockKey in await cache.GetKeysAsync("*:lock:" + key)) await cache.RemoveAsync(lockKey);
+
+        var act = async () => {
+            await handle!.DisposeAsync();
+            await handle.DisposeAsync();
+        };
+
+        await act.Should().NotThrowAsync();
+    }
+
+    /// <summary>GetKeysAsync lista as chaves do padrão e devolve vazio quando nada casa.</summary>
+    [Fact]
+    public async Task GetKeysAsync_filtra_por_padrao() {
+        var cache = CreateCache("instance-a");
+        var prefix = $"scan-{Guid.NewGuid():N}";
+        await cache.SetStringAsync($"{prefix}:a", "1", TimeSpan.FromMinutes(1));
+        await cache.SetStringAsync($"{prefix}:b", "2", TimeSpan.FromMinutes(1));
+
+        (await cache.GetKeysAsync($"{prefix}:*")).Should().BeEquivalentTo($"{prefix}:a", $"{prefix}:b");
+        (await cache.GetKeysAsync($"nada-{prefix}:*")).Should().BeEmpty();
+    }
+
+    /// <summary>O health check faz PING e reporta saudável com o container no ar.</summary>
+    [Fact]
+    public async Task HealthCheck_reporta_saudavel() {
+        var options = Options.Create(new RedisCacheOptions {
+            EndPoint = _container.GetConnectionString(), Password = string.Empty, UseSsl = false
+        });
+        var check = new RedisHealthCheck(options, NullLogger<RedisHealthCheck>.Instance, CreateCache("instance-a"));
+
+        (await check.CheckHealthAsync(new HealthCheckContext())).Status.Should().Be(HealthStatus.Healthy);
+    }
+
+    /// <summary>AddAedisRedis vincula as options, expõe ICache como singleton e registra o health check "ready".</summary>
+    [Fact]
+    public void AddAedisRedis_registra_cache_e_health_check() {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["REDIS:EndPoint"] = _container.GetConnectionString(),
+            ["REDIS:Password"] = "",
+            ["REDIS:UseSsl"] = "false"
+        }).Build();
+        var provider = new ServiceCollection().AddLogging().AddAedisRedis(config).BuildServiceProvider();
+
+        provider.GetRequiredService<ICache>().Should().BeSameAs(provider.GetRequiredService<RedisCache>());
+        provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations
+            .Should().ContainSingle(r => r.Name == "redis").Which.Tags.Should().Contain("ready");
     }
 }
