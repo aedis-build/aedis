@@ -6,34 +6,26 @@ namespace Aedis.Messaging.AzureServiceBus;
 
 /// <summary>
 ///     Base dos serviços Azure Service Bus: mantém um <see cref="ServiceBusClient" /> único e recuperável
-///     (com retry exponencial), monitora a saúde da conexão por timer e oferece os utilitários de
-///     nomeação/roteamento. No modelo do Aedis, um exchange não vazio é tratado como Topic (pub/sub) e
+///     (com retry exponencial) e oferece os utilitários de nomeação/roteamento. No modelo do Aedis, um exchange não vazio é tratado como Topic (pub/sub) e
 ///     um exchange vazio como Queue (point-to-point).
 /// </summary>
 public abstract class ServiceBusBaseService : IAsyncDisposable
 {
-    private readonly Timer _connectionHealthTimer;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly ILogger _logger;
     /// <summary>Configuração de conexão ao Service Bus usada pelas subclasses.</summary>
     protected readonly ServiceBusOptions _options;
 
     private ServiceBusClient? _client;
-    private volatile bool _isConnectionHealthy = true;
 
     /// <summary>
-    ///     Prepara o serviço e arma o monitor periódico de saúde da conexão (a cada 30s); o
-    ///     <see cref="ServiceBusClient" /> é criado de forma preguiçosa no primeiro uso.
+    ///     Prepara o serviço; o <see cref="ServiceBusClient" /> é criado de forma preguiçosa no primeiro
+    ///     uso e recriado por <see cref="GetClientAsync" /> se estiver fechado.
     /// </summary>
     protected ServiceBusBaseService(IOptions<ServiceBusOptions> options, ILogger logger) {
         _options = options.Value;
         _logger = logger;
-        _connectionHealthTimer = new Timer(CheckConnectionHealth, null,
-            TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
-
-    /// <summary>Estado de saúde da conexão, atualizado pelo monitor periódico. Consumido pelo health check.</summary>
-    public bool IsConnectionHealthy => _isConnectionHealthy;
 
     /// <summary>
     ///     Devolve o <see cref="ServiceBusClient" /> compartilhado, criando-o de forma preguiçosa e
@@ -72,10 +64,8 @@ public abstract class ServiceBusBaseService : IAsyncDisposable
     /// <summary>Normaliza o nome (minúsculas, espaços e underscores viram hífen) para o Service Bus.</summary>
     public static string NormalizeName(string name) => name.ToLowerInvariant().Replace(' ', '-').Replace('_', '-');
 
-    /// <summary>Para o monitor de saúde, descarta o cliente e libera o semáforo de conexão.</summary>
+    /// <summary>Descarta o cliente e libera o semáforo de conexão.</summary>
     public virtual async ValueTask DisposeAsync() {
-        await _connectionHealthTimer.DisposeAsync();
-
         if (_client != null) {
             await _client.DisposeAsync();
             _client = null;
@@ -85,32 +75,4 @@ public abstract class ServiceBusBaseService : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
-    private void CheckConnectionHealth(object? state) {
-        try {
-            if (_client is null || _client.IsClosed) {
-                if (!_isConnectionHealthy) return;
-
-                _logger.LogWarning("Conexão com o Azure Service Bus não está saudável. Tentando reconectar...");
-                _isConnectionHealthy = false;
-
-                _ = Task.Run(async () => {
-                    try {
-                        await GetClientAsync();
-                        _isConnectionHealthy = true;
-                        _logger.LogDebug("Conexão com o Azure Service Bus restaurada.");
-                    }
-                    catch (Exception ex) {
-                        _logger.LogError(ex, "Falha ao restaurar a conexão com o Azure Service Bus.");
-                    }
-                });
-            }
-            else if (!_isConnectionHealthy) {
-                _logger.LogDebug("Conexão com o Azure Service Bus saudável novamente.");
-                _isConnectionHealthy = true;
-            }
-        }
-        catch (Exception ex) {
-            _logger.LogError(ex, "Erro ao verificar a saúde da conexão com o Azure Service Bus.");
-        }
-    }
 }
