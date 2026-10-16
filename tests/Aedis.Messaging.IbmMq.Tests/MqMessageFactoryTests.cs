@@ -108,4 +108,34 @@ public sealed class MqMessageFactoryTests
         message.Report.Should().Be(MQC.MQRO_NONE, "EnableReports=false ignora a lista de ativação");
         message.MessageType.Should().Be(MQC.MQMT_DATAGRAM, "default neutro");
     }
+
+    [Theory]
+    [InlineData(MqPersistence.NotPersistent, MQC.MQPER_NOT_PERSISTENT)]
+    [InlineData(MqPersistence.AsQueueDefinition, MQC.MQPER_PERSISTENCE_AS_Q_DEF)]
+    [InlineData(MqPersistence.Persistent, MQC.MQPER_PERSISTENT)]
+    public void MapPersistence_traduz_cada_modo(MqPersistence persistence, int expected) {
+        MqMessageFactory.MapPersistence(persistence).Should().Be(expected);
+    }
+
+    [Fact]
+    public void MapFormat_string_e_none_e_tipo_desconhecido_vira_datagram() {
+        MqMessageFactory.MapFormat(MqMessageFormat.String).Should().Be(MQC.MQFMT_STRING);
+        MqMessageFactory.MapFormat(MqMessageFormat.None).Should().Be(MQC.MQFMT_NONE);
+        MqMessageFactory.MapMessageType((MqMessageType)99).Should().Be(MQC.MQMT_DATAGRAM);
+        MqMessageFactory.ToMq24(null).Should().Equal((byte[])MQC.MQCI_NONE.Clone());
+    }
+
+    [Fact]
+    public void ReplyToReportQueueManager_e_copiado_para_o_MQMD_e_descriptor_sem_reports_e_None() {
+        var options = new IbmMqOptions {
+            QueueManager = "QM1", Channel = "C", ConnectionNameList = "h(1414)", UserId = "u", Password = "p",
+            EnableReplyToQueueManager = true, ReplyToReportQueueManager = "QMR"
+        };
+
+        var message = MqMessageFactory.BuildMqMessage(options, "abc");
+
+        message.ReplyToQueueManagerName.Should().Be("QMR");
+        new MqReportOptions().None.Should().BeTrue();
+        new MqReportOptions { Coa = true }.None.Should().BeFalse();
+    }
 }
