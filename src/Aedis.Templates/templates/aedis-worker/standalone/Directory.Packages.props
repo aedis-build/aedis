@@ -8,6 +8,7 @@
     <PackageVersion Include="Aedis.Domain" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Exceptions" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Messaging.Abstractions" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Messaging" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Messaging.RabbitMq" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Database.Abstractions" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Database.Postgres" Version="AEDIS_PKG_VERSION" />

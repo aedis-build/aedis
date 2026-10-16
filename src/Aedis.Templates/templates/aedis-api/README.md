@@ -60,8 +60,10 @@ link quando o papel exigido estiver presente.
 docker build -t aedis.app1 .
 ```
 
-O `Dockerfile` usa base *chiseled* non-root; o `deploy/deployment.yaml` aplica o endurecimento de runtime
-(root FS read-only, drop de capabilities, `no-new-privileges`, seccomp).
+O `Dockerfile` usa base *chiseled* non-root. O deploy é declarativo pelo [Aedis Platform](https://github.com/aedis-build/aedis-platform):
+`deploy/app.yaml` são os values do chart `aedis-app` (baseline de pod, segredos via cofre, canário); copie-o para
+`apps/<nome>/app.yaml` no repositório GitOps (`aedis platform new-app`). O `.github/workflows/ci.yml` roda o
+`app-ci` reutilizável (commits, cobertura, SAST, CodeQL) e, em tag `vX.Y.Z`, constrói a imagem assinada com SBOM.
 
 ## Versão dos pacotes Aedis
 

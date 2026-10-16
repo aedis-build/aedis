@@ -1,0 +1,24 @@
+# CI padrão do Aedis Platform: Conventional Commits, testes com cobertura e gate, SAST (Semgrep + regras Aedis),
+# CodeQL e, em tag vX.Y.Z, imagem multi-arch assinada (cosign) com SBOM.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  app:
+    uses: aedis-build/aedis-platform/.github/workflows/app-ci.yml@v1
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      id-token: write
+    with:
+      solution: Aedis.App1.slnx
+      min-line: 60
+      image: ghcr.io/${{ github.repository_owner }}/aedis-app1

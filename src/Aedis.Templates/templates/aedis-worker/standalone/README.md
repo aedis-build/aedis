@@ -68,8 +68,10 @@ IBM MQ no lugar do RabbitMQ, troque `AddAedisRabbitMq` por `AddAedisAwsSqs`/`Add
 docker build -t aedis.app1 .
 ```
 
-O `Dockerfile` usa base *chiseled* non-root; `deploy/deployment.yaml` aplica o endurecimento de runtime. Para
-um worker **sem** servidor HTTP, sobrescreva `EnableHealthEndpoint => false` em `WorkerHost`.
+O `Dockerfile` usa base *chiseled* non-root. O deploy é declarativo pelo [Aedis Platform](https://github.com/aedis-build/aedis-platform):
+`deploy/app.yaml` são os values do chart `aedis-app` (baseline de pod, segredos via cofre, canário); copie-o para
+`apps/<nome>/app.yaml` no repositório GitOps (`aedis platform new-app`). O `.github/workflows/ci.yml` roda o
+`app-ci` reutilizável (commits, cobertura, SAST, CodeQL) e, em tag `vX.Y.Z`, constrói a imagem assinada com SBOM.
 
 ## Versão dos pacotes Aedis
 

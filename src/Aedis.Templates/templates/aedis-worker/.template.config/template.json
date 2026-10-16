@@ -1,7 +1,14 @@
 {
   "$schema": "http://json.schemastore.org/template",
   "author": "Aedis",
-  "classifications": [ "Worker", "Service", "Aedis", "Cloud", "DDD", "Messaging" ],
+  "classifications": [
+    "Worker",
+    "Service",
+    "Aedis",
+    "Cloud",
+    "DDD",
+    "Messaging"
+  ],
   "identity": "Aedis.Templates.Worker",
   "name": "Aedis Worker (camadas + consumer)",
   "description": "Worker headless sobre o AedisWorkerHost: consome mensagens de um broker (RabbitMQ), processa de forma idempotente e publica um evento de follow-up. Sem --add gera uma solução nova em 4 camadas (Worker/Application/Domain/Infrastructure + testes); com --add adiciona apenas um projeto worker autônomo a uma solução existente.",
@@ -35,6 +42,12 @@
       "valueSource": "name",
       "valueTransform": "lowerCase",
       "replaces": "aedis.app1"
+    },
+    "appNameKebab": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "kebabCase",
+      "replaces": "aedis-app1"
     }
   },
   "sources": [
@@ -60,10 +73,14 @@
       "condition": "(addMode)",
       "description": "Adiciona o projeto worker à solução existente.",
       "manualInstructions": [
-        { "text": "Adicione o projeto à solução: dotnet sln add src/Aedis.App1.Worker/Aedis.App1.Worker.csproj" }
+        {
+          "text": "Adicione o projeto à solução: dotnet sln add src/Aedis.App1.Worker/Aedis.App1.Worker.csproj"
+        }
       ],
       "actionId": "D396686C-DE0E-4DE6-906D-291CD29FC5DE",
-      "args": { "primaryOutputIndexes": "0" },
+      "args": {
+        "primaryOutputIndexes": "0"
+      },
       "continueOnError": true
     }
   ]
