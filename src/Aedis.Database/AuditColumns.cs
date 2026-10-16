@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Aedis.Security.Abstractions;
 
-namespace Aedis.Database.SqlServer;
+namespace Aedis.Database;
 
 /// <summary>
 ///     Metadados de auditoria por tipo de entidade (cacheados): localiza, por convenção, as propriedades
@@ -69,7 +69,7 @@ internal sealed class AuditColumns
 
     private static void SetTime(PropertyInfo property, object entity, DateTimeOffset now) {
         var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-        property.SetValue(entity, type == typeof(DateTime) ? now.UtcDateTime : now);
+        property.SetValue(entity, type == typeof(DateTime) ? (object)now.UtcDateTime : now);
     }
 
     private static bool IsUnsetTime(object? value) => value switch {

@@ -1,7 +1,7 @@
 using Aedis.Database.Abstractions;
 using Aedis.Exceptions;
 
-namespace Aedis.Database.SqlServer;
+namespace Aedis.Database;
 
 /// <summary>
 ///     Mapeamento padrão do framework quando nem o hook do repositório nem o <see cref="IDatabaseErrorMapper" />

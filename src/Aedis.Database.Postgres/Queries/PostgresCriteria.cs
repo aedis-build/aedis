@@ -1,5 +1,6 @@
 using System.Text;
 using Aedis.Database.Abstractions;
+using Aedis.Database.Queries;
 
 namespace Aedis.Database.Postgres.Queries;
 

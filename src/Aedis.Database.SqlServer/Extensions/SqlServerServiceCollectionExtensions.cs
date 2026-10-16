@@ -1,4 +1,6 @@
+using Aedis.Database;
 using Aedis.Database.Abstractions;
+using Aedis.Database.TypeHandlers;
 using Aedis.Database.SqlServer;
 using Aedis.Database.Naming;
 using Aedis.Database.SqlServer.TypeHandlers;

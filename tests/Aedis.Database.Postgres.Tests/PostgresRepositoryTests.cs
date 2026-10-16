@@ -1,4 +1,5 @@
 using Aedis.Database.Abstractions;
+using Aedis.Database.Queries;
 using Aedis.Database.Postgres;
 using Aedis.Database.Naming;
 using Aedis.Database.Postgres.Queries;

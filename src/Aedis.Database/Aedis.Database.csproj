@@ -2,12 +2,26 @@
 
   <PropertyGroup>
     <PackageId>Aedis.Database</PackageId>
-    <Description>Aedis.Database — implementações agnósticas de provider (estratégias de nomes snake_case/PascalCase/camelCase e resolvedor) compartilhadas por Aedis.Database.SqlServer e Aedis.Database.Postgres.</Description>
+    <Description>Aedis.Database — implementações agnósticas de provider (opções, estratégias de nomes, colunas de auditoria, mapeamento padrão de erros, type handlers e critérios brutos) compartilhadas por Aedis.Database.SqlServer e Aedis.Database.Postgres.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Database.Abstractions\Aedis.Database.Abstractions.csproj" />
     <ProjectReference Include="..\Aedis.Domain\Aedis.Domain.csproj" />
+    <ProjectReference Include="..\Aedis.Exceptions\Aedis.Exceptions.csproj" />
+    <ProjectReference Include="..\Aedis.Security.Abstractions\Aedis.Security.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Database.SqlServer" />
+    <InternalsVisibleTo Include="Aedis.Database.Postgres" />
+    <InternalsVisibleTo Include="Aedis.Database.Tests" />
+    <InternalsVisibleTo Include="Aedis.Database.SqlServer.Tests" />
+    <InternalsVisibleTo Include="Aedis.Database.Postgres.Tests" />
   </ItemGroup>
 
 </Project>
