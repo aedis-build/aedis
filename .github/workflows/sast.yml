@@ -1,0 +1,16 @@
+name: sast
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions: {}
+
+jobs:
+  sast:
+    uses: aedis-build/aedis-platform/.github/workflows/sast.yml@v1
+    permissions:
+      contents: read
+      security-events: write
