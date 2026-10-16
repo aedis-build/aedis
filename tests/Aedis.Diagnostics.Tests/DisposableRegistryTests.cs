@@ -129,4 +129,49 @@ public sealed class DisposableRegistryTests
             return ValueTask.CompletedTask;
         }
     }
+
+    private sealed class ThrowingDisposable : IDisposable, IAsyncDisposable
+    {
+        public void Dispose() => throw new InvalidOperationException("sync");
+        public ValueTask DisposeAsync() => throw new InvalidOperationException("async");
+    }
+
+    private sealed class CountingDisposable : IAsyncDisposable
+    {
+        public int Disposed;
+        public ValueTask DisposeAsync() { Disposed++; return ValueTask.CompletedTask; }
+    }
+
+    /// <summary>Recursos que falham ao descartar não interrompem o descarte dos demais e a lista fica vazia.</summary>
+    [Fact]
+    public async Task DisposeAllAsync_tolera_falhas_sincronas_e_assincronas() {
+        var registry = new DisposableRegistry();
+        var healthy = new CountingDisposable();
+        registry.Register((IDisposable)new ThrowingDisposable());
+        registry.Register((IAsyncDisposable)new ThrowingDisposable());
+        registry.Register(healthy);
+
+        await registry.DisposeAllAsync();
+
+        healthy.Disposed.Should().Be(1);
+        registry.Count.Should().Be(0);
+    }
+
+    /// <summary>Registrar a mesma chave substitui o anterior; o handle só descarta uma vez e remove a chave.</summary>
+    [Fact]
+    public async Task Registro_com_chave_substitui_e_handle_descarta_uma_vez() {
+        var registry = new DisposableRegistry();
+        var first = new CountingDisposable();
+        var second = new CountingDisposable();
+        registry.Register("k", first);
+        var handle = registry.Register("k", second);
+
+        await handle.DisposeAsync();
+        await handle.DisposeAsync();
+
+        second.Disposed.Should().Be(1);
+        registry.Count.Should().Be(0);
+        await registry.DisposeAllAsync();
+        first.Disposed.Should().Be(0, "foi substituído antes do descarte");
+    }
 }

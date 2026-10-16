@@ -106,4 +106,66 @@ public sealed class BucketServiceBaseTests
             return Task.FromResult($"https://fake/{key}?ttl={ttl.TotalSeconds}");
         }
     }
+
+    /// <summary>Bucket cujo upload exercita todos os membros do stream com progresso (leitura, escrita, seek, dispose).</summary>
+    public sealed class StreamProbingBucket : BucketServiceBase<StreamProbingBucket>
+    {
+        public long ObservedLength;
+        public bool Seekable;
+
+        protected override Task<ObjectContent?> OpenObjectAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult<ObjectContent?>(null);
+
+        protected override async Task UploadObjectAsync(string key, Stream stream, string contentType,
+            long? contentLength, CancellationToken cancellationToken) {
+            Seekable = stream.CanSeek && stream.CanRead && stream.CanWrite;
+            ObservedLength = stream.Length;
+            var buffer = new byte[4];
+            stream.Read(buffer, 0, 2).Should().Be(2);
+            stream.ReadByte().Should().BeGreaterThan(-1);
+            (await stream.ReadAsync(buffer, 0, 1, cancellationToken)).Should().Be(1);
+            stream.Seek(0, SeekOrigin.End);
+            stream.Position = stream.Length;
+            stream.WriteByte(1);
+            stream.Write(buffer, 0, 2);
+            await stream.WriteAsync(buffer, 0, 1, cancellationToken);
+            stream.Flush();
+            await stream.FlushAsync(cancellationToken);
+            stream.SetLength(stream.Length);
+            stream.Position = 0;
+            while (stream.ReadByte() != -1) { }
+            stream.Dispose();
+            await stream.DisposeAsync();
+        }
+
+        public override IAsyncEnumerable<BucketObject> ListObjectsAsync(string? prefix, long offsetTimestamp = 0,
+            CancellationToken cancellationToken = default) => AsyncEnumerable.Empty<BucketObject>();
+
+        public override Task DeleteObjectAsync(string key, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public override Task CopyObjectAsync(string sourceKey, string destinationKey,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public override Task<string> GetPreSignedUrlAsync(string key, TimeSpan ttl, FileAccess accessType = FileAccess.Read,
+            CancellationToken cancellationToken = default) => Task.FromResult(key);
+    }
+
+    /// <summary>O stream de progresso delega todos os membros ao stream interno e reporta cada leitura/escrita.</summary>
+    [Fact]
+    public async Task Stream_de_progresso_delega_todos_os_membros_e_reporta_bytes() {
+        var bucket = new StreamProbingBucket();
+        var reports = new List<UploadProgress>();
+
+        var source = new MemoryStream();
+        source.Write("abcdef"u8);
+        source.Position = 0;
+
+        await bucket.PutObjectAsync("k", source, onProgress: reports.Add);
+
+        bucket.Seekable.Should().BeTrue();
+        bucket.ObservedLength.Should().Be(6);
+        reports.Should().NotBeEmpty();
+        reports.Select(r => r.TransferredBytes).Should().BeInAscendingOrder();
+        reports.Should().AllSatisfy(r => r.TotalBytes.Should().Be(6));
+    }
 }
