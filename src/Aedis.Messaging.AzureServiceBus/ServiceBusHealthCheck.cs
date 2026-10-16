@@ -5,20 +5,17 @@ namespace Aedis.Messaging.AzureServiceBus;
 
 /// <summary>
 ///     Health check de <em>readiness</em> do Azure Service Bus — reusa o cliente do broker e reporta
-///     <c>Unhealthy</c> quando a conexão está doente ou fechada.
+///     <c>Unhealthy</c> quando o cliente não pode ser obtido ou está fechado.
 /// </summary>
 public sealed class ServiceBusHealthCheck(
     ILogger<ServiceBusHealthCheck> logger,
     ServiceBusMessageBrokerService broker)
     : IHealthCheck
 {
-    /// <summary>Reporta <c>Healthy</c> se a conexão do broker está saudável e aberta; senão <c>Unhealthy</c>.</summary>
+    /// <summary>Reporta <c>Healthy</c> se o cliente do broker está aberto; senão <c>Unhealthy</c>.</summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         try {
-            if (!broker.IsConnectionHealthy)
-                return HealthCheckResult.Unhealthy("Conexão Azure Service Bus não está saudável.");
-
             var client = await broker.GetClientAsync();
             if (client is null || client.IsClosed)
                 return HealthCheckResult.Unhealthy("Conexão Azure Service Bus está fechada.");

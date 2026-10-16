@@ -20,8 +20,13 @@ public sealed class ServiceBusAdministrationHelper
 
     /// <summary>Cria o helper de administração com um cliente apontando para a connection string configurada.</summary>
     public ServiceBusAdministrationHelper(IOptions<ServiceBusOptions> options,
+        ILogger<ServiceBusAdministrationHelper> logger)
+        : this(new ServiceBusAdministrationClient(options.Value.ConnectionString), logger) { }
+
+    /// <summary>Permite injetar o cliente de administração (testes).</summary>
+    internal ServiceBusAdministrationHelper(ServiceBusAdministrationClient adminClient,
         ILogger<ServiceBusAdministrationHelper> logger) {
-        _adminClient = new ServiceBusAdministrationClient(options.Value.ConnectionString);
+        _adminClient = adminClient;
         _logger = logger;
     }
 
