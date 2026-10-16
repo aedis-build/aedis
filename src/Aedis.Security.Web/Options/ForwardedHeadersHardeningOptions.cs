@@ -18,11 +18,15 @@ public sealed class ForwardedHeadersHardeningOptions
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    ///     Quando <c>true</c> (default), confia em qualquer proxy (limpa as listas de proxies/redes conhecidos).
-    ///     Apropriado quando a aplicação só é acessível através de um ingress controlado. Defina <c>false</c>
-    ///     para restringir aos endereços de <see cref="KnownProxies" />/<see cref="KnownNetworks" />.
+    ///     Quando <c>true</c> (default), confia em qualquer proxy. Apropriado só quando a aplicação é acessível
+    ///     exclusivamente por um ingress controlado. É ignorado assim que <see cref="KnownProxies" /> ou
+    ///     <see cref="KnownNetworks" /> têm algum item: informar as redes do proxy é a decisão de restringir, e
+    ///     um <c>true</c> esquecido não pode anulá-la (o chart do Aedis Platform sempre informa as redes).
     /// </summary>
     public bool TrustAllProxies { get; set; } = true;
+
+    /// <summary>Confiança efetiva: <see cref="TrustAllProxies" /> sem nenhum proxy ou rede conhecida informada.</summary>
+    public bool EffectivelyTrustsAllProxies => TrustAllProxies && KnownProxies.Count == 0 && KnownNetworks.Count == 0;
 
     /// <summary>Endereços IP de proxies confiáveis (usado quando <see cref="TrustAllProxies" /> é <c>false</c>).</summary>
     public IList<string> KnownProxies { get; } = new List<string>();
