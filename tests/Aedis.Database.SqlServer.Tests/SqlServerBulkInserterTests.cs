@@ -1,7 +1,7 @@
 using System.Reflection;
 using Aedis.Database.Abstractions;
 using Aedis.Database.SqlServer;
-using Aedis.Database.SqlServer.Naming;
+using Aedis.Database.Naming;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Data.SqlClient;

@@ -1,7 +1,7 @@
 using System.Reflection;
 using Aedis.Database.Abstractions;
 using Aedis.Database.SqlServer.Internal;
-using Aedis.Database.SqlServer.Naming;
+using Aedis.Database.Naming;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 

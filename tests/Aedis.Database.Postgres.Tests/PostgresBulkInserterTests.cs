@@ -1,7 +1,7 @@
 using System.Reflection;
 using Aedis.Database.Abstractions;
 using Aedis.Database.Postgres;
-using Aedis.Database.Postgres.Naming;
+using Aedis.Database.Naming;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;

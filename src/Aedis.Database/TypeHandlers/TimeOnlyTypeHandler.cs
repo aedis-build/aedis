@@ -1,7 +1,7 @@
 using System.Data;
 using Dapper;
 
-namespace Aedis.Database.SqlServer.TypeHandlers;
+namespace Aedis.Database.TypeHandlers;
 
 /// <summary>Dapper TypeHandler para <see cref="TimeOnly" /> ↔ coluna <c>time</c>.</summary>
 public sealed class TimeOnlyTypeHandler : SqlMapper.TypeHandler<TimeOnly>

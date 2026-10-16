@@ -1,9 +1,9 @@
 using Aedis.Database.Abstractions;
 
-namespace Aedis.Database.Postgres;
+namespace Aedis.Database;
 
 /// <summary>
-///     Opções do provider PostgreSQL do Aedis. Lidas da seção <c>Database</c> da configuração. Suporta
+///     Opções dos providers de banco do Aedis (SQL Server e PostgreSQL). Lidas da seção <c>Database</c> da configuração. Suporta
 ///     endpoint de escrita (primário) e leitura (réplicas) separados; sem eles, usa
 ///     <see cref="ConnectionString" /> para ambos.
 /// </summary>
@@ -21,7 +21,7 @@ public sealed class DatabaseOptions
     /// <summary>Endpoints de leitura (réplicas), rotacionados em round-robin nas sessões de leitura.</summary>
     public string[]? ReadConnectionStrings { get; set; }
 
-    /// <summary>Convenção de nomes para tabelas/colunas. Padrão snake_case (idiomático no PostgreSQL).</summary>
+    /// <summary>Convenção de nomes para tabelas/colunas. Padrão snake_case.</summary>
     public NamingConvention NamingConvention { get; set; } = NamingConvention.SnakeCase;
 
     /// <summary>Tamanho máximo do pool de conexões do endpoint de escrita (primário). Padrão 50.</summary>
@@ -46,7 +46,7 @@ public sealed class DatabaseOptions
     public TimeSpan HealthCheckTimeout { get; set; } = TimeSpan.FromSeconds(10);
 
     /// <summary>
-    ///     Tamanho de cada chunk em <c>BulkInsertChunkedAsync</c>. Otimizado para Aurora PostgreSQL:
+    ///     Tamanho de cada chunk em <c>BulkInsertChunkedAsync</c>. Otimizado para cargas grandes:
     ///     cria a tabela temporária uma única vez e a reutiliza com TRUNCATE entre chunks, reduzindo
     ///     overhead de catálogo e I/O distribuído. Padrão 2.000 linhas.
     /// </summary>

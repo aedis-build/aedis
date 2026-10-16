@@ -1,7 +1,8 @@
 using System.Collections;
 using System.Reflection;
 using Aedis.Database.Abstractions;
-using Aedis.Database.SqlServer.Naming;
+using Aedis.Database.Queries;
+using Aedis.Database.Naming;
 using Aedis.Security.Abstractions;
 using Dapper;
 using Microsoft.Extensions.Logging;

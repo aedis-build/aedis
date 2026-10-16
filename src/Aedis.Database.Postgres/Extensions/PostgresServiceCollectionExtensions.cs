@@ -1,6 +1,8 @@
+using Aedis.Database;
 using Aedis.Database.Abstractions;
+using Aedis.Database.TypeHandlers;
 using Aedis.Database.Postgres;
-using Aedis.Database.Postgres.Naming;
+using Aedis.Database.Naming;
 using Aedis.Database.Postgres.TypeHandlers;
 using Dapper;
 using Microsoft.Extensions.Configuration;

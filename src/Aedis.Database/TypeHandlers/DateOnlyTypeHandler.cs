@@ -1,7 +1,7 @@
 using System.Data;
 using Dapper;
 
-namespace Aedis.Database.Postgres.TypeHandlers;
+namespace Aedis.Database.TypeHandlers;
 
 /// <summary>Dapper TypeHandler para <see cref="DateOnly" /> ↔ coluna <c>date</c>.</summary>
 public sealed class DateOnlyTypeHandler : SqlMapper.TypeHandler<DateOnly>
@@ -14,7 +14,7 @@ public sealed class DateOnlyTypeHandler : SqlMapper.TypeHandler<DateOnly>
         _ => throw new InvalidCastException($"Não é possível converter {value.GetType()} em DateOnly.")
     };
 
-    /// <summary>Grava o <see cref="DateOnly" /> no parâmetro como <c>date</c> (<c>DateTime</c> à meia-noite), para envio ao PostgreSQL.</summary>
+    /// <summary>Grava o <see cref="DateOnly" /> no parâmetro como <c>date</c> (<c>DateTime</c> à meia-noite), para envio ao banco.</summary>
     public override void SetValue(IDbDataParameter parameter, DateOnly value) {
         parameter.DbType = DbType.Date;
         parameter.Value = value.ToDateTime(TimeOnly.MinValue);

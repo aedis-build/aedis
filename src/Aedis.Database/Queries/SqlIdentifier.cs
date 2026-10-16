@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Aedis.Database.SqlServer.Queries;
+namespace Aedis.Database.Queries;
 
 /// <summary>
 ///     Guarda para <em>identificadores</em> SQL (nomes de tabela/coluna/ordenação). Diferente de valores

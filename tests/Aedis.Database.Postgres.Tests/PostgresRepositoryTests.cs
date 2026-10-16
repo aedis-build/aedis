@@ -1,6 +1,7 @@
 using Aedis.Database.Abstractions;
+using Aedis.Database.Queries;
 using Aedis.Database.Postgres;
-using Aedis.Database.Postgres.Naming;
+using Aedis.Database.Naming;
 using Aedis.Database.Postgres.Queries;
 using Aedis.Domain.Entities;
 using Aedis.Security.Abstractions;

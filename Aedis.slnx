@@ -9,6 +9,7 @@
     <Project Path="src/Aedis.Cache.Redis/Aedis.Cache.Redis.csproj" />
     <Project Path="src/Aedis.Commands/Aedis.Commands.csproj" />
     <Project Path="src/Aedis.Core/Aedis.Core.csproj" />
+    <Project Path="src/Aedis.Database/Aedis.Database.csproj" />
     <Project Path="src/Aedis.Database.Abstractions/Aedis.Database.Abstractions.csproj" />
     <Project Path="src/Aedis.Database.Postgres/Aedis.Database.Postgres.csproj" />
     <Project Path="src/Aedis.Database.SqlServer/Aedis.Database.SqlServer.csproj" />
@@ -69,6 +70,7 @@
     <Project Path="tests/Aedis.Events.Tests/Aedis.Events.Tests.csproj" />
     <Project Path="tests/Aedis.Database.Postgres.Tests/Aedis.Database.Postgres.Tests.csproj" />
     <Project Path="tests/Aedis.Database.SqlServer.Tests/Aedis.Database.SqlServer.Tests.csproj" />
+    <Project Path="tests/Aedis.Database.Tests/Aedis.Database.Tests.csproj" />
     <Project Path="tests/Aedis.Diagnostics.Tests/Aedis.Diagnostics.Tests.csproj" />
     <Project Path="tests/Aedis.Excel.MiniExcel.Tests/Aedis.Excel.MiniExcel.Tests.csproj" />
     <Project Path="tests/Aedis.Hosting.AspNetCore.Tests/Aedis.Hosting.AspNetCore.Tests.csproj" />
