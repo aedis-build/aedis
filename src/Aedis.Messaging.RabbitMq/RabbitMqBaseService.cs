@@ -109,7 +109,7 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
     protected async Task CreateOrGetQueueAsync(string queue, string? exchange, string? routingKey, IChannel channel,
         CancellationToken cancellationToken) {
         var sanitizedQueue = queue.Sanitize().ToLowerInvariant();
-        var queueArguments = BuildQueueArguments(null, null);
+        var queueArguments = new Dictionary<string, object?> { ["x-queue-type"] = "quorum" };
 
         if (string.IsNullOrEmpty(exchange) || string.IsNullOrEmpty(routingKey)) {
             await channel.QueueDeclareAsync(sanitizedQueue, true, false, false, queueArguments,
@@ -135,14 +135,6 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
         }, cancellationToken);
     }
 
-    /// <summary>
-    ///     Variante de <see cref="ExecuteWithChannelAsync(Func{IChannel,Task},CancellationToken)" /> que retorna
-    ///     o resultado produzido pela ação sobre o canal.
-    /// </summary>
-    protected Task<T?> ExecuteWithChannelAsync<T>(Func<IChannel, Task<T?>> action, CancellationToken cancellationToken) {
-        return ExecuteWithChannelInternalAsync<T>(
-            channel => action(channel).ContinueWith(t => (object?)t.Result, cancellationToken), cancellationToken);
-    }
 
     private async Task<T?> ExecuteWithChannelInternalAsync<T>(Func<IChannel, Task<object?>> action,
         CancellationToken cancellationToken) {
@@ -176,15 +168,5 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
         return ExchangeType.Topic;
     }
 
-    private static Dictionary<string, object?> BuildQueueArguments(string? retryExchange, string? retryRoutingKey) {
-        var arguments = new Dictionary<string, object?> { ["x-queue-type"] = "quorum" };
-
-        if (string.IsNullOrWhiteSpace(retryExchange) || string.IsNullOrWhiteSpace(retryRoutingKey))
-            return arguments;
-
-        arguments["x-dead-letter-exchange"] = retryExchange;
-        arguments["x-dead-letter-routing-key"] = retryRoutingKey;
-        return arguments;
-    }
 
 }
