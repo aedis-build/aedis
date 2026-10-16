@@ -11,7 +11,7 @@ O framework de origem é **um projeto** que referencia simultaneamente AWS SDK, 
 
 | Pasta atual | Pacote(s) Aedis | Tier | Dependências de infra |
 |---|---|:--:|---|
-| `Contracts/` (BasicResult, Errors, Success, Enums) · `Utils/` | `Aedis.Core` | 1 | — (`UUIDNext`) |
+| `Contracts/` (PagedResult) · `Utils/` | `Aedis.Core` | 1 | — (`UUIDNext`) |
 | `Exceptions/` (tipos) | `Aedis.Exceptions` | 1 | — |
 | `Events/` (CloudEvents) | `Aedis.Events` | 1 | — |
 | `Domain/` (AggregateRoot, Specification, Strategy, Chain, Saga) | `Aedis.Domain` | 1 | — |
