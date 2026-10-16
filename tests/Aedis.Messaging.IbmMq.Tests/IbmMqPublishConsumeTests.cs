@@ -15,7 +15,8 @@ namespace Aedis.Messaging.IbmMq.Tests;
 ///     as filas <c>DEV.QUEUE.*</c>). Prova o caminho estruturado (JSON) e o caminho bruto
 ///     (<see cref="IRawMessage" />) com injeção de metadados do MQMD.
 /// </summary>
-public sealed class IbmMqPublishConsumeTests : IClassFixture<IbmMqPublishConsumeTests.IbmMqFixture>
+[Collection(IbmMqCollection.Name)]
+public sealed class IbmMqPublishConsumeTests
 {
     private const string Queue = "DEV.QUEUE.1";
     private readonly IbmMqFixture _fixture;
@@ -129,19 +130,34 @@ public sealed class IbmMqPublishConsumeTests : IClassFixture<IbmMqPublishConsume
         public Task InitializeAsync() => _container.StartAsync();
         public Task DisposeAsync() => _container.DisposeAsync().AsTask();
 
-        public IbmMqMessageBrokerService CreateBroker() {
-            var options = Options.Create(new IbmMqOptions {
+        /// <summary>Opções apontando para o container; <paramref name="configure" /> ajusta o que o teste precisar.</summary>
+        public IbmMqOptions Options(Action<IbmMqOptions>? configure = null) {
+            var options = new IbmMqOptions {
                 QueueManager = "QM1",
                 Channel = "DEV.APP.SVRCONN",
                 ConnectionNameList = $"{_container.Hostname}({_container.GetMappedPublicPort(1414)})",
                 UserId = "app",
                 Password = AppPassword,
                 Format = MqMessageFormat.None,
-                MaxConnections = 3,
+                MaxConnections = 4,
                 PublisherPoolSize = 1,
-                ConsumerHealthCheckIntervalMs = 1000
-            });
-            return new IbmMqMessageBrokerService(options, NullLogger<IbmMqMessageBrokerService>.Instance);
+                ConsumerWaitIntervalMs = 1000,
+                ConsumerBackoffMs = 200,
+                ConsumerHealthCheckIntervalMs = 500
+            };
+            configure?.Invoke(options);
+            return options;
         }
+
+        public IbmMqMessageBrokerService CreateBroker(Action<IbmMqOptions>? configure = null) =>
+            new(Microsoft.Extensions.Options.Options.Create(Options(configure)),
+                NullLogger<IbmMqMessageBrokerService>.Instance);
     }
+}
+
+/// <summary>Uma única instância do IBM MQ compartilhada por todas as classes de teste de integração.</summary>
+[CollectionDefinition(Name)]
+public sealed class IbmMqCollection : ICollectionFixture<IbmMqPublishConsumeTests.IbmMqFixture>
+{
+    public const string Name = "ibmmq";
 }
