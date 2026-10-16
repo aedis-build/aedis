@@ -101,14 +101,15 @@ public sealed class AwsSqsPublishConsumeTests : IClassFixture<AwsSqsPublishConsu
 
         public Task DisposeAsync() => _container?.DisposeAsync().AsTask() ?? Task.CompletedTask;
 
-        public IMessageBrokerService CreateBroker() {
+        public IMessageBrokerService CreateBroker(bool useTopics = true, bool useFifo = false) {
             var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
                 ["Aws:ServiceUrl"] = _container!.GetConnectionString(),
                 ["Aws:Region"] = "us-east-1",
                 ["Aws:AccessKeyId"] = "test",
                 ["Aws:SecretAccessKey"] = "test",
                 ["Aws:WaitTimeSeconds"] = "2",
-                ["Aws:UseTopics"] = "true"
+                ["Aws:UseTopics"] = useTopics ? "true" : "false",
+                ["Aws:UseFifoQueues"] = useFifo ? "true" : "false"
             }).Build();
 
             return new ServiceCollection()
@@ -117,5 +118,54 @@ public sealed class AwsSqsPublishConsumeTests : IClassFixture<AwsSqsPublishConsu
                 .BuildServiceProvider()
                 .GetRequiredKeyedService<IMessageBrokerService>("awssqs");
         }
+    }
+
+    /// <summary>Sem UseTopics o exchange é tratado como fila SQS: publica direto na fila e consome dela.</summary>
+    [SkippableFact]
+    public async Task Modo_fila_publica_e_consome_direto_no_sqs() {
+        Skip.IfNot(_fixture.Enabled, "Defina AEDIS_AWS_IT=1 para rodar a integração LocalStack.");
+        var broker = _fixture.CreateBroker(useTopics: false);
+        var handler = new CapturingHandler<JsonOrder>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var queue = $"direct-{Guid.NewGuid():N}";
+
+        await broker.SubscribeAsync(queue, queue, string.Empty, handler, ConsumerRetryOptions.None(), cts.Token);
+        await broker.PublishAsync(queue, string.Empty, new JsonOrder { OrderId = 8, Customer = "fila" });
+
+        (await handler.WaitAsync(TimeSpan.FromSeconds(45))).OrderId.Should().Be(8);
+    }
+
+    /// <summary>Com UseFifoQueues o tópico e a fila ganham o sufixo .fifo e o publish envia grupo/deduplicação.</summary>
+    [SkippableFact]
+    public async Task Modo_fifo_publica_e_consome_via_topico_fifo() {
+        Skip.IfNot(_fixture.Enabled, "Defina AEDIS_AWS_IT=1 para rodar a integração LocalStack.");
+        var broker = _fixture.CreateBroker(useFifo: true);
+        var handler = new CapturingHandler<JsonOrder>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var topic = $"fifo-{Guid.NewGuid():N}";
+        var queue = $"fifo-consumer-{Guid.NewGuid():N}";
+
+        await broker.SubscribeAsync(queue, topic, "order.created", handler, ConsumerRetryOptions.None(), cts.Token);
+        await broker.PublishAsync(topic, "order.created", new JsonOrder { OrderId = 9, Customer = "fifo" });
+
+        (await handler.WaitAsync(TimeSpan.FromSeconds(45))).OrderId.Should().Be(9);
+    }
+
+    /// <summary>Assinatura com várias routing keys gera FilterPolicy: só as chaves listadas chegam.</summary>
+    [SkippableFact]
+    public async Task Varias_routing_keys_filtram_por_FilterPolicy() {
+        Skip.IfNot(_fixture.Enabled, "Defina AEDIS_AWS_IT=1 para rodar a integração LocalStack.");
+        var broker = (AwsSqsMessageBrokerService)_fixture.CreateBroker();
+        var handler = new CapturingHandler<JsonOrder>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var topic = $"filter-{Guid.NewGuid():N}";
+        var queue = $"filter-consumer-{Guid.NewGuid():N}";
+
+        await broker.SubscribeAsync(queue, topic, ["order.paid", "order.shipped"], handler,
+            ConsumerRetryOptions.None(), cts.Token);
+        await broker.PublishAsync(topic, "order.cancelled", new JsonOrder { OrderId = 1, Customer = "fora" });
+        await broker.PublishAsync(topic, "order.paid", new JsonOrder { OrderId = 2, Customer = "dentro" });
+
+        (await handler.WaitAsync(TimeSpan.FromSeconds(45))).OrderId.Should().Be(2);
     }
 }
