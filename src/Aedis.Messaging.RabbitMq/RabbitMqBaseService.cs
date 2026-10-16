@@ -17,19 +17,17 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
     private readonly ObjectPool<IChannel> _channelPool;
     private readonly SemaphoreSlim _channelSemaphore;
     private readonly TimeSpan _channelTimeout;
-    private readonly Timer _connectionHealthTimer;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly ILogger<RabbitMqBaseService> _logger;
     /// <summary>Configuração de conexão ao broker usada pelas subclasses.</summary>
     protected readonly RabbitMqOptions _options;
 
     private IConnection? _connection;
-    private volatile bool _isConnectionHealthy = true;
     internal int ChannelCount;
 
     /// <summary>
-    ///     Configura o pool de canais e o semáforo de concorrência a partir das opções e inicia um timer de
-    ///     verificação de saúde da conexão (a cada 30s) que tenta reconectar quando ela cai.
+    ///     Configura o pool de canais e o semáforo de concorrência a partir das opções. A conexão é criada de
+    ///     forma preguiçosa e se recupera sozinha (recuperação automática do cliente RabbitMQ).
     /// </summary>
     protected RabbitMqBaseService(IOptions<RabbitMqOptions> options, ILogger<RabbitMqBaseService> logger) {
         _options = options.Value;
@@ -39,16 +37,11 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
         _channelPool = new DefaultObjectPool<IChannel>(
             new RabbitMqChannelPooledPolicy(this, logger, _options), _options.MaxChannels);
 
-        _connectionHealthTimer =
-            new Timer(CheckConnectionHealth, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
 
-    /// <summary>Indica se a última verificação considerou a conexão com o broker saudável.</summary>
-    public bool IsConnectionHealthy => _isConnectionHealthy;
 
-    /// <summary>Encerra o timer de saúde, a conexão e os primitivos de sincronização. Classes derivadas devem chamar a base.</summary>
+    /// <summary>Encerra a conexão e os primitivos de sincronização. Classes derivadas devem chamar a base.</summary>
     public virtual async ValueTask DisposeAsync() {
-        await _connectionHealthTimer.DisposeAsync();
         if (_connection is not null) await _connection.DisposeAsync();
         _connectionLock.Dispose();
         _channelSemaphore.Dispose();
@@ -194,32 +187,4 @@ public abstract class RabbitMqBaseService : IAsyncDisposable
         return arguments;
     }
 
-    private void CheckConnectionHealth(object? state) {
-        try {
-            if (_connection is null || !_connection.IsOpen) {
-                if (!_isConnectionHealthy) return;
-
-                _logger.LogWarning("Conexão com o RabbitMQ não está saudável. Tentando reconectar...");
-                _isConnectionHealthy = false;
-
-                _ = Task.Run(async () => {
-                    try {
-                        await CreateOrGetConnectionAsync();
-                        _isConnectionHealthy = true;
-                        _logger.LogDebug("Conexão com o RabbitMQ restaurada com sucesso.");
-                    }
-                    catch (Exception ex) {
-                        _logger.LogError(ex, "Falha ao restaurar a conexão com o RabbitMQ.");
-                    }
-                });
-            }
-            else if (!_isConnectionHealthy) {
-                _logger.LogDebug("Conexão com o RabbitMQ saudável novamente.");
-                _isConnectionHealthy = true;
-            }
-        }
-        catch (Exception ex) {
-            _logger.LogError(ex, "Erro ao verificar a saúde da conexão com o RabbitMQ.");
-        }
-    }
 }

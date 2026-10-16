@@ -24,18 +24,13 @@ public class RabbitMqHealthCheck : IHealthCheck
     }
 
     /// <summary>
-    ///     Reporta a saúde do RabbitMQ: consulta o flag de saúde do broker e confirma que a conexão está aberta,
+    ///     Reporta a saúde do RabbitMQ: obtém a conexão do broker e confirma que está aberta,
     ///     retornando <see cref="HealthCheckResult.Unhealthy(string,Exception,System.Collections.Generic.IReadOnlyDictionary{string,object})" />
     ///     se a conexão estiver caída ou ocorrer exceção.
     /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default) {
         try {
-            if (!_broker.IsConnectionHealthy) {
-                _logger.LogWarning("Conexão RabbitMQ não está saudável (Host: {Host}).", _options.Host);
-                return HealthCheckResult.Unhealthy($"RabbitMQ unhealthy (Host: {_options.Host}).");
-            }
-
             var connection = await _broker.GetConnectionAsync();
             if (connection is not { IsOpen: true }) {
                 _logger.LogWarning("Conexão RabbitMQ está fechada (Host: {Host}).", _options.Host);
