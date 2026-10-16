@@ -89,4 +89,12 @@ public class FriendlyEnumConverterTests
 
         options.Converters.OfType<FriendlyEnumConverterFactory>().Should().ContainSingle();
     }
+
+    /// <summary>Token que não é string nem número (ex.: objeto) é rejeitado como valor inválido.</summary>
+    [Fact]
+    public void Token_de_outro_tipo_lanca_JsonException() {
+        var act = () => JsonSerializer.Deserialize<Cor>("{}", Options);
+
+        act.Should().Throw<JsonException>();
+    }
 }
