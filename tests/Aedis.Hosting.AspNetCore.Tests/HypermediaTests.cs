@@ -134,4 +134,27 @@ public sealed class HypermediaTests {
         collection.Links.Should().NotContainKey("prev");
         collection.Links.Should().ContainKey("next");
     }
+
+    [Fact]
+    public void AddTemplate_rejeita_nome_vazio_e_rels_de_navegacao_sao_reconhecidos() {
+        var resource = new Resource<SampleModel>(new SampleModel(1, "x"));
+
+        var act = () => resource.AddTemplate(" ", new HalFormsTemplate { Target = "https://api.test/x", Body = new System.Text.Json.Nodes.JsonObject() });
+
+        act.Should().Throw<ArgumentException>();
+        PaginationLinks.IsNavigationRel("next").Should().BeTrue();
+        PaginationLinks.IsNavigationRel("export-csv").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Sem_total_uma_pagina_cheia_ganha_link_next_e_pagina_incompleta_nao() {
+        var full = new ResourceCollection<SampleModel>([new(new SampleModel(1, "a")), new(new SampleModel(2, "b"))], null, 1, 2);
+        var partial = new ResourceCollection<SampleModel>([new(new SampleModel(3, "c"))], null, 2, 2);
+
+        PaginationLinks.Apply(full, ContextWith(Empty()), 1, 2, null, null, null);
+        PaginationLinks.Apply(partial, ContextWith(Empty()), 2, 2, null, null, null);
+
+        full.Links.Should().ContainKey("next").And.NotContainKey("prev");
+        partial.Links.Should().ContainKey("prev").And.NotContainKey("next");
+    }
 }
