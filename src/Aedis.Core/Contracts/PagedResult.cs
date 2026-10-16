@@ -20,13 +20,4 @@ public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page,
     public PagedResult<TOut> Map<TOut>(Func<T, TOut> selector) {
         return new PagedResult<TOut>(Items.Select(selector).ToList(), Total, Page, PageSize);
     }
-
-    /// <summary>
-    ///     Cria uma página vazia para os parâmetros de paginação informados.
-    /// </summary>
-    /// <param name="page">Número da página (1-based).</param>
-    /// <param name="pageSize">Quantidade de itens por página.</param>
-    public static PagedResult<T> Empty(int page, int pageSize) {
-        return new PagedResult<T>([], 0, page, pageSize);
-    }
 }

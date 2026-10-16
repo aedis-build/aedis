@@ -21,16 +21,6 @@ public static class SystemJsonOptionsFactory
         return options;
     }
 
-    /// <summary>
-    ///     Creates options for storage and debugging: indented output for human readability.
-    ///     Use for object storage, file persistence, audit logs and debugging.
-    /// </summary>
-    /// <returns>A new, fully configured <see cref="JsonSerializerOptions" /> instance with indentation.</returns>
-    public static JsonSerializerOptions CreateForStorage() {
-        var options = Create();
-        options.WriteIndented = true;
-        return options;
-    }
 
     /// <summary>
     ///     Applies the framework-standard settings to an existing instance. This is the entry point for hosts,
