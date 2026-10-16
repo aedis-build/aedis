@@ -29,3 +29,8 @@ jobs:
       # integração); o check fica vermelho até os pacotes abaixo do piso ganharem testes ou perderem código em excesso.
       min-line: 95
       min-branch: 85
+      # Suítes de integração opt-in (Testcontainers: SQL Server, LocalStack, Vault) ligadas no CI.
+      test-env: |
+        AEDIS_SQLSERVER_IT=1
+        AEDIS_AWS_IT=1
+        AEDIS_VAULT_IT=1
