@@ -16,4 +16,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Pdf.QuestPdf.Tests" />
+  </ItemGroup>
+
 </Project>
