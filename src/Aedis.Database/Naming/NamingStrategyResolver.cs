@@ -1,12 +1,12 @@
 using Aedis.Database.Abstractions;
 using Aedis.Domain.Strategy;
 
-namespace Aedis.Database.Postgres.Naming;
+namespace Aedis.Database.Naming;
 
 /// <summary>
 ///     Resolve a <see cref="INamingStrategy" /> conforme a <see cref="NamingConvention" /> do
 ///     <see cref="NamingContext" />. Usado para converter nomes de tabela/coluna nas operações de
-///     persistência (inclusive na montagem das colunas do bulk COPY).
+///     persistência (inclusive na montagem das colunas do bulk insert ou COPY).
 /// </summary>
 public sealed class NamingStrategyResolver : StrategyResolver<NamingContext>
 {

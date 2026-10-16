@@ -1,6 +1,6 @@
 using Aedis.Database.Abstractions;
 using Aedis.Database.SqlServer;
-using Aedis.Database.SqlServer.Naming;
+using Aedis.Database.Naming;
 using Aedis.Database.SqlServer.Queries;
 using Aedis.Domain.Entities;
 using Aedis.Security.Abstractions;

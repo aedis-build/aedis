@@ -1,6 +1,6 @@
 using Aedis.Database.Abstractions;
 using Aedis.Database.SqlServer;
-using Aedis.Database.SqlServer.Naming;
+using Aedis.Database.Naming;
 using Aedis.Database.SqlServer.TypeHandlers;
 using Dapper;
 using Microsoft.Extensions.Configuration;

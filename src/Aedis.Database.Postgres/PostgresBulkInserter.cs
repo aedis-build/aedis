@@ -1,6 +1,6 @@
 using System.Reflection;
 using Aedis.Database.Abstractions;
-using Aedis.Database.Postgres.Naming;
+using Aedis.Database.Naming;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 

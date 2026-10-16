@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Database</PackageId>
+    <Description>Aedis.Database — implementações agnósticas de provider (estratégias de nomes snake_case/PascalCase/camelCase e resolvedor) compartilhadas por Aedis.Database.SqlServer e Aedis.Database.Postgres.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Database.Abstractions\Aedis.Database.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Domain\Aedis.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

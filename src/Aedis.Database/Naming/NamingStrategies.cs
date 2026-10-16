@@ -2,10 +2,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Aedis.Database.Abstractions;
 
-namespace Aedis.Database.Postgres.Naming;
+namespace Aedis.Database.Naming;
 
 /// <summary>
-///     Estratégia <c>snake_case</c> (idiomática no PostgreSQL): tabelas pluralizadas em snake, colunas em
+///     Estratégia <c>snake_case</c> (convenção padrão do Aedis): tabelas pluralizadas em snake, colunas em
 ///     snake, índices <c>idx_tabela_colunas</c> e constraints <c>prefixo_tabela_colunas</c>.
 /// </summary>
 public sealed partial class SnakeCaseNamingStrategy : INamingStrategy
