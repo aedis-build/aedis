@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using Aedis.Cache.Abstractions;
 using Aedis.Core.Utils;
 using Microsoft.Extensions.Logging;
@@ -217,21 +216,9 @@ public sealed class RedisCache : ICache
     ///     conecta direto (Standalone ou Cluster — o driver detecta o cluster); com ele, descobre o master via Sentinel.
     /// </summary>
     private IConnectionMultiplexer Connect() {
-        var connection = string.IsNullOrWhiteSpace(_options.SentinelMasterName)
-            ? ConnectDirect(_options.EndPoint)
-            : ConnectViaSentinel();
-
-        connection.ConnectionFailed += OnConnectionFailed;
-        connection.ConnectionRestored += OnConnectionRestored;
-
-        EnsureEndpointsReachable(connection);
-
-        return connection;
-    }
-
-    private IConnectionMultiplexer ConnectDirect(string endpoint) {
         var configOptions = new ConfigurationOptions {
-            EndPoints = { endpoint },
+            EndPoints = { _options.EndPoint },
+            ServiceName = _options.SentinelMasterName,
             CommandMap = CommandMap.Default,
             TieBreaker = "",
             AbortOnConnectFail = false,
@@ -245,96 +232,13 @@ public sealed class RedisCache : ICache
             KeepAlive = 60,
             Ssl = _options.UseSsl
         };
-
-        return ConnectionMultiplexer.Connect(configOptions);
+        var connection = ConnectionMultiplexer.Connect(configOptions);
+        connection.ConnectionFailed += OnConnectionFailed;
+        connection.ConnectionRestored += OnConnectionRestored;
+        EnsureEndpointsReachable(connection);
+        return connection;
     }
 
-    /// <summary>
-    ///     Pergunta ao Redis Sentinel qual é o endpoint do master atual e abre uma conexão direta a ele. É o
-    ///     caminho que garante escrever sempre no master vigente mesmo após um failover.
-    /// </summary>
-    private IConnectionMultiplexer ConnectViaSentinel() {
-        var masterEndpoint = DiscoverMasterEndpointViaSentinel();
-        _logger.LogDebug("Master Redis descoberto via Sentinel: {MasterEndpoint}", masterEndpoint);
-        return ConnectDirect(masterEndpoint);
-    }
-
-    /// <summary>
-    ///     Conecta a um nó Sentinel, consulta o endereço do master pelo nome do serviço e devolve o endpoint
-    ///     normalizado (e reescrito para loopback em dev local — ver <see cref="RewriteMasterEndpointForLocalSentinel" />).
-    ///     Lança se o Sentinel não responder ou devolver um endpoint inválido.
-    /// </summary>
-    private string DiscoverMasterEndpointViaSentinel() {
-        var serviceName = _options.SentinelMasterName!;
-
-        var sentinelOptions = new ConfigurationOptions {
-            EndPoints = { _options.EndPoint },
-            ServiceName = serviceName,
-            CommandMap = CommandMap.Sentinel,
-            TieBreaker = "",
-            AbortOnConnectFail = false,
-            ConnectRetry = 1,
-            ConnectTimeout = 1500,
-            ReconnectRetryPolicy = new ExponentialRetry(1000),
-            User = _options.SentinelUser,
-            Password = _options.SentinelPassword,
-            DefaultDatabase = 0,
-            AllowAdmin = true,
-            KeepAlive = 60,
-            HeartbeatConsistencyChecks = false,
-            Ssl = _options.UseSsl
-        };
-
-        using var sentinelConnection = ConnectionMultiplexer.SentinelConnect(sentinelOptions);
-
-        var sentinelEndpoint = sentinelConnection.GetEndPoints().FirstOrDefault()
-                               ?? throw new InvalidOperationException("Não foi possível conectar ao Redis Sentinel.");
-
-        var masterEndpoint = sentinelConnection.GetServer(sentinelEndpoint)
-            .SentinelGetMasterAddressByName(serviceName);
-
-        var resolved = masterEndpoint?.ToString()
-                       ?? throw new RedisConnectionException(ConnectionFailureType.UnableToResolvePhysicalConnection,
-                           $"Sentinel devolveu um endpoint de master inválido para '{serviceName}'.");
-
-        return RewriteMasterEndpointForLocalSentinel(NormalizeEndpoint(resolved));
-    }
-
-    /// <summary>
-    ///     Em dev local com Sentinel/Redis em Docker: se o Sentinel é local (loopback) mas devolve um IP
-    ///     interno do Docker para o master, reescreve para <c>127.0.0.1</c> mantendo a porta, para o host
-    ///     conseguir conectar.
-    /// </summary>
-    private string RewriteMasterEndpointForLocalSentinel(string resolvedMasterEndpoint) {
-        if (!TryParseHostPort(_options.EndPoint, out var sentinelHost, out _) || !IsLoopbackHost(sentinelHost))
-            return resolvedMasterEndpoint;
-
-        if (!TryParseHostPort(resolvedMasterEndpoint, out var masterHost, out var masterPort)
-            || IsLoopbackHost(masterHost))
-            return resolvedMasterEndpoint;
-
-        var isDockerInternalHost = IsDockerInternalHost(masterHost);
-        IPAddress? ipAddress = null;
-        if (!isDockerInternalHost)
-            IPAddress.TryParse(masterHost, out ipAddress);
-
-        if (!isDockerInternalHost && ipAddress is null)
-            return resolvedMasterEndpoint;
-        if (ipAddress is not null && !IsPrivateDockerIp(ipAddress))
-            return resolvedMasterEndpoint;
-
-        var rewritten = $"127.0.0.1:{masterPort}";
-        _logger.LogWarning(
-            "Sentinel local devolveu master interno ({MasterEndpoint}); reescrevendo para {RewrittenEndpoint}.",
-            resolvedMasterEndpoint, rewritten);
-        return rewritten;
-    }
-
-    /// <summary>
-    ///     Agenda o descarte da conexão antiga após <see cref="StaleConnectionDisposeDelay" />, em vez de
-    ///     descartá-la na hora. O atraso evita o race de liberar um multiplexer que operações em voo, iniciadas
-    ///     antes da reconexão, ainda possam estar usando. Falhas no descarte são apenas registradas.
-    /// </summary>
     private void ScheduleDeferredDispose(IConnectionMultiplexer staleConnection) {
         _ = Task.Run(async () => {
             try {
@@ -345,44 +249,6 @@ public sealed class RedisCache : ICache
                 _logger.LogDebug(ex, "Falha ao liberar a conexão Redis antiga.");
             }
         });
-    }
-
-    private static string NormalizeEndpoint(string endpoint) =>
-        TryParseHostPort(endpoint, out var host, out var port) ? $"{host}:{port}" : endpoint;
-
-    private static bool TryParseHostPort(string endpoint, out string host, out int port) {
-        host = string.Empty;
-        port = 0;
-        if (string.IsNullOrWhiteSpace(endpoint) || !endpoint.Contains(':'))
-            return false;
-
-        var lastColon = endpoint.LastIndexOf(':');
-        if (lastColon <= 0 || lastColon == endpoint.Length - 1)
-            return false;
-
-        host = endpoint[..lastColon].Trim('[', ']');
-        var slash = host.LastIndexOf('/');
-        if (slash >= 0 && slash < host.Length - 1)
-            host = host[(slash + 1)..];
-
-        return int.TryParse(endpoint[(lastColon + 1)..], out port);
-    }
-
-    private static bool IsLoopbackHost(string host) =>
-        string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
-        || (IPAddress.TryParse(host, out var ip) && IPAddress.IsLoopback(ip));
-
-    private static bool IsDockerInternalHost(string host) =>
-        string.Equals(host, "redis", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(host, "host.docker.internal", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(host, "gateway.docker.internal", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsPrivateDockerIp(IPAddress ipAddress) {
-        var bytes = ipAddress.GetAddressBytes();
-        if (bytes.Length != 4) return false;
-        return bytes[0] == 10
-               || (bytes[0] == 172 && bytes[1] is >= 16 and <= 31)
-               || (bytes[0] == 192 && bytes[1] == 168);
     }
 
     private void EnsureEndpointsReachable(IConnectionMultiplexer connection) {
