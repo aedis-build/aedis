@@ -74,4 +74,21 @@ public sealed class ExceptionToProblemDetailsMapperTests
 
         problem.Extensions.Should().ContainKey("traceId");
     }
+
+    [Fact]
+    public void ServiceTemporarilyUnavailable_vira_503_com_titulo_padrao() {
+        var problem = ExceptionToProblemDetailsMapper.Map(Context(),
+            new ServiceTemporarilyUnavailableException("db", "indisponível"), Factory);
+
+        problem.Status.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        problem.Title.Should().Be("Service Unavailable");
+    }
+
+    [Fact]
+    public void Excecao_desconhecida_vira_500_sem_vazar_a_mensagem() {
+        var problem = ExceptionToProblemDetailsMapper.Map(Context(), new InvalidOperationException("detalhe interno"), Factory);
+
+        problem.Status.Should().Be(StatusCodes.Status500InternalServerError);
+        problem.Detail.Should().NotContain("detalhe interno");
+    }
 }
