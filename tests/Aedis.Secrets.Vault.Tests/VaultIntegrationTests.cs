@@ -5,6 +5,8 @@ using DotNet.Testcontainers.Containers;
 using FluentAssertions;
 using VaultSharp;
 using VaultSharp.V1.AuthMethods.Token;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Aedis.Secrets.Vault.Tests;
@@ -48,6 +50,23 @@ public sealed class VaultIntegrationTests : IClassFixture<VaultIntegrationTests.
         await act.Should().ThrowAsync<SecretNotFoundException>();
     }
 
+    /// <summary>Grava, lê de volta, apaga (inclusive um inexistente) e confirma o health check contra o Vault real.</summary>
+    [SkippableFact]
+    public async Task Grava_apaga_e_health_check_contra_o_vault() {
+        Skip.IfNot(_fixture.Enabled, "Defina AEDIS_VAULT_IT=1 para rodar a integração Vault.");
+        var provider = _fixture.Provider();
+        var name = $"aedis-rw-{Guid.NewGuid():N}";
+
+        await provider.SetSecretAsync(name, "escrito");
+        (await provider.GetSecretAsync(name)).Should().Be("escrito");
+        await provider.DeleteSecretAsync(name);
+        (await provider.GetSecretAsync(name)).Should().BeNull();
+        await provider.DeleteSecretAsync($"aedis-nunca-{Guid.NewGuid():N}");
+
+        var health = await _fixture.HealthCheck().CheckHealthAsync(new HealthCheckContext());
+        health.Status.Should().Be(HealthStatus.Healthy);
+    }
+
     public sealed class VaultFixture : IAsyncLifetime
     {
         private IContainer? _container;
@@ -72,6 +91,10 @@ public sealed class VaultIntegrationTests : IClassFixture<VaultIntegrationTests.
         public Task DisposeAsync() => _container?.DisposeAsync().AsTask() ?? Task.CompletedTask;
 
         public VaultSecretsProvider Provider() => VaultSecretsProvider.Create(BuildOptions());
+
+        public VaultHealthCheck HealthCheck() =>
+            new(new VaultClient(new VaultClientSettings(Address, new TokenAuthMethodInfo(RootToken))),
+                NullLogger<VaultHealthCheck>.Instance);
 
         public async Task WriteSecretAsync(string name, string value) {
             var settings = new VaultClientSettings(Address, new TokenAuthMethodInfo(RootToken));
