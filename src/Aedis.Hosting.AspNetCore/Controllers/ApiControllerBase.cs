@@ -14,7 +14,6 @@ namespace Aedis.Hosting.AspNetCore.Controllers;
 ///     deixando o mapeamento de exceções de negócio para o middleware global de ProblemDetails.
 /// </summary>
 [ApiController]
-[Produces("application/json")]
 public abstract class ApiControllerBase : ControllerBase {
     /// <summary>
     ///     Cria o controller com o executor de comandos CQRS.
