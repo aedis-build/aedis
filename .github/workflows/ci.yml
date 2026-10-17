@@ -22,6 +22,7 @@ jobs:
     uses: aedis-build/aedis-platform/.github/workflows/coverage.yml@v1
     permissions:
       contents: read
+      packages: read
     with:
       solution: Aedis.slnx
       dotnet-version: 10.0.x
@@ -34,3 +35,4 @@ jobs:
         AEDIS_SQLSERVER_IT=1
         AEDIS_AWS_IT=1
         AEDIS_VAULT_IT=1
+        AEDIS_IBMMQ_IMAGE=ghcr.io/aedis-build/aedis/ibm-mq:10.0.1.0
