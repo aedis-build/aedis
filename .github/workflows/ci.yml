@@ -34,3 +34,4 @@ jobs:
         AEDIS_SQLSERVER_IT=1
         AEDIS_AWS_IT=1
         AEDIS_VAULT_IT=1
+        AEDIS_IBMMQ_IMAGE=ghcr.io/aedis-build/aedis/ibm-mq:latest

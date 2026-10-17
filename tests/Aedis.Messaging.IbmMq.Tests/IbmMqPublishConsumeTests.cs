@@ -11,7 +11,8 @@ namespace Aedis.Messaging.IbmMq.Tests;
 
 /// <summary>
 ///     Envio e recebimento ponta-a-ponta contra um IBM MQ real (Testcontainers, imagem de
-///     desenvolvimento <c>icr.io/ibm-messaging/mq</c> com o QM <c>QM1</c>, canal <c>DEV.APP.SVRCONN</c> e
+///     desenvolvimento <c>icr.io/ibm-messaging/mq</c> (ou a imagem em <c>AEDIS_IBMMQ_IMAGE</c>, usada pelo CI para
+///     o espelho no GHCR) com o QM <c>QM1</c>, canal <c>DEV.APP.SVRCONN</c> e
 ///     as filas <c>DEV.QUEUE.*</c>). Prova o caminho estruturado (JSON) e o caminho bruto
 ///     (<see cref="IRawMessage" />) com injeção de metadados do MQMD.
 /// </summary>
@@ -118,7 +119,7 @@ public sealed class IbmMqPublishConsumeTests
         private const string AppPassword = "Passw0rd!";
 
         private readonly IContainer _container = new ContainerBuilder()
-            .WithImage("icr.io/ibm-messaging/mq:latest")
+            .WithImage(Environment.GetEnvironmentVariable("AEDIS_IBMMQ_IMAGE") ?? "icr.io/ibm-messaging/mq:latest")
             .WithPortBinding(1414, true)
             .WithEnvironment("LICENSE", "accept")
             .WithEnvironment("MQ_QMGR_NAME", "QM1")
