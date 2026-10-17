@@ -22,6 +22,7 @@ jobs:
     uses: aedis-build/aedis-platform/.github/workflows/coverage.yml@v1
     permissions:
       contents: read
+      packages: read
     with:
       solution: Aedis.slnx
       dotnet-version: 10.0.x
