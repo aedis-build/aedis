@@ -279,6 +279,46 @@ public sealed class SqlServerRepositoryTests : IClassFixture<SqlServerRepository
 
     public enum OrderStatus { Pending, Settled }
 
+    /// <summary>
+    ///     INSERT individual e bulk gravam enum e enum anulável exatamente da mesma forma (nome em PascalCase,
+    ///     NULL preservado) e a leitura mapeia de volta — a divergência de caixa entre os dois caminhos que já
+    ///     existiu no framework de origem não pode voltar.
+    /// </summary>
+    [SkippableFact]
+    public async Task Enum_e_enum_anulavel_gravam_igual_por_insert_e_por_bulk() {
+        Skip.IfNot(_fixture.Enabled, "Defina AEDIS_SQLSERVER_IT=1 para rodar a integração SQL Server.");
+        var table = $"shipments_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($"CREATE TABLE {table} (id uniqueidentifier PRIMARY KEY, status nvarchar(50) NOT NULL, previous_status nvarchar(50) NULL)");
+        var repo = _fixture.Repo<Shipment>(table);
+        var single = new Shipment { Id = Guid.NewGuid(), Status = ShipmentStatus.InTransit, PreviousStatus = ShipmentStatus.Created };
+        var bulk = new Shipment { Id = Guid.NewGuid(), Status = ShipmentStatus.InTransit, PreviousStatus = ShipmentStatus.Created };
+        var bulkNull = new Shipment { Id = Guid.NewGuid(), Status = ShipmentStatus.Delivered, PreviousStatus = null };
+
+        await repo.SaveAsync(single);
+        await repo.BulkInsertAsync([bulk, bulkNull]);
+
+        Task<string?> Raw(Guid id, string column) =>
+            _fixture.ScalarAsync<string?>($"SELECT {column} FROM {table} WHERE id = '{id}'");
+        (await Raw(single.Id, "status")).Should().Be("InTransit");
+        (await Raw(bulk.Id, "status")).Should().Be("InTransit", "o bulk grava o mesmo nome que o INSERT");
+        (await Raw(single.Id, "previous_status")).Should().Be("Created");
+        (await Raw(bulk.Id, "previous_status")).Should().Be("Created");
+        (await Raw(bulkNull.Id, "previous_status")).Should().BeNull();
+
+        (await repo.GetByIdAsync(bulk.Id))!.PreviousStatus.Should().Be(ShipmentStatus.Created);
+        (await repo.GetByIdAsync(bulkNull.Id))!.PreviousStatus.Should().BeNull();
+        (await repo.GetByIdAsync(single.Id))!.Status.Should().Be(ShipmentStatus.InTransit);
+    }
+
+    public enum ShipmentStatus { Created, InTransit, Delivered }
+
+    public sealed class Shipment
+    {
+        public Guid Id { get; set; }
+        public ShipmentStatus Status { get; set; }
+        public ShipmentStatus? PreviousStatus { get; set; }
+    }
+
     public sealed class Order
     {
         public Guid Id { get; set; }
