@@ -69,6 +69,7 @@ public sealed class ApiControllerBaseEndToEndTests
         var response = await client.PostAsJsonAsync("/v1/orders", new { name = "" });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("title").GetString().Should().Be("Unprocessable Entity");
         problem.GetProperty("errors").EnumerateObject().Should().NotBeEmpty();
