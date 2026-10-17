@@ -1,0 +1,41 @@
+# Espelha no GHCR as imagens de terceiros usadas pelos testes de integração cujo registro de origem é
+# instável no CI (icr.io da IBM deu timeout em mais de uma execução). O pacote fica privado ao repositório
+# (a licença de desenvolvedor do IBM MQ não permite redistribuição pública); o job de testes lê com o
+# GITHUB_TOKEN. Rode manualmente ou deixe o agendamento semanal atualizar a tag.
+name: mirror-images
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions: {}
+
+jobs:
+  mirror:
+    name: Espelhar imagens no GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SOURCE: icr.io/ibm-messaging/mq:latest
+      TARGET: ghcr.io/${{ github.repository }}/ibm-mq
+    steps:
+      - name: Login no GHCR
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+
+      - name: Puxar, etiquetar com a versão da imagem e publicar
+        run: |
+          set -euo pipefail
+          docker pull "$SOURCE"
+          version="$(docker image inspect "$SOURCE" --format '{{ index .Config.Labels "version" }}')"
+          [ -n "$version" ] || version="$(date -u +%Y%m%d)"
+          echo "versão: $version"
+          docker tag "$SOURCE" "$TARGET:$version"
+          docker tag "$SOURCE" "$TARGET:latest"
+          docker push "$TARGET:$version"
+          docker push "$TARGET:latest"
