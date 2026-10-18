@@ -17,6 +17,14 @@ namespace Aedis.Hosting.AspNetCore.ServerSentEvents;
 ///     heartbeats e respeitando os limites de <see cref="ServerSentEventsOptions" />. Serve tanto a controllers
 ///     (<see cref="IActionResult" />) quanto a minimal APIs (<see cref="IResult" />).
 /// </summary>
+/// <remarks>
+///     <c>Content-Encoding: identity</c> faz o <c>ResponseCompression</c> passar direto mesmo que o app inclua
+///     <c>text/event-stream</c> nos MIME comprimidos; <c>X-Accel-Buffering: no</c> impede o nginx (inclusive o
+///     ingress-nginx) de bufferizar o stream. O cancelamento por desconexão do cliente ou por duração máxima é o
+///     fim normal do stream (o cliente reconecta com <c>Last-Event-ID</c>). O enumerador da fonte não pode ser
+///     descartado com <c>MoveNextAsync</c> pendente, por isso o resultado espera a fonte honrar o token antes de
+///     descartá-lo.
+/// </remarks>
 internal sealed class ServerSentEventsResult<T> : IResult, IActionResult
 {
     private static readonly byte[] Heartbeat = ": heartbeat\n\n"u8.ToArray();
@@ -42,9 +50,7 @@ internal sealed class ServerSentEventsResult<T> : IResult, IActionResult
         response.ContentType = "text/event-stream";
         response.Headers.CacheControl = "no-cache,no-store";
         response.Headers.Pragma = "no-cache";
-        // Resposta já "codificada" faz o ResponseCompression passar direto, mesmo se o app incluir text/event-stream nos MIME comprimidos.
         response.Headers.ContentEncoding = "identity";
-        // nginx (inclusive o ingress-nginx) respeita este header e não bufferiza o stream.
         response.Headers["X-Accel-Buffering"] = "no";
         httpContext.Features.GetRequiredFeature<IHttpResponseBodyFeature>().DisableBuffering();
 
@@ -79,11 +85,9 @@ internal sealed class ServerSentEventsResult<T> : IResult, IActionResult
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            // Cliente desconectou ou a duração máxima venceu: fim normal do stream, o cliente reconecta com Last-Event-ID.
         }
         finally {
             lifetime.Cancel();
-            // O enumerador não pode ser descartado com MoveNextAsync pendente; a fonte deve honrar o token.
             await Task.WhenAll(next, tick).ContinueWith(static _ => { }, TaskScheduler.Default);
             await events.DisposeAsync();
         }
