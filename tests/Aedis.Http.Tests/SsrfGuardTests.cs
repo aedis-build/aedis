@@ -83,4 +83,19 @@ public sealed class SsrfGuardTests
         var addresses = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>();
         return addresses!.Addresses.First();
     }
+
+    [Theory]
+    [InlineData("fe80::1", true)]
+    [InlineData("fc00::1", true)]
+    [InlineData("fd12:3456::1", true)]
+    [InlineData("2001:db8::1", false)]
+    [InlineData("::ffff:10.0.0.1", true)]
+    public void Classifica_enderecos_ipv6_link_local_e_ula(string ip, bool blocked) {
+        new SsrfPolicy { Enabled = true }.IsAddressBlocked(IPAddress.Parse(ip)).Should().Be(blocked);
+    }
+
+    [Fact]
+    public void Sem_BlockPrivateNetworks_nenhum_endereco_e_bloqueado() {
+        new SsrfPolicy { Enabled = true, BlockPrivateNetworks = false }.IsAddressBlocked(IPAddress.Loopback).Should().BeFalse();
+    }
 }

@@ -157,4 +157,37 @@ public sealed class HypermediaTests {
         full.Links.Should().ContainKey("next").And.NotContainKey("prev");
         partial.Links.Should().ContainKey("prev").And.NotContainKey("next");
     }
+
+    private sealed class PageableEcho : Aedis.Hosting.AspNetCore.Requests.IPageable
+    {
+        public int? Page { get; set; }
+        public int? PageSize { get; set; }
+        public string? Name { get; set; }
+    }
+
+    [Fact]
+    public void Sem_pagina_so_ha_self_e_na_ultima_pagina_nao_ha_next_nem_last_com_pagina_unica() {
+        var semPagina = new ResourceCollection<SampleModel>([new(new SampleModel(1, "a"))], null, null, null);
+        var ultima = new ResourceCollection<SampleModel>([new(new SampleModel(1, "a"))], 21, 3, 10);
+        var unica = new ResourceCollection<SampleModel>([new(new SampleModel(1, "a"))], 1, 1, 10);
+
+        PaginationLinks.Apply(semPagina, ContextWith(Empty()), null, null, null, null, null);
+        PaginationLinks.Apply(ultima, ContextWith(Empty()), 3, 10, 21, null, null);
+        PaginationLinks.Apply(unica, ContextWith(Empty()), 1, 10, 1, null, null);
+
+        semPagina.Links.Keys.Should().Equal("self");
+        ultima.Links.Keys.Should().Contain(["self", "first", "prev", "last"]).And.NotContain("next");
+        unica.Links.Keys.Should().Equal("self", "first");
+    }
+
+    [Fact]
+    public void Echo_IPageable_usa_os_nomes_json_das_propriedades_nos_templates() {
+        var collection = new ResourceCollection<SampleModel>([new(new SampleModel(1, "a")), new(new SampleModel(2, "b"))], 4, 1, 2);
+        var context = ContextWith(Empty(), "/v1/samples/query");
+        context.Request.Method = "QUERY";
+
+        PaginationLinks.Apply(collection, context, 1, 2, 4, null, new PageableEcho { Page = 1, PageSize = 2, Name = "x" });
+
+        collection.Links.Keys.Should().Contain(["self", "first", "next", "last"]);
+    }
 }

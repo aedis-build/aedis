@@ -237,4 +237,42 @@ public sealed class BusinessEventLoggerTests
             foreach (var item in items) item.Dispose();
         }
     }
+
+    [Fact]
+    public void Construtor_exige_logger_opcoes_e_redaction_e_aceita_sinks_nulos() {
+        var configuration = new ConfigurationBuilder().Build();
+        var redaction = RedactionOptions.FromConfiguration(configuration);
+        var logger = new SerilogLoggerFactory(new LoggerConfiguration().CreateLogger()).CreateLogger<BusinessEventLogger>();
+
+        FluentActions.Invoking(() => new BusinessEventLogger(null!, Options.Create(new BusinessEventOptions()), redaction, [])).Should().Throw<ArgumentNullException>();
+        FluentActions.Invoking(() => new BusinessEventLogger(logger, null!, redaction, [])).Should().Throw<ArgumentNullException>();
+        FluentActions.Invoking(() => new BusinessEventLogger(logger, Options.Create(new BusinessEventOptions()), null!, [])).Should().Throw<ArgumentNullException>();
+        new BusinessEventLogger(logger, Options.Create(new BusinessEventOptions()), redaction, null!).Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Span_hierarquico_nao_da_correlacao_e_o_evento_do_span_leva_motivo_e_atributos() {
+        var sink = new RecordingSink();
+        var (logger, _, dispose) = Build(sinks: sink);
+        using var activity = new Activity("op").SetIdFormat(ActivityIdFormat.Hierarchical).Start();
+
+        using (dispose) {
+            logger.Emit(new BusinessEvent {
+                Name = "orders.order.rejected",
+                Subject = "o-1",
+                Reason = "limite",
+                Attributes = new Dictionary<string, object?> { ["amount"] = 12.5m, ["when"] = DateOnly.MinValue, ["empty"] = null, ["obj"] = new Uri("https://x.test/") }
+            });
+        }
+
+        var record = sink.Records.Should().ContainSingle().Subject;
+        record.CorrelationId.Should().BeNull();
+        record.TraceId.Should().BeNull();
+        record.Attributes["amount"].Should().Be("12.5");
+        record.Attributes["empty"].Should().BeNull();
+        record.Attributes["obj"].Should().Be("https://x.test/");
+        var spanEvent = activity.Events.Should().ContainSingle().Subject;
+        spanEvent.Tags.Should().Contain(t => t.Key == "event.reason" && Equals(t.Value, "limite"));
+        spanEvent.Tags.Should().Contain(t => t.Key == "amount");
+    }
 }
