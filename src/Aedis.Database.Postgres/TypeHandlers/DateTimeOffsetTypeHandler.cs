@@ -13,7 +13,6 @@ public sealed class DateTimeOffsetTypeHandler : SqlMapper.TypeHandler<DateTimeOf
     /// <summary>Converte o valor lido (<see cref="DateTime" /> ou <see cref="DateTimeOffset" />) em <see cref="DateTimeOffset" />.</summary>
     public override DateTimeOffset Parse(object value) => value switch {
         DateTimeOffset dto => dto,
-        // timestamp sem fuso chega Unspecified: tratado como UTC, não como hora local da máquina.
         DateTime { Kind: DateTimeKind.Unspecified } dt => new DateTimeOffset(dt, TimeSpan.Zero),
         DateTime dt => new DateTimeOffset(dt),
         _ => throw new InvalidCastException($"Não é possível converter {value.GetType()} em DateTimeOffset.")
