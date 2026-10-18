@@ -70,4 +70,19 @@ public sealed class JsonDictionaryTypeHandlerTests
         SqlMapper.HasTypeHandler(typeof(IDictionary<string, string?>)).Should().BeTrue();
         SqlMapper.HasTypeHandler(typeof(IReadOnlyDictionary<string, string?>)).Should().BeTrue();
     }
+
+    [Fact]
+    public void Parse_rejeita_tipos_inesperados_e_json_incompativel_e_SetValue_grava_NULL_e_enumeraveis() {
+        var handler = new JsonDictionaryTypeHandler<Dictionary<string, string?>>();
+        FluentActions.Invoking(() => handler.Parse(123)).Should().Throw<InvalidCastException>();
+        FluentActions.Invoking(() => new JsonDictionaryTypeHandler<SortedDictionary<string, string?>>().Parse("{}"))
+            .Should().Throw<InvalidCastException>();
+
+        var parameter = new SqlParameter();
+        handler.SetValue(parameter, null);
+        parameter.Value.Should().Be(DBNull.Value);
+
+        JsonDictionaryTypeHandler<Dictionary<string, string?>>.Serialize([new KeyValuePair<string, string?>("k", "v")])
+            .Should().Be("""{"k":"v"}""");
+    }
 }
