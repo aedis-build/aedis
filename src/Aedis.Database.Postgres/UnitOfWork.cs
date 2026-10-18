@@ -89,7 +89,6 @@ public sealed class UnitOfWork(DbConnection connection, bool isReadOnly, ILogger
         if (_disposed) return;
 
         if (_transaction != null) {
-            // Sessão de leitura nunca faz commit: o rollback no descarte é o fluxo normal, não um esquecimento.
             if (IsReadOnly)
                 logger.LogDebug("Sessão de leitura encerrada — revertendo a transação.");
             else
