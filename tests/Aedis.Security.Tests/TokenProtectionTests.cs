@@ -28,6 +28,23 @@ public sealed class CacheTokenDenylistTests
     }
 
     [Fact]
+    public async Task Identificadores_vazios_ttl_nao_positivo_e_corte_ilegivel_nao_tocam_o_cache() {
+        var cache = Substitute.For<ICache>();
+        var denylist = new CacheTokenDenylist(cache);
+
+        (await denylist.IsRevokedAsync("")).Should().BeFalse();
+        await denylist.RevokeUserAsync("", TimeSpan.FromMinutes(1));
+        await denylist.RevokeUserAsync("u1", TimeSpan.Zero);
+        (await denylist.IsUserRevokedAsync("", Now)).Should().BeFalse();
+        await cache.DidNotReceiveWithAnyArgs().SetStringAsync(default!, default!, default, default);
+
+        cache.GetStringAsync("security:user-revocation:u1", Arg.Any<CancellationToken>()).Returns("nao-numerico");
+        (await denylist.IsUserRevokedAsync("u1", Now)).Should().BeFalse();
+        cache.GetStringAsync("security:user-revocation:u2", Arg.Any<CancellationToken>()).Returns((string?)null);
+        (await denylist.IsUserRevokedAsync("u2", Now)).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Nao_revoga_token_com_ttl_nao_positivo() {
         var cache = Substitute.For<ICache>();
         var denylist = new CacheTokenDenylist(cache, new FixedTimeProvider(Now));

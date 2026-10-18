@@ -138,4 +138,23 @@ public sealed class MqMessageFactoryTests
         new MqReportOptions().None.Should().BeTrue();
         new MqReportOptions { Coa = true }.None.Should().BeFalse();
     }
+
+    [Fact]
+    public void BuildReportFlags_cobre_cada_report_isoladamente() {
+        MqMessageFactory.BuildReportFlags(new MqReportOptions { Cod = true }).Should().Be(MQC.MQRO_COD);
+        MqMessageFactory.BuildReportFlags(new MqReportOptions { CodWithData = true, Cod = true }).Should().Be(MQC.MQRO_COD_WITH_DATA);
+        MqMessageFactory.BuildReportFlags(new MqReportOptions { Expiration = true }).Should().Be(MQC.MQRO_EXPIRATION);
+        MqMessageFactory.BuildReportFlags(new MqReportOptions { PassMsgId = true }).Should().Be(MQC.MQRO_PASS_MSG_ID);
+        MqMessageFactory.BuildReportFlags(new MqReportOptions { PassCorrelId = true }).Should().Be(MQC.MQRO_PASS_CORREL_ID);
+        MqMessageFactory.BuildReportFlags(new MqReportOptions { DiscardOnException = true, Exception = true })
+            .Should().Be(MQC.MQRO_DISCARD_MSG | MQC.MQRO_EXCEPTION);
+    }
+
+    [Fact]
+    public void Valores_desconhecidos_caem_no_default_e_guid_vazio_vira_MQCI_NONE() {
+        MqMessageFactory.MapPersistence((MqPersistence)99).Should().Be(MQC.MQPER_PERSISTENT);
+        MqMessageFactory.MapFormat((MqMessageFormat)99).Should().Be(MQC.MQFMT_NONE);
+        MqMessageFactory.MapMessageType((MqMessageType)99).Should().Be(MQC.MQMT_DATAGRAM);
+        MqMessageFactory.ToMq24(Guid.Empty.ToString()).Should().Equal(MQC.MQCI_NONE);
+    }
 }
