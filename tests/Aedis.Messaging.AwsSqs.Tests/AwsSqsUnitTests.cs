@@ -1,3 +1,7 @@
+using Amazon.SQS;
+using Amazon.SimpleNotificationService;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using System.Text;
 using Aedis.Messaging.Abstractions;
 using Aedis.Messaging.Abstractions.Serialization;
@@ -168,5 +172,20 @@ public sealed class AwsSqsUnitTests
             .Value.Registrations.Should().ContainSingle(r => r.Name == "awssqs").Subject;
 
         registration.Tags.Should().Contain("ready");
+    }
+
+    [Fact]
+    public async Task HealthCheck_e_saudavel_quando_os_clientes_inicializam_e_Unhealthy_quando_falham() {
+        var factory = Substitute.For<IAwsPubSubFactory>();
+        factory.GetSqsClientAsync(Arg.Any<CancellationToken>()).Returns(Substitute.For<IAmazonSQS>());
+        factory.GetSnsClientAsync(Arg.Any<CancellationToken>()).Returns(Substitute.For<IAmazonSimpleNotificationService>());
+        var options = Options.Create(new AwsSqsOptions { Region = "us-east-1", UseTopics = true });
+        var check = new AwsSqsHealthCheck(factory, options, NullLogger<AwsSqsHealthCheck>.Instance);
+
+        (await check.CheckHealthAsync(new HealthCheckContext())).Status.Should().Be(HealthStatus.Healthy);
+        await factory.Received(1).GetSnsClientAsync(Arg.Any<CancellationToken>());
+
+        factory.GetSqsClientAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("sem credencial"));
+        (await check.CheckHealthAsync(new HealthCheckContext())).Status.Should().Be(HealthStatus.Unhealthy);
     }
 }

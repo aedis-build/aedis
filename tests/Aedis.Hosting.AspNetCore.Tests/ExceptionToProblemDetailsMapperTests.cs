@@ -91,4 +91,19 @@ public sealed class ExceptionToProblemDetailsMapperTests
         problem.Status.Should().Be(StatusCodes.Status500InternalServerError);
         problem.Detail.Should().NotContain("detalhe interno");
     }
+
+    [Theory]
+    [InlineData(400, "Bad Request")]
+    [InlineData(401, "Unauthorized")]
+    [InlineData(403, "Forbidden")]
+    [InlineData(404, "Not Found")]
+    [InlineData(409, "Conflict")]
+    [InlineData(412, "Precondition Failed")]
+    [InlineData(422, "Unprocessable Entity")]
+    [InlineData(429, "Too Many Requests")]
+    [InlineData(503, "Service Unavailable")]
+    [InlineData(502, "Internal Server Error")]
+    [InlineData(418, "Error")]
+    public void StatusTitle_e_estavel_por_status(int status, string title) =>
+        ExceptionToProblemDetailsMapper.StatusTitle(status).Should().Be(title);
 }

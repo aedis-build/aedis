@@ -46,4 +46,27 @@ public sealed class AzureKeyVaultProviderTests
         (await Build(client).GetSecretWithMetadataAsync("missing")).Should().BeNull();
         (await Build(client).GetSecretAsync("missing")).Should().BeNull();
     }
+
+    [Fact]
+    public async Task Set_e_Delete_delegam_ao_cliente_e_remover_inexistente_e_silencioso() {
+        var secret = SecretModelFactory.KeyVaultSecret(SecretModelFactory.SecretProperties(), "v");
+        var client = Substitute.For<SecretClient>();
+        client.SetSecretAsync("k", "v").ReturnsForAnyArgs(Task.FromResult(Response.FromValue(secret, Substitute.For<Response>())));
+        client.StartDeleteSecretAsync("k").ReturnsForAnyArgs(Task.FromResult<DeleteSecretOperation>(null!));
+        var provider = Build(client);
+
+        await provider.SetSecretAsync("k", "v");
+        await provider.DeleteSecretAsync("k");
+
+        await client.Received(1).SetSecretAsync("k", "v", Arg.Any<CancellationToken>());
+        await client.Received(1).StartDeleteSecretAsync("k", Arg.Any<CancellationToken>());
+
+        var missing = Substitute.For<SecretClient>();
+        missing.StartDeleteSecretAsync("x").ThrowsAsyncForAnyArgs(new RequestFailedException(404, "não existe"));
+        await Build(missing).DeleteSecretAsync("x");
+    }
+
+    [Fact]
+    public void Create_monta_o_provider_autonomo_a_partir_das_opcoes() =>
+        AzureKeyVaultProvider.Create(new AzureKeyVaultOptions { VaultUri = "https://exemplo.vault.azure.net/" }).Should().NotBeNull();
 }
