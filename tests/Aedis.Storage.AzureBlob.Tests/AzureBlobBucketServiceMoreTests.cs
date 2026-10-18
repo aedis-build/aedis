@@ -1,3 +1,4 @@
+using Aedis.Storage.Abstractions;
 using System.Text;
 using Aedis.Storage.AzureBlob;
 using Azure;
@@ -88,5 +89,27 @@ public sealed class AzureBlobBucketServiceMoreTests
         var act = () => Sut().GetPreSignedUrlAsync("file.txt", TimeSpan.FromMinutes(5), (FileAccess)99);
 
         await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public async Task Sem_prefixo_e_sem_corte_lista_tudo_e_data_ausente_vira_agora() {
+        FluentActions.Invoking(() => new TestContainer(null!)).Should().Throw<ArgumentNullException>();
+        var items = new[] {
+            BlobsModelFactory.BlobItem(name: "a.txt", properties: BlobsModelFactory.BlobItemProperties(false)),
+            BlobsModelFactory.BlobItem(name: "b.txt", properties: BlobsModelFactory.BlobItemProperties(false, lastModified: DateTimeOffset.UtcNow.AddDays(-9)))
+        };
+        _container.GetBlobsAsync(Arg.Any<BlobTraits>(), Arg.Any<BlobStates>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(AsyncPageable<BlobItem>.FromPages([Page<BlobItem>.FromValues(items, null, Substitute.For<Response>())]));
+
+        var semPrefixo = new List<BucketObject>();
+        await foreach (var o in new TestContainer(_container, null!).ListObjectsAsync(null)) semPrefixo.Add(o);
+        var comPrefixoSemSub = new List<BucketObject>();
+        await foreach (var o in Sut("p").ListObjectsAsync(null)) comPrefixoSemSub.Add(o);
+
+        semPrefixo.Should().HaveCount(2);
+        semPrefixo[0].LastModified.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1));
+        comPrefixoSemSub.Should().HaveCount(2);
+        _container.Received(1).GetBlobsAsync(Arg.Any<BlobTraits>(), Arg.Any<BlobStates>(), null, Arg.Any<CancellationToken>());
+        _container.Received(1).GetBlobsAsync(Arg.Any<BlobTraits>(), Arg.Any<BlobStates>(), "p", Arg.Any<CancellationToken>());
     }
 }

@@ -63,4 +63,19 @@ public sealed class KeycloakCurrentUserTests
             .Should().Be("https://auth.exemplo.com/realms/dev");
         provider.GetService<IHttpContextAccessor>().Should().NotBeNull();
     }
+
+    [Fact]
+    public void Sem_claims_do_keycloak_cai_nos_claims_padrao_do_dotnet_e_principal_sem_identidade_e_anonimo() {
+        var user = UserFrom(new Claim(ClaimTypes.NameIdentifier, "nid-1"), new Claim(ClaimTypes.Name, "Zed"));
+
+        user.Id.Should().Be("nid-1");
+        user.Name.Should().Be("Zed");
+        user.FindClaim("inexistente").Should().BeNull();
+
+        var semIdentidade = new KeycloakCurrentUser(
+            new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal() } },
+            Options.Create(new KeycloakAuthOptions()));
+        semIdentidade.IsAuthenticated.Should().BeFalse();
+        semIdentidade.Name.Should().BeNull();
+    }
 }

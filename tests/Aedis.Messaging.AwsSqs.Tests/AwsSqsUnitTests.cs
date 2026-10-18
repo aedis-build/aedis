@@ -188,4 +188,22 @@ public sealed class AwsSqsUnitTests
         factory.GetSqsClientAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("sem credencial"));
         (await check.CheckHealthAsync(new HealthCheckContext())).Status.Should().Be(HealthStatus.Unhealthy);
     }
+
+    [Fact]
+    public void Envelope_sem_atributos_sem_Message_e_base64_com_caracteres_invalidos() {
+        AwsPubSubEnvelopeParser.IsSnsEnvelope("   ").Should().BeFalse();
+
+        var semAtributos = AwsPubSubEnvelopeParser.Parse("""{"Type":"Notification","Message":"m","MessageAttributes":"nao-objeto"}""");
+        semAtributos.Message.Should().Be("m");
+        semAtributos.ContentType.Should().BeNull();
+        semAtributos.CorrelationId.Should().BeNull();
+
+        FluentActions.Invoking(() => AwsPubSubEnvelopeParser.Parse("""{"Type":"Notification","Message":null}"""))
+            .Should().Throw<InvalidOperationException>();
+
+        AwsPubSubEnvelopeParser.TryFromBase64("abc").Should().BeNull("tamanho não múltiplo de 4");
+        AwsPubSubEnvelopeParser.TryFromBase64("ab$=").Should().BeNull("caractere fora do alfabeto");
+        AwsPubSubEnvelopeParser.TryFromBase64("+/09").Should().NotBeNull();
+        AwsPubSubEnvelopeParser.TryFromBase64("====").Should().BeNull("alfabeto válido mas base64 inválido");
+    }
 }

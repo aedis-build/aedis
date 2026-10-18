@@ -88,4 +88,19 @@ public sealed class KeycloakRevocationTests
         context.Result.Should().BeNull();
         await denylist.DidNotReceiveWithAnyArgs().IsUserRevokedAsync(default!, default, default);
     }
+
+    [Fact]
+    public async Task Sem_jti_consulta_so_o_usuario_e_sem_sub_consulta_so_o_token() {
+        var denylist = Substitute.For<ITokenDenylist>();
+
+        var semJti = await ValidateAsync(denylist, new Claim("sub", "u1"), new Claim("iat", "1700000000"));
+        semJti.Result.Should().BeNull();
+        await denylist.DidNotReceiveWithAnyArgs().IsRevokedAsync(default!, default);
+        await denylist.Received(1).IsUserRevokedAsync("u1", DateTimeOffset.FromUnixTimeSeconds(1_700_000_000), Arg.Any<CancellationToken>());
+
+        var semSub = await ValidateAsync(denylist, new Claim("jti", "t9"));
+        semSub.Result.Should().BeNull();
+        await denylist.Received(1).IsRevokedAsync("t9", Arg.Any<CancellationToken>());
+        await denylist.Received(1).IsUserRevokedAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+    }
 }
