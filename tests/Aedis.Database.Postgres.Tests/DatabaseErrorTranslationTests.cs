@@ -91,4 +91,14 @@ public sealed class DatabaseErrorTranslationTests
 
     private static DatabaseError Error(DatabaseErrorKind kind, string? constraint = null, string message = "erro") =>
         new(kind, "postgres", null, null, constraint, null, "tabela", message, new InvalidOperationException(message));
+
+    [Fact]
+    public void NpgsqlException_transiente_vira_ConnectionFailure_e_timeout_do_cliente_vira_Timeout() {
+        var transient = new NpgsqlException("conexão caiu", new IOException("reset"));
+        var timeout = new TimeoutException("expirou");
+
+        PostgresDatabaseErrorTranslator.TryTranslate(transient)!.Kind.Should().Be(DatabaseErrorKind.ConnectionFailure);
+        PostgresDatabaseErrorTranslator.TryTranslate(timeout)!.Kind.Should().Be(DatabaseErrorKind.Timeout);
+        PostgresDatabaseErrorTranslator.TryTranslate(new NpgsqlException("não transiente")).Should().BeNull();
+    }
 }
