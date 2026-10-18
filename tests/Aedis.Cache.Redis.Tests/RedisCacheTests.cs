@@ -211,4 +211,18 @@ public sealed class RedisCacheTests : IAsyncLifetime
         provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations
             .Should().ContainSingle(r => r.Name == "redis").Which.Tags.Should().Contain("ready");
     }
+
+    /// <summary>Sem servidor no endpoint, a operação tenta reconectar, degrada sem lançar e o health fica Unhealthy.</summary>
+    [Fact]
+    public async Task Sem_servidor_os_caminhos_de_erro_degradam_sem_lancar_e_o_health_fica_Unhealthy() {
+        var options = Options.Create(new RedisCacheOptions {
+            EndPoint = "127.0.0.1:1", Password = string.Empty, UseSsl = false, InstanceId = "instance-x"
+        });
+        var cache = new RedisCache(options, NullLogger<RedisCache>.Instance);
+
+        // shortcut: cada chamada paga as tentativas de reconexão do driver (~15 s); cobre só a eleição e o health.
+        (await cache.IsLeaderAsync("k", TimeSpan.FromSeconds(5))).Should().BeNull();
+        var check = new RedisHealthCheck(options, NullLogger<RedisHealthCheck>.Instance, cache);
+        (await check.CheckHealthAsync(new HealthCheckContext())).Status.Should().Be(HealthStatus.Unhealthy);
+    }
 }
