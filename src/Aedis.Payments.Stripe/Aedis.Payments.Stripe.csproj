@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Payments.Stripe</PackageId>
+    <Description>Aedis.Payments.Stripe — provider do Aedis.Payments sobre o SDK oficial da Stripe (Stripe.net): várias contas por aplicação, Checkout para assinatura, SetupIntent para cartão, fatura avulsa off-session e webhook com assinatura verificada e processamento idempotente.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Payments.Abstractions\Aedis.Payments.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stripe.net" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.Payments.Stripe.Tests" />
+  </ItemGroup>
+
+</Project>

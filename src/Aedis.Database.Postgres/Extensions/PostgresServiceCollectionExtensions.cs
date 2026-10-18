@@ -17,7 +17,7 @@ public static class PostgresServiceCollectionExtensions
 {
     /// <summary>
     ///     Registra a <see cref="IUnitOfWorkFactory" /> (sessões de escrita/leitura), as estratégias de
-    ///     nomes e seu resolver, os type handlers de <see cref="DateOnly" />/<see cref="TimeOnly" /> e de
+    ///     nomes e seu resolver, os type handlers de <see cref="DateOnly" />/<see cref="TimeOnly" />/<see cref="DateTimeOffset" /> e de
     ///     dicionários <c>string → string</c> (JSON) do
     ///     Dapper e o motor de bulk insert via COPY (<see cref="PostgresBulkInserter" />). Lê as opções da
     ///     seção <c>Database</c>. Também habilita o casamento de nomes com underscores no Dapper, para mapear
@@ -31,6 +31,7 @@ public static class PostgresServiceCollectionExtensions
 
         SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
         SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
+        SqlMapper.AddTypeHandler(new DateTimeOffsetTypeHandler());
         SqlMapper.AddTypeHandler(new JsonDictionaryTypeHandler<Dictionary<string, string?>>());
         SqlMapper.AddTypeHandler(new JsonDictionaryTypeHandler<IDictionary<string, string?>>());
         SqlMapper.AddTypeHandler(new JsonDictionaryTypeHandler<IReadOnlyDictionary<string, string?>>());
