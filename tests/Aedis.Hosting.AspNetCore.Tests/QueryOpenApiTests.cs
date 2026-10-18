@@ -5,6 +5,7 @@ using Aedis.Hosting.AspNetCore.OpenApi;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -43,7 +44,36 @@ public sealed class QueryOpenApiTests {
         query.GetProperty("tags")[0].GetString().Should().Be("Widgets");
 
         path.GetProperty("get").GetProperty("responses").TryGetProperty("409", out _).Should().BeTrue();
+
+        var gadgets = json.RootElement.GetProperty("paths").GetProperty("/v1/gadgets").GetProperty("x-oai-additionalOperations").GetProperty("QUERY");
+        gadgets.GetProperty("summary").GetString().Should().Be("Consulta gadgets");
+        gadgets.GetProperty("description").GetString().Should().Be("Sem corpo e sem erros padrão");
+        gadgets.GetProperty("deprecated").GetBoolean().Should().BeTrue();
+        var responses = gadgets.GetProperty("responses");
+        responses.GetProperty("201").GetProperty("description").GetString().Should().Be("Created");
+        responses.GetProperty("202").GetProperty("description").GetString().Should().Be("Accepted");
+        responses.GetProperty("204").GetProperty("description").GetString().Should().Be("No Content");
+        responses.GetProperty("400").GetProperty("description").GetString().Should().Be("Bad Request");
+        responses.GetProperty("418").GetProperty("description").GetString().Should().Be("HTTP 418");
+        responses.TryGetProperty("422", out _).Should().BeFalse("sem [ProducesStandardErrors]");
     }
+}
+
+/// <summary>Controller QUERY sem corpo, obsoleto, com resumo/descrição e respostas de vários status.</summary>
+[ApiController]
+[Route("v1/gadgets")]
+[Obsolete("exemplo")]
+public sealed class GadgetsController : ControllerBase {
+    /// <summary>Consulta sem corpo.</summary>
+    [HttpQuery]
+    [EndpointSummary("Consulta gadgets")]
+    [EndpointDescription("Sem corpo e sem erros padrão")]
+    [ProducesResponseType<WidgetResponse>(201)]
+    [ProducesResponseType(202)]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(418)]
+    public IActionResult Query() => NoContent();
 }
 
 /// <summary>Host com Swagger e um controller QUERY, para o teste do documento.</summary>
