@@ -13,13 +13,13 @@ permissions: {}
 jobs:
   commits:
     if: github.event_name == 'pull_request'
-    uses: aedis-build/aedis-platform/.github/workflows/conventional-commits.yml@v1
+    uses: aedis-build/aedis-platform/.github/workflows/conventional-commits.yml@33c000e3effbd9151212c77aa29c24646ec6e5dc # v1
     permissions:
       contents: read
 
   build-test:
     name: Build + testes + cobertura
-    uses: aedis-build/aedis-platform/.github/workflows/coverage.yml@v1
+    uses: aedis-build/aedis-platform/.github/workflows/coverage.yml@33c000e3effbd9151212c77aa29c24646ec6e5dc # v1
     permissions:
       contents: read
       packages: read
