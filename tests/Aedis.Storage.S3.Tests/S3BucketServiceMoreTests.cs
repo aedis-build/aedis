@@ -72,4 +72,24 @@ public sealed class S3BucketServiceMoreTests
         await _s3.Received(2).ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.Prefix == "data/2024"),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Guardas_do_construtor_e_listagem_sem_prefixo_sem_objetos_e_sem_data() {
+        FluentActions.Invoking(() => new TestBucket(null!)).Should().Throw<ArgumentNullException>();
+        FluentActions.Invoking(() => new OptionsBucket(new S3StorageOptions { BucketName = Bucket, ServiceUrl = "http://localhost:4566" }))
+            .Should().NotThrow();
+        _s3.ListObjectsV2Async(Arg.Any<ListObjectsV2Request>(), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response { IsTruncated = false, S3Objects = null },
+                new ListObjectsV2Response { IsTruncated = false, S3Objects = [new S3Object { Key = "x.txt" }, new S3Object { Key = "pasta/" }] });
+
+        var vazio = new List<Aedis.Storage.Abstractions.BucketObject>();
+        await foreach (var o in new TestBucket(_s3).ListObjectsAsync(null)) vazio.Add(o);
+        var semData = new List<Aedis.Storage.Abstractions.BucketObject>();
+        await foreach (var o in new TestBucket(_s3, "p").ListObjectsAsync(null)) semData.Add(o);
+
+        vazio.Should().BeEmpty();
+        semData.Should().ContainSingle().Which.LastModified.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1));
+        await _s3.Received(1).ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.Prefix == null), Arg.Any<CancellationToken>());
+        await _s3.Received(1).ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.Prefix == "p"), Arg.Any<CancellationToken>());
+    }
 }

@@ -75,4 +75,17 @@ public sealed class InProcessSigningKeyProviderTests
         var act = () => new SigningBuilder(services).UseProvider(" ");
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Construtores_exigem_opcoes_estado_logger_e_chave() {
+        var state = new SigningKeyState();
+        var logger = NullLogger<InProcessSigningKeyProvider>.Instance;
+
+        FluentActions.Invoking(() => new InProcessSigningKeyProvider(null!, state, logger)).Should().Throw<ArgumentNullException>();
+        FluentActions.Invoking(() => new InProcessSigningKeyProvider(new SigningOptions(), null!, logger)).Should().Throw<ArgumentNullException>();
+        FluentActions.Invoking(() => new InProcessSigningKeyProvider(new SigningOptions(), state, null!)).Should().Throw<ArgumentNullException>();
+        FluentActions.Invoking(() => new InProcessSigningKeyProvider((ECDsa)null!, "kid", state, logger)).Should().Throw<ArgumentNullException>();
+        new InProcessSigningKeyProvider(new SigningOptions(), state, logger).TryGetKey(out var handle).Should().BeFalse();
+        handle.Should().BeNull();
+    }
 }

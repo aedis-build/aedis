@@ -1,3 +1,7 @@
+using Aedis.Observability.Abstractions;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using System.Diagnostics.Metrics;
 using Aedis.Observability.Serilog;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -49,5 +53,32 @@ public sealed class ObservabilityRegistrationTests
 
         logEvent.Properties.Should().ContainKey("LogType");
         logEvent.Properties["LogType"].ToString().Should().Contain("Event");
+    }
+
+    [Fact]
+    public void Exportador_OTLP_e_configurado_com_endpoint_api_key_e_temporalidade_ao_construir_os_providers() {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Telemetry:OtlpEndpoint"] = "http://localhost:4317",
+            ["Telemetry:OtlpApiKey"] = "chave",
+            ["Telemetry:OtlpMetricsTemporality"] = "Cumulative"
+        }).Build();
+        using var provider = new ServiceCollection().AddLogging().AddAedisTelemetry(config).BuildServiceProvider();
+
+        provider.GetRequiredService<MeterProvider>().Should().NotBeNull();
+        provider.GetRequiredService<TracerProvider>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AddCustomMetrics_registra_a_classe_como_singleton_criada_com_o_IMeterFactory() {
+        var config = new ConfigurationBuilder().Build();
+        using var provider = new ServiceCollection().AddLogging().AddAedisTelemetry(config)
+            .AddCustomMetrics<SampleMetrics>().BuildServiceProvider();
+
+        provider.GetRequiredService<SampleMetrics>().Should().BeSameAs(provider.GetRequiredService<SampleMetrics>());
+    }
+
+    public sealed class SampleMetrics(IMeterFactory meterFactory) : BaseMetrics<SampleMetrics>(meterFactory)
+    {
+        protected override void ConfigureMetrics() { }
     }
 }
