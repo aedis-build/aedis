@@ -59,4 +59,17 @@ public sealed class PostgresHealthCheckTests
 
         result.Status.Should().Be(HealthStatus.Unhealthy);
     }
+
+    [Theory]
+    [InlineData(1, HealthStatus.Healthy)]
+    [InlineData(0, HealthStatus.Unhealthy)]
+    public async Task Sondagem_responde_pelo_valor_devolvido(int value, HealthStatus expected) {
+        var session = Substitute.For<IUnitOfWork>();
+        session.QuerySingleOrDefaultAsync<int>(Arg.Any<string>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(value);
+        var factory = Substitute.For<IUnitOfWorkFactory>();
+        factory.CreateReadSessionAsync(Arg.Any<CancellationToken>()).Returns(session);
+        var check = new PostgresHealthCheck(factory, Options.Create(new DatabaseOptions()), NullLogger<PostgresHealthCheck>.Instance);
+
+        (await check.CheckHealthAsync(new HealthCheckContext())).Status.Should().Be(expected);
+    }
 }
