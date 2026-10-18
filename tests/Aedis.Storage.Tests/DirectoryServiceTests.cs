@@ -148,4 +148,51 @@ public sealed class DirectoryServiceTests : IDisposable
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
+
+    [Fact]
+    public async Task List_com_prefixo_inexistente_e_vazia_e_com_prefixo_e_corte_filtra_por_data() {
+        var nada = new List<BucketObject>();
+        await foreach (var o in _sut.ListObjectsAsync("inexistente")) nada.Add(o);
+        nada.Should().BeEmpty();
+
+        await _sut.PutObjectAsync("sub/a.txt", StreamOf("a"), "text/plain");
+        await _sut.PutObjectAsync("sub/b.txt", StreamOf("b"), "text/plain");
+        File.SetLastWriteTimeUtc(Path.Combine(_baseDir, "sub", "a.txt"), DateTime.UtcNow.AddDays(-2));
+
+        var recentes = new List<BucketObject>();
+        await foreach (var o in _sut.ListObjectsAsync("sub", DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeMilliseconds())) recentes.Add(o);
+        recentes.Select(o => o.FilePath).Should().Equal("sub/b.txt");
+    }
+
+    [Fact]
+    public async Task Progresso_sem_tamanho_conhecido_reporta_zero_por_cento() {
+        var percents = new List<int>();
+
+        await _sut.PutObjectAsync("p.txt", new NonSeekableStream(StreamOf("conteudo")), "text/plain", onProgress: p => percents.Add(p.PercentDone));
+
+        percents.Should().NotBeEmpty().And.AllSatisfy(p => p.Should().Be(0));
+    }
+
+    [Fact]
+    public async Task Copy_para_a_mesma_chave_nao_faz_nada_e_origem_ausente_falha() {
+        await _sut.PutObjectAsync("c.txt", StreamOf("c"), "text/plain");
+
+        await _sut.CopyObjectAsync("c.txt", "c.txt");
+        (await ReadAllAsync(await _sut.GetObjectAsync("c.txt"))).Should().Be("c");
+        await FluentActions.Awaiting(() => _sut.CopyObjectAsync("nao-existe.txt", "d.txt")).Should().ThrowAsync<FileNotFoundException>();
+    }
+
+    private sealed class NonSeekableStream(Stream inner) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
 }
