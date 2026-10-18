@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Tenancy.Abstractions</PackageId>
+    <Description>Aedis.Tenancy.Abstractions — contratos de multi-tenancy (tenant atual, escopo explícito, resolução) com regra fail-closed.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
+    <ProjectReference Include="..\Aedis.Exceptions\Aedis.Exceptions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Aedis.Security.Abstractions;
 using Aedis.Security.Keycloak;
+using Aedis.Tenancy.Abstractions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
@@ -57,6 +58,19 @@ public static class KeycloakServiceCollectionExtensions
                     OnTokenValidated = RejectRevokedTokenAsync
                 };
             });
+    }
+
+    /// <summary>
+    ///     Faz o tenant vir das Organizations do Keycloak: registra o
+    ///     <see cref="KeycloakOrganizationTenantResolver" /> (scoped) como <see cref="ITenantResolver" />,
+    ///     substituindo o resolvedor por claim do <c>AddAedisTenancy</c> — em qualquer ordem de chamada. Usa as
+    ///     opções de <see cref="AddAedisKeycloakAuth" /> (<c>Auth:OrganizationClaimType</c>,
+    ///     <c>Auth:TenantFromOrganizationId</c>).
+    /// </summary>
+    public static IServiceCollection AddAedisKeycloakOrganizationTenancy(this IServiceCollection services) {
+        services.AddHttpContextAccessor();
+        services.Replace(ServiceDescriptor.Scoped<ITenantResolver, KeycloakOrganizationTenantResolver>());
+        return services;
     }
 
     private static async Task RejectRevokedTokenAsync(TokenValidatedContext context) {

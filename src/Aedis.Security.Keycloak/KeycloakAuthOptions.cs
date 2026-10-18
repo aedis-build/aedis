@@ -25,4 +25,16 @@ public sealed class KeycloakAuthOptions
 
     /// <summary>Claim das roles (array flat no token). Padrão <c>roles</c>.</summary>
     public string RoleClaimType { get; set; } = "roles";
+
+    /// <summary>
+    ///     Claim das Organizations do Keycloak (escopo <c>organization</c>), lida pelo
+    ///     <see cref="KeycloakOrganizationTenantResolver" />. Padrão <c>organization</c>.
+    /// </summary>
+    public string OrganizationClaimType { get; set; } = "organization";
+
+    /// <summary>
+    ///     Quando <c>true</c>, o tenant é o <c>id</c> da organização (exige o mapper com "Add organization id",
+    ///     que emite a claim como objeto); quando <c>false</c> (padrão), é o alias.
+    /// </summary>
+    public bool TenantFromOrganizationId { get; set; }
 }

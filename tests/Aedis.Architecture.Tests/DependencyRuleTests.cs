@@ -73,4 +73,15 @@ public class DependencyRuleTests
         result.IsSuccessful.Should().BeTrue(
             "Aedis.Signing fala com o cofre só pela costura ISignatureProvider/ISigningKeyProvider dos pacotes de provider");
     }
+
+    [Fact]
+    public void Tenancy_Abstractions_nao_depende_de_AspNetCore_nem_de_provider() {
+        var result = Types.InAssembly(typeof(Aedis.Tenancy.Abstractions.ICurrentTenant).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("Microsoft.AspNetCore", "Npgsql", "Dapper", "Aedis.Security.Keycloak")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.Tenancy.Abstractions é só contrato: resolução por token, middleware e banco ficam nos pacotes de implementação");
+    }
 }

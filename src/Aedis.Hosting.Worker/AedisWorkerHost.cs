@@ -38,6 +38,12 @@ public abstract class AedisWorkerHost
     /// <summary>Quando <c>true</c> (default), expõe um endpoint HTTP mínimo de health para probes.</summary>
     protected virtual bool EnableHealthEndpoint => true;
 
+    /// <summary>
+    ///     Quando <c>true</c>, registra <c>AddAedisTenancy</c>: o trabalho injeta <c>ITenantContext</c> e abre
+    ///     <c>BeginScope(tenantId)</c> por mensagem/job, e tudo dentro do escopo enxerga o tenant. Default <c>false</c>.
+    /// </summary>
+    protected virtual bool EnableTenancy => false;
+
     /// <summary>Quando <c>true</c> (default), liga a telemetria OTLP (métricas/traces).</summary>
     protected virtual bool EnableTelemetry => true;
 
@@ -117,6 +123,9 @@ public abstract class AedisWorkerHost
 
         services.AddAedisDiagnostics();
         AddCustomHealthChecks(services.AddHealthChecks());
+
+        if (EnableTenancy)
+            services.AddAedisTenancy(configuration);
 
         ConfigureServices(configuration, services);
     }

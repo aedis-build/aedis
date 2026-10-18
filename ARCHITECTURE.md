@@ -108,7 +108,7 @@ graph TD
 
 **Tier 2 — Abstrações de capability (dependem só de Core):**
 
-`Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Excel.Abstractions` · `Aedis.Pdf.Abstractions`
+`Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Tenancy.Abstractions` · `Aedis.Excel.Abstractions` · `Aedis.Pdf.Abstractions`
 
 **Tier 3 — Implementações por provider (só o host referencia):**
 
@@ -122,6 +122,7 @@ graph TD
 | Hosting | `Aedis.Hosting.AspNetCore` · `Aedis.Hosting.Worker` |
 | Scheduling | `Aedis.Scheduling.Hangfire` |
 | Security | `Aedis.Security.Keycloak` *(+ `Secrets.Vault`/`.AwsSecretsManager` no roadmap)* |
+| Tenancy | `Aedis.Tenancy` (tenant ambiente + resolução por claim; ver [docs/TENANCY.md](docs/TENANCY.md)) |
 | Diagnostics | `Aedis.Diagnostics` (health checks zero-config) |
 | Documentos | `Aedis.Excel.MiniExcel` · `Aedis.Pdf.QuestPdf` |
 

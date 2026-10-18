@@ -56,6 +56,8 @@
     <Project Path="src/Aedis.Storage.AzureBlob/Aedis.Storage.AzureBlob.csproj" />
     <Project Path="src/Aedis.Storage.S3/Aedis.Storage.S3.csproj" />
     <Project Path="src/Aedis.Templates/Aedis.Templates.csproj" />
+    <Project Path="src/Aedis.Tenancy/Aedis.Tenancy.csproj" />
+    <Project Path="src/Aedis.Tenancy.Abstractions/Aedis.Tenancy.Abstractions.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Aedis.Analyzers.Tests/Aedis.Analyzers.Tests.csproj" />
@@ -98,5 +100,6 @@
     <Project Path="tests/Aedis.Storage.AzureBlob.Tests/Aedis.Storage.AzureBlob.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.S3.Tests/Aedis.Storage.S3.Tests.csproj" />
     <Project Path="tests/Aedis.Storage.Tests/Aedis.Storage.Tests.csproj" />
+    <Project Path="tests/Aedis.Tenancy.Tests/Aedis.Tenancy.Tests.csproj" />
   </Folder>
 </Solution>
