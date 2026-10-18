@@ -108,7 +108,7 @@ graph TD
 
 **Tier 2 — Abstrações de capability (dependem só de Core):**
 
-`Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Excel.Abstractions` · `Aedis.Pdf.Abstractions`
+`Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Excel.Abstractions` · `Aedis.Pdf.Abstractions` · `Aedis.AI.Abstractions`
 
 **Tier 3 — Implementações por provider (só o host referencia):**
 
@@ -124,6 +124,7 @@ graph TD
 | Security | `Aedis.Security.Keycloak` *(+ `Secrets.Vault`/`.AwsSecretsManager` no roadmap)* |
 | Diagnostics | `Aedis.Diagnostics` (health checks zero-config) |
 | Documentos | `Aedis.Excel.MiniExcel` · `Aedis.Pdf.QuestPdf` |
+| Agentes de IA | `Aedis.AI.ManagedAgents` (ver [docs/AI.md](docs/AI.md)) |
 
 **Tier 4 — Meta + tooling:**
 

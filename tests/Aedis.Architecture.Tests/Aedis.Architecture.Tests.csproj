@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\Aedis.Messaging.Abstractions\Aedis.Messaging.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Signing\Aedis.Signing.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Messaging\Aedis.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\Aedis.AI.Abstractions\Aedis.AI.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>
