@@ -50,4 +50,25 @@ public sealed class JsonWebKeySetDocumentTests
         var act = () => new JsonWebKeyDocument { Kty = "RSA", Crv = null, Kid = "k" }.ToECDsa();
         act.Should().Throw<NotSupportedException>();
     }
+
+    [Fact]
+    public void Jwk_rejeita_parametros_sem_ponto_publico_e_documento_sem_coordenadas() {
+        FluentActions.Invoking(() => JsonWebKeyDocument.FromEcPublicKey(new ECParameters(), "kid"))
+            .Should().Throw<ArgumentException>().WithMessage("*ponto público*");
+        FluentActions.Invoking(() => new JsonWebKeyDocument { Kid = "kid" }.ToECDsa())
+            .Should().Throw<FormatException>();
+    }
+
+    [Fact]
+    public void Coordenada_curta_e_completada_a_esquerda_e_coordenada_longa_e_rejeitada() {
+        var curta = new ECParameters { Q = new ECPoint { X = new byte[31], Y = new byte[32] } };
+        curta.Q.X![30] = 0x7f;
+
+        var jwk = JsonWebKeyDocument.FromEcPublicKey(curta, "kid");
+
+        var x = Convert.FromBase64String(jwk.X!.Replace('-', '+').Replace('_', '/') + "=");
+        x.Should().HaveCount(32).And.EndWith(0x7f);
+        FluentActions.Invoking(() => JsonWebKeyDocument.FromEcPublicKey(new ECParameters { Q = new ECPoint { X = new byte[33], Y = new byte[32] } }, "kid"))
+            .Should().Throw<ArgumentException>();
+    }
 }

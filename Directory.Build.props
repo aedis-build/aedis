@@ -19,7 +19,7 @@
     <Company>Aedis</Company>
     <Product>Aedis</Product>
     <PackageProjectUrl>https://aedis.build</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/aedis-build/aedis</RepositoryUrl>
+    <RepositoryUrl>https://github.com/aedis-build/aedis-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageTags>aedis;dotnet;ddd;cqrs;event-driven;cloud-portable;secure-by-construction</PackageTags>
