@@ -222,4 +222,87 @@ public sealed class HttpMessageSigningRoundTripTests : IAsyncLifetime
         DisabledHttpMessageSigner.Instance.IsEnabled.Should().BeFalse();
         request.Headers.Contains("Signature").Should().BeFalse();
     }
+
+    private static void RewriteSignatureInput(HttpRequestMessage request, Func<string, string> rewrite) {
+        var input = request.Headers.GetValues("Signature-Input").Single();
+        request.Headers.Remove("Signature-Input");
+        request.Headers.TryAddWithoutValidation("Signature-Input", rewrite(input));
+    }
+
+    private HttpMessageSignatureVerifier Verifier(HttpSignatureVerificationOptions options) {
+        options.Tag = "loja-webhook";
+        return new HttpMessageSignatureVerifier(new StaticJwksKeyResolver(_jwks), options, _time);
+    }
+
+    [Fact]
+    public async Task Created_ou_expires_ausentes_sao_malformados_e_keyid_vazio_e_chave_desconhecida() {
+        var semCreated = Request();
+        await _signer.SignAsync(semCreated);
+        RewriteSignatureInput(semCreated, i => Regex.Replace(i, ";created=\\d+", ""));
+        (await Verifier().VerifyAsync(semCreated)).Failure.Should().Be(HttpSignatureFailure.MalformedInput);
+
+        var semExpires = Request();
+        await _signer.SignAsync(semExpires);
+        RewriteSignatureInput(semExpires, i => Regex.Replace(i, ";expires=\\d+", ""));
+        (await Verifier().VerifyAsync(semExpires)).Failure.Should().Be(HttpSignatureFailure.MalformedInput);
+
+        var semKeyId = Request();
+        await _signer.SignAsync(semKeyId);
+        RewriteSignatureInput(semKeyId, i => i.Replace("keyid=\"kid-1\"", "keyid=\"\""));
+        (await Verifier().VerifyAsync(semKeyId)).Failure.Should().Be(HttpSignatureFailure.UnknownKey);
+    }
+
+    [Fact]
+    public async Task Signature_Input_malformado_e_rejeitado_sem_excecao() {
+        var parametrosInvalidos = Request();
+        parametrosInvalidos.Headers.TryAddWithoutValidation(ContentDigest.HeaderName, ContentDigest.Compute(Body));
+        parametrosInvalidos.Headers.TryAddWithoutValidation("Signature-Input", "sig1=(\"@method\");created=abc;tag=\"loja-webhook\"");
+        parametrosInvalidos.Headers.TryAddWithoutValidation("Signature", "sig1=:AAAA:");
+        var result = await Verifier().VerifyAsync(parametrosInvalidos);
+        result.IsValid.Should().BeFalse();
+        result.Failure.Should().BeOneOf(HttpSignatureFailure.MalformedInput, HttpSignatureFailure.MissingSignature);
+
+        var ilegivel = Request();
+        ilegivel.Headers.TryAddWithoutValidation(ContentDigest.HeaderName, ContentDigest.Compute(Body));
+        ilegivel.Headers.TryAddWithoutValidation("Signature-Input", "???");
+        ilegivel.Headers.TryAddWithoutValidation("Signature", "???");
+        (await Verifier().VerifyAsync(ilegivel)).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Componente_obrigatorio_nao_coberto_e_componente_coberto_ausente_sao_ComponentMissing() {
+        var exigeCustom = Request();
+        await _signer.SignAsync(exigeCustom);
+        (await Verifier(new HttpSignatureVerificationOptions { RequiredComponents = ["x-custom"] }).VerifyAsync(exigeCustom))
+            .Failure.Should().Be(HttpSignatureFailure.ComponentMissing);
+
+        var semHeader = Request();
+        await _signer.SignAsync(semHeader);
+        semHeader.Headers.Remove("Idempotency-Key");
+        (await Verifier().VerifyAsync(semHeader)).Failure.Should().Be(HttpSignatureFailure.ComponentMissing);
+    }
+
+    [Fact]
+    public async Task Assinatura_mais_antiga_que_MaxSignatureAge_e_Expired() {
+        var request = Request();
+        await _signer.SignAsync(request);
+        _time.Advance(TimeSpan.FromSeconds(10));
+
+        (await Verifier(new HttpSignatureVerificationOptions { MaxSignatureAge = TimeSpan.FromSeconds(5) }).VerifyAsync(request))
+            .Failure.Should().Be(HttpSignatureFailure.Expired);
+    }
+
+    [Fact]
+    public async Task Content_length_pode_ser_coberto_e_e_reconstruido_do_corpo_na_verificacao() {
+        var (provider, state) = await TestSigningKeys.ReadyInProcessAsync(_key, "kid-1");
+        var options = new SigningOptions { Http = { Tag = "loja-webhook", Components = ["@method", "@target-uri", "content-type", "content-length", "content-digest"] } };
+        var signer = new HttpMessageSigner(provider, provider, options, state, NullLoggerFactory.Instance, _time);
+        var request = Request();
+
+        await signer.SignAsync(request);
+
+        request.Headers.GetValues("Signature-Input").Single().Should().Contain("\"content-length\"");
+        var result = await Verifier().VerifyAsync(request);
+        result.IsValid.Should().BeTrue(result.ToString());
+    }
 }

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Aedis.Diagnostics;
 using Aedis.Hosting.Abstractions;
 using FluentAssertions;
@@ -173,5 +174,26 @@ public sealed class DisposableRegistryTests
         registry.Count.Should().Be(0);
         await registry.DisposeAllAsync();
         first.Disposed.Should().Be(0, "foi substituído antes do descarte");
+    }
+
+    [Fact]
+    public async Task Com_logger_registra_e_falha_no_descarte_por_chave_nao_interrompe_os_demais() {
+        var registry = new DisposableRegistry(NullLogger<DisposableRegistry>.Instance);
+        var sync = new TrackingDisposable();
+        var async = new TrackingAsyncDisposable();
+        registry.Register(sync);
+        registry.Register(async);
+        registry.Register("quebrado", new ThrowingAsyncDisposable());
+
+        await registry.DisposeAllAsync();
+
+        sync.DisposeCount.Should().Be(1);
+        async.DisposeCount.Should().Be(1);
+        registry.Count.Should().Be(0);
+    }
+
+    private sealed class ThrowingAsyncDisposable : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => throw new InvalidOperationException("falhou ao descartar");
     }
 }
