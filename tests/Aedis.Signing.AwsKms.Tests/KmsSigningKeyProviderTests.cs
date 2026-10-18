@@ -167,4 +167,69 @@ public sealed class KmsSigningKeyProviderTests : IDisposable
         result.Description.Should().Be("PendingDeletion");
         await _kms.Received(1).DescribeKeyAsync(Arg.Is<DescribeKeyRequest>(r => r.KeyId == Arn), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Corrida_no_alias_reconsulta_ate_o_alias_propagar_e_tolera_falha_ao_agendar_exclusao_da_orfa() {
+        var describes = 0;
+        _kms.DescribeKeyAsync(Arg.Any<DescribeKeyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ci => ++describes >= 3
+                ? Task.FromResult(new DescribeKeyResponse { KeyMetadata = Metadata() })
+                : Task.FromException<DescribeKeyResponse>(new NotFoundException("ainda não propagou")));
+        _kms.CreateKeyAsync(Arg.Any<CreateKeyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateKeyResponse { KeyMetadata = Metadata("22222222-2222-2222-2222-222222222222", "arn:orphan") });
+        _kms.CreateAliasAsync(Arg.Any<CreateAliasRequest>(), Arg.Any<CancellationToken>())
+            .Returns<CreateAliasResponse>(_ => throw new AlreadyExistsException("outra réplica venceu"));
+        _kms.ScheduleKeyDeletionAsync(Arg.Any<ScheduleKeyDeletionRequest>(), Arg.Any<CancellationToken>())
+            .Returns<ScheduleKeyDeletionResponse>(_ => throw new KMSInvalidStateException("sem permissão"));
+        PublicKeyAvailable();
+
+        var handle = await Build(new AwsKmsSigningOptions { KeyAlias = Alias, AutoCreateKey = true }).EnsureKeyAsync();
+
+        handle.KeyId.Should().Be(KeyId);
+        describes.Should().Be(3, "o primeiro describe falha, e o alias só aparece na segunda reconsulta");
+    }
+
+    [Fact]
+    public async Task Uso_ou_algoritmo_nao_suportados_sao_InvalidState() {
+        var usoErrado = Metadata();
+        usoErrado.KeyUsage = KeyUsageType.ENCRYPT_DECRYPT;
+        _kms.DescribeKeyAsync(Arg.Any<DescribeKeyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new DescribeKeyResponse { KeyMetadata = usoErrado });
+        (await FluentActions.Awaiting(() => Build().EnsureKeyAsync()).Should().ThrowAsync<SigningKeyInvalidStateException>())
+            .WithMessage("*SIGN_VERIFY*");
+
+        var algoritmoErrado = Metadata();
+        algoritmoErrado.SigningAlgorithms = ["RSASSA_PSS_SHA_256"];
+        _kms.DescribeKeyAsync(Arg.Any<DescribeKeyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new DescribeKeyResponse { KeyMetadata = algoritmoErrado });
+        (await FluentActions.Awaiting(() => Build().EnsureKeyAsync()).Should().ThrowAsync<SigningKeyInvalidStateException>())
+            .WithMessage("*ECDSA_SHA_256*");
+    }
+
+    [Fact]
+    public async Task Chave_publica_que_nao_e_SubjectPublicKeyInfo_e_InvalidState() {
+        _kms.DescribeKeyAsync(Arg.Any<DescribeKeyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new DescribeKeyResponse { KeyMetadata = Metadata() });
+        _kms.GetPublicKeyAsync(Arg.Any<GetPublicKeyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GetPublicKeyResponse { PublicKey = new MemoryStream([1, 2, 3]) });
+
+        (await FluentActions.Awaiting(() => Build(new AwsKmsSigningOptions { KeyId = KeyId }).EnsureKeyAsync())
+            .Should().ThrowAsync<SigningKeyInvalidStateException>()).WithMessage("*SubjectPublicKeyInfo*");
+    }
+
+    [Fact]
+    public async Task TryGetKey_e_GetKeyAsync_devolvem_o_handle_pronto() {
+        _kms.DescribeKeyAsync(Arg.Any<DescribeKeyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new DescribeKeyResponse { KeyMetadata = Metadata() });
+        PublicKeyAvailable();
+        var provider = Build(new AwsKmsSigningOptions { KeyId = KeyId });
+        provider.TryGetKey(out var before).Should().BeFalse();
+        before.Should().BeNull();
+
+        var handle = await provider.EnsureKeyAsync();
+
+        provider.TryGetKey(out var after).Should().BeTrue();
+        after.Should().BeSameAs(handle);
+        (await provider.GetKeyAsync()).Should().BeSameAs(handle);
+    }
 }

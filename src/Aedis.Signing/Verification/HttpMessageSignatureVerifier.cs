@@ -144,5 +144,5 @@ public sealed class HttpMessageSignatureVerifier(
     }
 
     private static bool IsParseError(Exception ex) =>
-        ex is SignatureInputException or FormatException or ArgumentException or InvalidOperationException or KeyNotFoundException;
+        ex is SignatureInputException or SignatureInputParserException or FormatException or ArgumentException or InvalidOperationException or KeyNotFoundException;
 }

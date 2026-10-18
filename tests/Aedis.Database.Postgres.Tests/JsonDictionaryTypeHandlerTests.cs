@@ -1,3 +1,4 @@
+using NSubstitute;
 using System.Data;
 using Aedis.Database.Postgres.TypeHandlers;
 using Dapper;
@@ -98,5 +99,22 @@ public sealed class JsonDictionaryTypeHandlerTests
         public byte Precision { get; set; }
         public byte Scale { get; set; }
         public int Size { get; set; }
+    }
+
+    [Fact]
+    public void Parse_rejeita_tipos_inesperados_e_SetValue_cai_em_string_fora_do_Npgsql() {
+        var handler = new JsonDictionaryTypeHandler<Dictionary<string, string?>>();
+        FluentActions.Invoking(() => handler.Parse(123)).Should().Throw<InvalidCastException>();
+        FluentActions.Invoking(() => new JsonDictionaryTypeHandler<SortedDictionary<string, string?>>().Parse("{}"))
+            .Should().Throw<InvalidCastException>();
+        handler.Parse(DBNull.Value).Should().BeNull();
+
+        var generic = Substitute.For<IDbDataParameter>();
+        handler.SetValue(generic, null);
+        generic.DbType.Should().Be(DbType.String);
+        generic.Value.Should().Be(DBNull.Value);
+
+        JsonDictionaryTypeHandler<Dictionary<string, string?>>.Serialize([new KeyValuePair<string, string?>("k", "v")])
+            .Should().Be("""{"k":"v"}""");
     }
 }

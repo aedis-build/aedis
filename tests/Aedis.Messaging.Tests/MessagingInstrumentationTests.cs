@@ -159,4 +159,33 @@ public sealed class MessagingInstrumentationTests : IDisposable
     public void TryParseTraceId_reconhece_so_trace_id_w3c(string? value, bool esperado) {
         MessagingInstrumentation.TryParseTraceId(value, out _).Should().Be(esperado);
     }
+
+    [Fact]
+    public void Sem_tracing_nem_metricas_as_operacoes_sao_inertes_e_nao_lancam() {
+        MessagingInstrumentation.Configure(new MessagingTelemetryOptions { EnableTracing = false, EnableMetrics = false });
+        var message = new PingMessage { CorrelationId = "corr-9" };
+
+        using (var publish = MessagingInstrumentation.StartPublish("rabbitmq", "q", message)) {
+            publish.Activity.Should().BeNull();
+            publish.SetTag("k", "v");
+        }
+
+        using (var process = MessagingInstrumentation.StartProcess("rabbitmq", "q", null, transportCorrelationId: "corr-9")) {
+            process.SetMessage(message);
+            process.Complete(MessageOutcome.PermanentFailure);
+        }
+
+        _activities.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Falha_sem_excecao_marca_erro_sem_error_type() {
+        using (var op = MessagingInstrumentation.StartPublish("ibm_mq", "FILA", new PingMessage { CorrelationId = "c" })) {
+            op.Complete(MessageOutcome.UnhandledFailure);
+        }
+
+        var span = _activities.Should().ContainSingle().Subject;
+        span.Status.Should().Be(ActivityStatusCode.Error);
+        span.GetTagItem("error.type").Should().BeNull();
+    }
 }
