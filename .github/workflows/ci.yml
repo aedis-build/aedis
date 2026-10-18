@@ -36,3 +36,14 @@ jobs:
         AEDIS_AWS_IT=1
         AEDIS_VAULT_IT=1
         AEDIS_IBMMQ_IMAGE=ghcr.io/aedis-build/aedis/ibm-mq:10.0.1.0
+
+  reuse:
+    name: REUSE (licença e copyright em todo arquivo)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: pipx run reuse==5.0.2 lint
