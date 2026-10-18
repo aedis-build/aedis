@@ -4,6 +4,7 @@ using Aedis.Database.Postgres;
 using Aedis.Database.Naming;
 using Aedis.Database.Postgres.Queries;
 using Aedis.Domain.Entities;
+using Aedis.Exceptions;
 using Aedis.Security.Abstractions;
 using Dapper;
 using FluentAssertions;
@@ -78,6 +79,109 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
 
         result.Should().BeEmpty("nenhuma linha tem essa descrição literal");
         (await _fixture.CountAsync(table)).Should().Be(1, "a tabela continua intacta — nada foi dropado");
+    }
+
+    [Fact]
+    public async Task Exists_Query_BulkUpdate_Command_e_delete_fisico_sem_soft_delete() {
+        var table = await _fixture.CreateTableAsync();
+        var repo = _fixture.Plain(table);
+        var id = Guid.NewGuid();
+        await repo.SaveAsync(NewOrder(id, "a", OrderStatus.Pending, 10));
+        await repo.BulkInsertChunkedAsync([NewOrder(Guid.NewGuid(), "b", OrderStatus.Pending, 20)]);
+
+        (await repo.ExistsAsync(id)).Should().BeTrue();
+        (await repo.QueryAsync(new RawCriteria<Projection>(
+                $"SELECT description AS Description, total AS Total FROM {table} WHERE id = @id", new { id })))
+            .Should().ContainSingle(p => p.Description == "a" && p.Total == 10);
+
+        await repo.BulkUpdateAsync([NewOrder(id, "a2", OrderStatus.Settled, 11)]);
+        (await repo.GetByIdAsync(id))!.Description.Should().Be("a2");
+        (await repo.CommandAsync(new RawCriteria<Order>($"UPDATE {table} SET total = 0"))).Should().Be(2);
+
+        await repo.DeleteAsync(id);
+        (await repo.ExistsAsync(id)).Should().BeFalse("sem soft delete a linha some de fato");
+        (await _fixture.CountAsync(table)).Should().Be(1L);
+    }
+
+    [Fact]
+    public async Task Erro_do_banco_na_escrita_vira_BusinessException_com_a_restricao_e_a_sessao_e_revertida() {
+        var table = await _fixture.CreateTableAsync();
+        var repo = _fixture.Plain(table);
+        var id = Guid.NewGuid();
+        await repo.SaveAsync(NewOrder(id, "a", OrderStatus.Pending));
+
+        var business = (await FluentActions.Awaiting(() => repo.SaveAsync(NewOrder(id, "dup", OrderStatus.Pending)))
+            .Should().ThrowAsync<BusinessException>()).Which;
+
+        business.ViolationType.Should().Be(ViolationType.UniqueConstraintViolation);
+        business.Rule.Should().Be($"{table}_pkey", "o nome da restrição vem do campo estruturado do servidor");
+        (await _fixture.CountAsync(table)).Should().Be(1L);
+    }
+
+    [Fact]
+    public async Task Erro_na_leitura_passa_pelo_hook_OnDatabaseError_e_sem_tradutor_e_relancado_cru() {
+        var table = await _fixture.CreateTableAsync();
+        var missing = new RawCriteria<Order>("SELECT * FROM tabela_inexistente");
+
+        await FluentActions.Awaiting(() => _fixture.Plain(table).FindAsync(missing))
+            .Should().ThrowAsync<PostgresException>("erro Other sem mapeamento padrão segue cru");
+        await FluentActions.Awaiting(() => _fixture.Hooked(table).FindAsync(missing))
+            .Should().ThrowAsync<InvalidOperationException>().WithMessage("postgres:Other");
+    }
+
+    [Fact]
+    public async Task UnitOfWork_guarda_escrita_em_leitura_transacao_dupla_e_reverte_no_descarte() {
+        await using (var readOnly = new UnitOfWork(new NpgsqlConnection(_fixture.ConnectionString), true, NullLogger<UnitOfWork>.Instance))
+            await FluentActions.Awaiting(() => readOnly.ExecuteAsync("SELECT 1")).Should().ThrowAsync<InvalidOperationException>();
+
+        var table = await _fixture.CreateTableAsync();
+        var uow = new UnitOfWork(new NpgsqlConnection(_fixture.ConnectionString), false, NullLogger<UnitOfWork>.Instance);
+        var tx = await uow.BeginTransactionAsync();
+        await FluentActions.Awaiting(() => uow.BeginTransactionAsync()).Should().ThrowAsync<InvalidOperationException>();
+        FluentActions.Invoking(() => uow.SetTransaction(tx)).Should().Throw<InvalidOperationException>();
+        uow.HasActiveTransaction().Should().BeTrue();
+        await uow.ExecuteAsync($"INSERT INTO {table} (id) VALUES (@id)", new { id = Guid.NewGuid() });
+        await uow.RollbackAsync();
+        uow.HasActiveTransaction().Should().BeFalse();
+        (await _fixture.CountAsync(table)).Should().Be(0L);
+
+        await uow.BeginTransactionAsync();
+        await uow.ExecuteAsync($"INSERT INTO {table} (id) VALUES (@id)", new { id = Guid.NewGuid() });
+        await uow.DisposeAsync();
+        await uow.DisposeAsync();
+        (await _fixture.CountAsync(table)).Should().Be(0L, "descarte sem commit reverte");
+    }
+
+    [Fact]
+    public async Task Replicas_de_leitura_sao_usadas_em_rodizio_nas_sessoes_de_leitura() {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Database:ConnectionString"] = _fixture.ConnectionString,
+            ["Database:ReadConnectionStrings:0"] = _fixture.ConnectionString,
+            ["Database:ReadConnectionStrings:1"] = _fixture.ConnectionString
+        }).Build();
+        await using var provider = new ServiceCollection().AddLogging().AddAedisPostgres(config).BuildServiceProvider();
+        var factory = provider.GetRequiredService<IUnitOfWorkFactory>();
+
+        for (var i = 0; i < 3; i++) {
+            await using var session = await factory.CreateReadSessionAsync();
+            (await session.QuerySingleOrDefaultAsync<int>("SELECT 1")).Should().Be(1);
+            await session.CommitAsync();
+        }
+    }
+
+    public sealed class Projection
+    {
+        public string Description { get; set; } = string.Empty;
+        public decimal Total { get; set; }
+    }
+
+    /// <summary>Repositório de teste que traduz qualquer erro do banco pelo hook, inclusive os sem mapeamento padrão.</summary>
+    private sealed class HookedOrderRepository(IUnitOfWorkFactory factory, NamingStrategyResolver naming,
+        IOptions<DatabaseOptions> options, PostgresBulkInserter inserter, string table)
+        : PostgresRepository<Order, Guid>(factory, NullLogger<PostgresRepository<Order, Guid>>.Instance, naming,
+            options, inserter, table)
+    {
+        protected override Exception? OnDatabaseError(DatabaseError error) => new InvalidOperationException($"{error.Provider}:{error.Kind}");
     }
 
     [Theory]
@@ -529,6 +633,13 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
         public PostgresRepository<Order, Guid> Plain(string table) => new(
             _provider.GetRequiredService<IUnitOfWorkFactory>(),
             NullLogger<PostgresRepository<Order, Guid>>.Instance,
+            _provider.GetRequiredService<NamingStrategyResolver>(),
+            _provider.GetRequiredService<IOptions<DatabaseOptions>>(),
+            _provider.GetRequiredService<PostgresBulkInserter>(),
+            table);
+
+        public PostgresRepository<Order, Guid> Hooked(string table) => new HookedOrderRepository(
+            _provider.GetRequiredService<IUnitOfWorkFactory>(),
             _provider.GetRequiredService<NamingStrategyResolver>(),
             _provider.GetRequiredService<IOptions<DatabaseOptions>>(),
             _provider.GetRequiredService<PostgresBulkInserter>(),
