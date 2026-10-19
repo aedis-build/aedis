@@ -15,7 +15,7 @@ permissions: {}
 
 jobs:
   aedis:
-    uses: aedis-build/aedis-platform/.github/workflows/aedis-ci.yml@6c9ae788df5073558dc7fd89145ca30dd0dfeed0 # feat/aedis-ci (repinar em main após o merge)
+    uses: aedis-build/aedis-platform/.github/workflows/aedis-ci.yml@e5b097de3138dc9c7679699b63a8f50dc2190cae # feat/aedis-ci (repinar em main após o merge)
     permissions:
       contents: read
       actions: read
@@ -34,4 +34,4 @@ jobs:
         AEDIS_AWS_IT=1
         AEDIS_VAULT_IT=1
         AEDIS_IBMMQ_IMAGE=ghcr.io/aedis-build/aedis-dotnet/ibm-mq:10.0.1.0
-      platform-ref: 6c9ae788df5073558dc7fd89145ca30dd0dfeed0
+      platform-ref: e5b097de3138dc9c7679699b63a8f50dc2190cae
