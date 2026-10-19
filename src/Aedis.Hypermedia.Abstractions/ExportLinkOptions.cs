@@ -1,14 +1,6 @@
-namespace Aedis.Hosting.AspNetCore.Hypermedia;
+using Aedis.Hosting.Abstractions;
 
-/// <summary>Formatos de exportação de coleção anunciados por hipermídia e aceitos pelo export.</summary>
-public enum ExportFormat
-{
-    /// <summary>Texto separado por delimitador (.csv).</summary>
-    Csv,
-
-    /// <summary>Planilha Office Open XML (.xlsx).</summary>
-    Xlsx
-}
+namespace Aedis.Hypermedia.Abstractions;
 
 /// <summary>
 ///     Quais links de exportação uma coleção anuncia: <c>export-all-{formato}</c> (todos os registros) e

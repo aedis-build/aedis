@@ -118,6 +118,18 @@ public class DependencyRuleTests
         result.IsSuccessful.Should().BeTrue(
             "Aedis.Tenancy.Abstractions é só contrato: resolução por token, middleware e banco ficam nos pacotes de implementação");
     }
+
+    [Fact]
+    public void Hypermedia_Abstractions_nao_depende_de_AspNetCore() {
+        var result = Types.InAssembly(typeof(Aedis.Hypermedia.Abstractions.IHypermedia).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("Microsoft.AspNetCore", "Microsoft.Extensions.DependencyInjection", "Microsoft.OpenApi")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.Hypermedia.Abstractions é só contrato e envelope HAL: LinkGenerator, filtros e DI ficam em Aedis.Hypermedia.AspNetCore");
+    }
+
     /// <summary>
     ///     Pacotes <c>*.Abstractions</c> publicam contratos e DTOs; quem implementa um contrato do próprio pacote é
     ///     implementação e pertence a um pacote neutro ou ao projeto de testes. Messaging e Storage ainda carregam

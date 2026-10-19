@@ -1,25 +1,28 @@
+using Aedis.Hypermedia.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Aedis.Hosting.AspNetCore.Hypermedia;
+namespace Aedis.Hypermedia.AspNetCore;
 
 /// <summary>
-///     Implementação de <see cref="ILinkMap" /> que resolve URLs por <em>action</em> do controller atual via
-///     <c>LinkGenerator</c>. O gerador é resolvido sob demanda (só quando há link por action), de modo que
-///     builders que usam apenas <see cref="Raw" /> não dependem dele.
+///     <see cref="ILinkMap" /> implementation that resolves URLs per <em>action</em> of the current controller
+///     through <c>LinkGenerator</c> and attaches each link straight to the target resource. The generator is
+///     resolved on demand (only when an action link is declared), so providers that use only
+///     <see cref="Raw" /> do not depend on it.
 /// </summary>
-internal sealed class LinkMap : ILinkMap {
+internal sealed class LinkMap : ILinkMap
+{
     private readonly HttpContext _httpContext;
+    private readonly Resource _target;
     private readonly string? _controller;
     private LinkGenerator? _linkGenerator;
 
-    internal LinkMap(HttpContext httpContext) {
+    internal LinkMap(HttpContext httpContext, Resource target) {
         _httpContext = httpContext;
+        _target = target;
         _controller = httpContext.GetRouteValue("controller") as string;
     }
-
-    internal List<Link> Entries { get; } = [];
 
     private LinkGenerator LinkGenerator => _linkGenerator ??= _httpContext.RequestServices.GetRequiredService<LinkGenerator>();
 
@@ -38,16 +41,16 @@ internal sealed class LinkMap : ILinkMap {
     public ILinkMap Delete(string rel, string action, object? routeValues = null) => Add(rel, "DELETE", action, routeValues);
 
     public ILinkMap Raw(string rel, string href, string method = "GET", bool templated = false) {
-        Entries.Add(new Link(href, rel, method, templated));
+        _target.AddLink(rel, href, method, templated);
         return this;
     }
 
     private ILinkMap Add(string rel, string method, string action, object? routeValues) {
         var href = LinkGenerator.GetUriByAction(_httpContext, action, _controller, routeValues)
                    ?? throw new InvalidOperationException(
-                       $"Não foi possível gerar a URL para a action '{action}' do controller '{_controller}'. " +
-                       "Verifique o nome da action e os route values.");
-        Entries.Add(new Link(href, rel, method));
+                       $"Could not generate the URL for action '{action}' of controller '{_controller}'. " +
+                       "Check the action name and the route values.");
+        _target.AddLink(rel, href, method);
         return this;
     }
 }

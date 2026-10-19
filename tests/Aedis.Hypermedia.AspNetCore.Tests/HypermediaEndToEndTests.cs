@@ -4,10 +4,11 @@ using System.Text.Json;
 using Aedis.Core;
 using Aedis.Diagnostics;
 using Aedis.Excel.Abstractions;
+using Aedis.Hosting.Abstractions;
+using Aedis.Hosting.AspNetCore;
 using Aedis.Hosting.AspNetCore.Exports;
 using Aedis.Hosting.AspNetCore.Http;
-using Aedis.Hosting.AspNetCore.Hypermedia;
-using Aedis.Hosting.AspNetCore.Requests;
+using Aedis.Hypermedia.Abstractions;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -17,7 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Aedis.Hosting.AspNetCore.Tests;
+namespace Aedis.Hypermedia.AspNetCore.Tests;
 
 /// <summary>
 ///     Prova, num servidor de teste real com controllers, a camada Aedis Hypermedia ponta a ponta: links por
@@ -182,10 +183,6 @@ public sealed class HypermediaSampleApiHost : AedisApiHost {
         services.Configure<GracefulShutdownOptions>(options => options.DrainDelay = TimeSpan.Zero);
     }
 
-    /// <inheritdoc />
-    protected override void ConfigureMiddleware(WebApplication app) {
-        app.MapControllers();
-    }
 }
 
 /// <summary>Request de consulta do exemplo: filtro, paginação e export no mesmo DTO (GET e QUERY).</summary>
@@ -206,13 +203,17 @@ public sealed class SamplesController : ControllerBase {
     ];
 
     private readonly IExcelWriter _excel;
+    private readonly IHypermedia _hypermedia;
 
-    /// <summary>Cria o controller com o motor de planilhas.</summary>
-    public SamplesController(IExcelWriter excel) => _excel = excel;
+    /// <summary>Cria o controller com o motor de planilhas e o serviço de hipermídia.</summary>
+    public SamplesController(IExcelWriter excel, IHypermedia hypermedia) {
+        _excel = excel;
+        _hypermedia = hypermedia;
+    }
 
     /// <summary>Recupera um item pelo id, com seus links.</summary>
     [HttpGet("{id:int}")]
-    public IActionResult GetById(int id) => this.AsResource(new SampleResource(id, $"sample-{id}"));
+    public IActionResult GetById(int id) => Ok(_hypermedia.Resource(new SampleResource(id, $"sample-{id}")));
 
     /// <summary>Lista por GET (filtros na query string).</summary>
     [HttpGet]
@@ -239,7 +240,7 @@ public sealed class SamplesController : ControllerBase {
         if (export is not null) return export;
 
         var (items, total) = await FetchPageAsync(page, pageSize, cancellationToken);
-        return this.AsCollection(new PagedResult<SampleResource>(items, total, page, pageSize), links);
+        return Ok(_hypermedia.Collection(new PagedResult<SampleResource>(items, total, page, pageSize), links));
     }
 
     private static Task<(IReadOnlyList<SampleResource> Items, int Total)> FetchPageAsync(int page, int pageSize, CancellationToken _) {
@@ -252,9 +253,9 @@ public sealed class SamplesController : ControllerBase {
 public sealed record SampleResource(int Id, string Name);
 
 /// <summary>Declara os links do <see cref="SampleResource" /> por action.</summary>
-public sealed class SampleResourceLinks : ResourceLinks<SampleResource> {
+public sealed class SampleResourceLinks : IResourceLinks<SampleResource> {
     /// <inheritdoc />
-    protected override void Configure(ILinkMap links, SampleResource model) {
+    public void Configure(ILinkMap links, SampleResource model) {
         links.Self("GetById", new { id = model.Id });
         links.Collection("Search");
     }

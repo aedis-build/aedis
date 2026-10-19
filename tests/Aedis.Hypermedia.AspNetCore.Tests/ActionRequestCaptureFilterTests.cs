@@ -1,5 +1,3 @@
-using Aedis.Hosting.AspNetCore.Filters;
-using Aedis.Hosting.AspNetCore.Http;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +7,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
 using Xunit;
 
-namespace Aedis.Hosting.AspNetCore.Tests;
+namespace Aedis.Hypermedia.AspNetCore.Tests;
 
 /// <summary>
 ///     O filtro captura exatamente um argumento complexo vindo do corpo ou da query string; com dois candidatos,

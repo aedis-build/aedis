@@ -1,7 +1,7 @@
-namespace Aedis.Hosting.AspNetCore.Hypermedia;
+namespace Aedis.Hypermedia.Abstractions;
 
 /// <summary>
-///     Coletor fluente de links de um recurso, usado dentro de <see cref="ResourceLinks{T}.Configure" />. Os
+///     Coletor fluente de links de um recurso, usado dentro de <see cref="IResourceLinks{T}.Configure" />. Os
 ///     links são resolvidos por <em>action</em> do controller atual (via <c>LinkGenerator</c>), então você
 ///     declara a ação e os route values — sem montar URLs na mão e sem quebrar ao renomear rotas. Use
 ///     <see cref="Raw" /> apenas para destinos fora do roteamento de actions.

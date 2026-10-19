@@ -2,15 +2,15 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Aedis.Core.Utils;
-using Aedis.Hosting.AspNetCore.Http;
-using Aedis.Hosting.AspNetCore.Requests;
+using Aedis.Hosting.Abstractions;
+using Aedis.Hypermedia.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace Aedis.Hosting.AspNetCore.Hypermedia;
+namespace Aedis.Hypermedia.AspNetCore;
 
 /// <summary>
 ///     Gera os links de navegação de uma coleção paginada (<c>self</c>/<c>first</c>/<c>prev</c>/<c>next</c>/
@@ -38,7 +38,7 @@ internal static class PaginationLinks {
                 continue;
             }
 
-            collection.AddLink(rel, cleanUrl, HttpQueryAttribute.Method);
+            collection.AddLink(rel, cleanUrl, HalFormsTemplate.QueryMethod);
             collection.AddTemplate(rel, new HalFormsTemplate {
                 Target = cleanUrl,
                 Body = BuildBody(requestEcho, json!, targetPage, pageSize, null)
@@ -99,7 +99,7 @@ internal static class PaginationLinks {
             return;
         }
 
-        collection.AddLink(rel, cleanUrl, HttpQueryAttribute.Method);
+        collection.AddLink(rel, cleanUrl, HalFormsTemplate.QueryMethod);
         collection.AddTemplate(rel, new HalFormsTemplate {
             Target = cleanUrl,
             Body = BuildBody(requestEcho, json!, page, pageSize, descriptor)

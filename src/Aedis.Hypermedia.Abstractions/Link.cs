@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Aedis.Hosting.AspNetCore.Hypermedia;
+namespace Aedis.Hypermedia.Abstractions;
 
 /// <summary>
 ///     Vínculo de hipermídia anexado a um recurso. Informa ao cliente para onde ir (<see cref="Href" />), a

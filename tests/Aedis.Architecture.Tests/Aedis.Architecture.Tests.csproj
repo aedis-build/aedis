@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\src\Aedis.ExchangeRates.Abstractions\Aedis.ExchangeRates.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Aedis.AI.Abstractions\Aedis.AI.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Tenancy.Abstractions\Aedis.Tenancy.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Aedis.Hypermedia.Abstractions\Aedis.Hypermedia.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

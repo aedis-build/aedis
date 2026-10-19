@@ -1,9 +1,9 @@
-using Aedis.Hosting.AspNetCore.Filters;
+using Aedis.Hypermedia.Abstractions;
 using Microsoft.AspNetCore.Http;
 
-namespace Aedis.Hosting.AspNetCore.Http;
+namespace Aedis.Hypermedia.AspNetCore;
 
-/// <summary>Auxiliares de <see cref="HttpContext" /> usados pela hipermídia e pelos exports.</summary>
+/// <summary>Auxiliares de <see cref="HttpContext" /> usados pela hipermídia.</summary>
 public static class HttpContextExtensions
 {
     /// <summary>URL base da requisição (<c>scheme://host/pathBase</c>), para montar links absolutos.</summary>
@@ -16,7 +16,7 @@ public static class HttpContextExtensions
     /// <summary>Verdadeiro quando a requisição usa o método <c>QUERY</c>.</summary>
     public static bool IsQueryMethod(this HttpContext context) {
         ArgumentNullException.ThrowIfNull(context);
-        return string.Equals(context.Request.Method, HttpQueryAttribute.Method, StringComparison.OrdinalIgnoreCase);
+        return string.Equals(context.Request.Method, HalFormsTemplate.QueryMethod, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

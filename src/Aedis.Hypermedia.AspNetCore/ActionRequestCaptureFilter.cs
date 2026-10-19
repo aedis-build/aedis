@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace Aedis.Hosting.AspNetCore.Filters;
+namespace Aedis.Hypermedia.AspNetCore;
 
 /// <summary>
 ///     Captura o request de consulta da action (o DTO já materializado pelo model binding) em
@@ -14,7 +14,7 @@ namespace Aedis.Hosting.AspNetCore.Filters;
 /// </summary>
 public sealed class ActionRequestCaptureFilter : IActionFilter
 {
-    internal const string ItemKey = "Aedis.Hosting.AspNetCore.ActionRequest";
+    internal const string ItemKey = "Aedis.Hypermedia.ActionRequest";
 
     /// <inheritdoc />
     public void OnActionExecuting(ActionExecutingContext context) {

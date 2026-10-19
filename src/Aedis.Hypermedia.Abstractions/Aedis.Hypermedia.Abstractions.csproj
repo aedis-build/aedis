@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.Hypermedia.Abstractions</PackageId>
+    <Description>Aedis.Hypermedia.Abstractions — HAL envelope (Resource, ResourceCollection, Link, HAL-FORMS templates) and the IHypermedia/IResourceLinks contracts, free of ASP.NET Core types.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
+    <ProjectReference Include="..\Aedis.Hosting.Abstractions\Aedis.Hosting.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

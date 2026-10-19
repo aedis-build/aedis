@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Aedis.Hosting.AspNetCore.Hypermedia;
+namespace Aedis.Hypermedia.Abstractions;
 
 /// <summary>
 ///     Contrato dos recursos que carregam links de hipermídia, serializados como <c>_links</c> no estilo HAL.

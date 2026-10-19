@@ -1,4 +1,3 @@
-using Aedis.Hosting.AspNetCore.Filters;
 using Aedis.Hosting.AspNetCore.ServerSentEvents;
 using Aedis.Core.Utils;
 using Aedis.Observability.Serilog;
@@ -150,7 +149,7 @@ public abstract class AedisApiHost
 
         services.AddAedisProblemDetails();
         services.AddAedisCommands();
-        services.AddControllers(options => options.Filters.Add<ActionRequestCaptureFilter>())
+        services.AddControllers()
             .AddJsonOptions(options => SystemJsonOptionsFactory.Configure(options.JsonSerializerOptions));
         services.ConfigureHttpJsonOptions(options => SystemJsonOptionsFactory.Configure(options.SerializerOptions));
         services.AddAedisApiValidation();

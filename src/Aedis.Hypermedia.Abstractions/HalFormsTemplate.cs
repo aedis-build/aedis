@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
-namespace Aedis.Hosting.AspNetCore.Hypermedia;
+namespace Aedis.Hypermedia.Abstractions;
 
 /// <summary>Contrato dos recursos que anunciam ações autodescritivas em <c>_templates</c>.</summary>
 public interface IHasTemplates
@@ -20,9 +20,12 @@ public interface IHasTemplates
 /// </summary>
 public sealed record HalFormsTemplate
 {
+    /// <summary>HTTP method name of the <c>QUERY</c> verb (body-carrying query), shared by hypermedia and routing.</summary>
+    public const string QueryMethod = "QUERY";
+
     /// <summary>Método HTTP do envio. Padrão <c>QUERY</c>.</summary>
     [JsonPropertyName("method")]
-    public string Method { get; init; } = "QUERY";
+    public string Method { get; init; } = QueryMethod;
 
     /// <summary>URI de destino (a mesma <c>href</c> do link correspondente).</summary>
     [JsonPropertyName("target")]

@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Hosting.AspNetCore\Aedis.Hosting.AspNetCore.csproj" />
     <ProjectReference Include="..\Aedis.Hosting.Worker\Aedis.Hosting.Worker.csproj" />
+    <ProjectReference Include="..\Aedis.Hypermedia.AspNetCore\Aedis.Hypermedia.AspNetCore.csproj" />
     <ProjectReference Include="..\Aedis.Cache.Redis\Aedis.Cache.Redis.csproj" />
     <ProjectReference Include="..\Aedis.Database.Postgres\Aedis.Database.Postgres.csproj" />
     <ProjectReference Include="..\Aedis.Messaging.AwsSqs\Aedis.Messaging.AwsSqs.csproj" />
