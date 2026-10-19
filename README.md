@@ -5,16 +5,20 @@
   <img src="https://cdn.aedis.build/brand/aedis-mascot-lockup.svg" alt="Aedis" width="420">
 </picture>
 
-**A fundação segura para construir serviços .NET orientados a domínio e a eventos.**
+**The secure foundation for domain-driven, event-driven .NET services.**
 
 <sub><em>Golden-Path Platform · cloud-portable by design · secure by construction</em></sub>
 
 <br>
 
+[![CI](https://github.com/aedis-build/aedis-dotnet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aedis-build/aedis-dotnet/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/aedis-build/aedis-dotnet/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/aedis-build/aedis-dotnet/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/aedis-build/aedis-dotnet/badge)](https://scorecard.dev/viewer/?uri=github.com/aedis-build/aedis-dotnet)
+[![codecov](https://codecov.io/gh/aedis-build/aedis-dotnet/graph/badge.svg)](https://codecov.io/gh/aedis-build/aedis-dotnet)
+[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/spec/v1.0/levels#build-l3)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-C8A24C?style=flat-square&labelColor=1A2740)](https://www.conventionalcommits.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-C8A24C?style=flat-square&labelColor=1A2740)](LICENSE)
 <img src="https://img.shields.io/badge/-10%20LTS-C8A24C?style=flat-square&labelColor=1A2740&logo=dotnet&logoColor=ECE5D5" alt=".NET 10 LTS">
-<img src="https://img.shields.io/badge/cloud--portable-by%20design-1A2740?style=flat-square&labelColor=1A2740" alt="cloud-portable by design">
-<img src="https://img.shields.io/badge/secure-by%20construction-1A2740?style=flat-square&labelColor=1A2740" alt="secure by construction">
 <img src="https://img.shields.io/badge/OpenTelemetry-native-C8A24C?style=flat-square&labelColor=1A2740&logo=opentelemetry&logoColor=ECE5D5" alt="OpenTelemetry-native">
 [![Status](https://img.shields.io/badge/status-preview-orange?style=flat-square&labelColor=1A2740)](#-status)
 
@@ -22,71 +26,103 @@
 
 ---
 
-## O que é o Aedis
+## What Aedis is
 
-Aedis é uma **Golden-Path Platform** .NET **segura por construção**. Na era do *vibe coding* — em que estudos apontam que parte relevante do código gerado por IA introduz vulnerabilidades — o Aedis entrega os *guardrails* já corretos por padrão: autenticação, validação, tratamento de segredos, observabilidade e os padrões de *bounded context* vêm montados e coerentes entre si.
+Aedis is a **secure-by-construction** .NET **Golden-Path Platform**. In the age of *vibe coding*, where studies show that a
+meaningful share of AI-generated code introduces vulnerabilities, Aedis ships the guardrails already correct by default:
+authentication, validation, secret handling, observability and the bounded-context patterns come assembled and
+consistent with each other.
 
-Não é greenfield: nasce da **extração de um framework .NET 10 em produção**, destilando o que já roda numa frota de microsserviços em blocos reutilizáveis.
+It is not greenfield: it was **extracted from a .NET 10 framework running in production**, distilling what already powers
+a fleet of microservices into reusable building blocks.
 
-> O nome vem do latim *aedis* — o edifício central do templo romano: a estrutura que sustentava tudo e, ao mesmo tempo, o cofre que guardava o tesouro. Estrutura **e** guarda.
+> The name comes from the Latin *aedis*, the central building of a Roman temple: the structure that held everything up
+> and, at the same time, the vault that kept the treasure. Structure **and** guard.
 
-## A arquitetura
+## Architecture
 
-Dizer só "hexagonal" subvende o Aedis — ele opera em três níveis:
+Calling it "hexagonal" undersells it. Aedis works on three levels:
 
-| Camada | Padrão | No Aedis |
+| Layer | Pattern | In Aedis |
 |---|---|---|
-| Domínio & fronteiras | Hexagonal / Ports & Adapters | `*.Abstractions` (portas) ↔ implementações por provider (adaptadores) |
-| Plataforma & pacotes | Microkernel / Plug-in | `Aedis.Core` (kernel) + plug-ins por *package swap* |
-| Hosting | Framework IoC / Template Method | `WebApiHost`/`StandaloneApp` entregam o *golden path* |
+| Domain and boundaries | Hexagonal / Ports and Adapters | `*.Abstractions` (ports) ↔ one implementation per provider (adapters) |
+| Platform and packages | Microkernel / Plug-in | `Aedis.Core` (kernel) + plug-ins by *package swap* |
+| Hosting | IoC framework / Template Method | `AedisApiHost` / `AedisWorkerHost` deliver the golden path |
 
-**Hexagonal no domínio, Microkernel na plataforma.** Seu código de domínio depende **só de contratos**; portar entre nuvem, broker ou banco é **trocar um pacote NuGet** no *composition root* — o domínio nem recompila. Detalhes em **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+**Hexagonal in the domain, Microkernel in the platform.** Your domain code depends **only on contracts**; moving between
+clouds, brokers or databases is **swapping a NuGet package** in the composition root. The domain does not even
+recompile. Details in **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
-## Módulos (topologia em tiers)
+## Modules (tiered topology)
 
-| Tier | Pacotes |
+| Tier | Packages |
 |---|---|
-| **1 · Core puro** | `Aedis.Core` · `Aedis.Exceptions` · `Aedis.Events` · `Aedis.Domain` · `Aedis.Commands` |
-| **2 · Abstrações** | `Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Payments.Abstractions` · `Aedis.ExchangeRates.Abstractions` · `Aedis.AI.Abstractions` |
-| **3 · Implementações** | `Aedis.Cache.Redis` · `Aedis.Messaging.{RabbitMq,IbmMq,AwsSqs}` · `Aedis.Database.{Postgres,SqlServer,MySql}` · `Aedis.Storage.S3` · `Aedis.Observability.{Serilog,Otlp}` · `Aedis.Hosting.{AspNetCore,Worker}` · `Aedis.Security.Keycloak` · `Aedis.Diagnostics` · `Aedis.Payments.Stripe` · `Aedis.ExchangeRates.Ptax` · `Aedis.AI.ManagedAgents` |
-| **4 · Meta + tooling** | `Aedis.Build` (batteries-included) · `Aedis.Templates` · `Aedis.Analyzers` |
+| **1 · Pure core** | `Aedis.Core` · `Aedis.Exceptions` · `Aedis.Events` · `Aedis.Domain` · `Aedis.Commands` |
+| **2 · Abstractions** | `Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Secrets.Abstractions` · `Aedis.Signing.Abstractions` · `Aedis.Tenancy.Abstractions` · `Aedis.Payments.Abstractions` · `Aedis.ExchangeRates.Abstractions` · `Aedis.AI.Abstractions` |
+| **3 · Implementations** | `Aedis.Cache.Redis` · `Aedis.Messaging.{RabbitMq,IbmMq,AwsSqs,AzureServiceBus}` · `Aedis.Database.{Postgres,SqlServer,MySql}` · `Aedis.Storage.{S3,AzureBlob}` · `Aedis.Secrets.{AwsSecretsManager,AzureKeyVault,Vault}` · `Aedis.Signing` · `Aedis.Signing.{AspNetCore,AwsKms}` · `Aedis.Observability.{Serilog,Otlp}` · `Aedis.Hosting.{AspNetCore,Worker}` · `Aedis.Security.Keycloak` · `Aedis.Tenancy` · `Aedis.Diagnostics` · `Aedis.Payments.Stripe` · `Aedis.ExchangeRates.Ptax` · `Aedis.AI.ManagedAgents` |
+| **4 · Meta and tooling** | `Aedis.Build` (batteries included) · `Aedis.Templates` · `Aedis.Analyzers` |
 
-Eventos em tempo real para o navegador (Server-Sent Events) pelo host seguro: **[docs/SERVER-SENT-EVENTS.md](docs/SERVER-SENT-EVENTS.md)**.
+Real-time events to the browser (Server-Sent Events) through the secure host: **[docs/SERVER-SENT-EVENTS.md](docs/SERVER-SENT-EVENTS.md)**.
 
 ## Quickstart
 
-> ⚠️ API ilustrativa do design pretendido — em desenvolvimento, ainda não publicada.
+The templates generate a four-layer (DDD) API or worker with the secure host, tests, Dockerfile and CI already wired:
+
+```bash
+dotnet new install Aedis.Templates
+dotnet new aedis-api -n Shop
+cd Shop && dotnet test
+```
+
+A host is a class that composes the layers; everything secure by default (fail-closed authentication, security headers,
+rate limiting, RFC 9457 problem details, health probes, OpenTelemetry) comes from the base class:
 
 ```csharp
-var builder = WebApplication.CreateBuilder(args);
-
-builder.AddAedis(aedis =>
+public sealed class ApiHost : AedisApiHost
 {
-    aedis.AddDomain();
-    aedis.AddMessaging().WithRabbitMq(builder.Configuration);   // portar p/ AWS = .WithAwsSqs(...)
-    aedis.AddSecurity().WithKeycloak(builder.Configuration);
-    aedis.AddObservability().WithOtlp();
-});
+    protected override void ConfigureAuthentication(IServiceCollection services, IConfiguration configuration) =>
+        services.AddAedisKeycloakAuth(configuration);
 
-var app = builder.Build();
-app.UseAedis();
-app.Run();
+    protected override void ConfigureServices(IConfiguration configuration, IServiceCollection services) {
+        services.AddControllers();
+        services.AddAedisPostgres(configuration);   // moving to SQL Server or MySQL is a package swap
+    }
+
+    protected override void ConfigureMiddleware(WebApplication app) => app.MapControllers();
+}
+
+await new ApiHost().RunAsync(args);
 ```
+
+Until the packages reach NuGet, build the feed locally as described in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Security and supply chain
+
+Every pull request runs the build with zero warnings, tests with a 95 % line / 85 % branch coverage gate, CodeQL and
+Semgrep (with Aedis-specific rules); releases are versioned from Conventional Commits, signed with Sigstore and ship with
+an SBOM and build provenance; actions are pinned by SHA and workflows start from `permissions: {}`. The repository is
+audited against the Aedis conformance levels (L1–L3) by [aedis-platform](https://github.com/aedis-build/aedis-platform),
+which also runs the policy-based merge gate. Details in [docs/SECURITY-COMPLIANCE.md](docs/SECURITY-COMPLIANCE.md) and
+[docs/SECURITY-HARDENING.md](docs/SECURITY-HARDENING.md).
 
 ## 🚧 Status
 
-Aedis está em **preview**, no caminho para a **v1.0 (GA)** via decomposição do framework de origem. A arquitetura e os módulos estão definidos; as APIs ainda vão mudar. Veja **[MIGRATION.md](MIGRATION.md)** para o plano de extração e acompanhe os *issues*/*milestones*.
+Aedis is in **preview**, on its way to **v1.0 (GA)** through the decomposition of the source framework. Architecture and
+modules are defined; APIs may still change. See **[MIGRATION.md](MIGRATION.md)** for the extraction plan and follow the
+issues and milestones.
 
-## Contribuindo
+## Contributing
 
-Contribuições são bem-vindas — veja **[CONTRIBUTING.md](CONTRIBUTING.md)**. Para vulnerabilidades, siga a **[política de segurança](https://github.com/aedis-build/.github/blob/main/SECURITY.md)** (não abra issue pública).
+Contributions are welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**, the **[Code of Conduct](CODE_OF_CONDUCT.md)**
+and **[GOVERNANCE.md](GOVERNANCE.md)**. For vulnerabilities, follow the **[security policy](SECURITY.md)** and do not
+open a public issue.
 
-## Licença
+## License
 
-[Apache-2.0](LICENSE) — open source, sem pegadinhas.
+[Apache-2.0](LICENSE). Open source, no strings attached.
 
 ---
 
 <div align="center">
-<sub>Sistemas orientados a domínio, distribuídos por eventos, portáveis entre nuvens e com ownership claro de dados — seguros e cloud-native por construção.</sub>
+<sub>Domain-driven systems, distributed through events, portable across clouds, with clear data ownership. Secure and cloud-native by construction.</sub>
 </div>

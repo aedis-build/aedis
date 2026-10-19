@@ -35,7 +35,7 @@ internal sealed class StripeWebhookProcessor(
         await using var scope = scopeFactory.CreateAsyncScope();
         var store = scope.ServiceProvider.GetService<IPaymentEventStore>()
                     ?? throw new InvalidOperationException(
-                        "Nenhum IPaymentEventStore registrado: registre um store durável (ou InMemoryPaymentEventStore em testes) para deduplicar webhooks.");
+                        "Nenhum IPaymentEventStore registrado: registre um store durável para deduplicar webhooks.");
 
         var eventKey = $"stripe:{account.Name}:{stripeEvent.Id}";
         if (!await store.TryClaimAsync(eventKey, cancellationToken)) return WebhookOutcome.Duplicate;

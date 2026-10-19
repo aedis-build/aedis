@@ -37,6 +37,14 @@ jobs:
         AEDIS_VAULT_IT=1
         AEDIS_IBMMQ_IMAGE=ghcr.io/aedis-build/aedis-dotnet/ibm-mq:10.0.1.0
 
+  codecov:
+    name: Codecov
+    needs: build-test
+    uses: aedis-build/aedis-platform/.github/workflows/codecov.yml@08ac809ce27627f60cfd141166f31ebcc72a941c # main, #31
+    permissions:
+      contents: read
+      id-token: write
+
   reuse:
     name: REUSE (licença e copyright em todo arquivo)
     runs-on: ubuntu-latest
