@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aedis.Security.Abstractions\Aedis.Security.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Tenancy.Abstractions\Aedis.Tenancy.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
