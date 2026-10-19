@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/aedis-build/aedis-dotnet/security/advisories/new
+    about: Private report to the maintainers. Never open a public issue for a vulnerability.
+  - name: Questions and ideas
+    url: https://github.com/aedis-build/aedis-dotnet/discussions
+    about: Ask a question or discuss an idea before opening an issue.

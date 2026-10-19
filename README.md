@@ -13,6 +13,7 @@
 
 [![aedis-ci](https://github.com/aedis-build/aedis-dotnet/actions/workflows/aedis-ci.yml/badge.svg?branch=main)](https://github.com/aedis-build/aedis-dotnet/actions/workflows/aedis-ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/aedis-build/aedis-dotnet/badge)](https://scorecard.dev/viewer/?uri=github.com/aedis-build/aedis-dotnet)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15704/badge)](https://www.bestpractices.dev/projects/15704)
 [![codecov](https://codecov.io/gh/aedis-build/aedis-dotnet/graph/badge.svg)](https://codecov.io/gh/aedis-build/aedis-dotnet)
 [![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/spec/v1.0/levels#build-l3)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-C8A24C?style=flat-square&labelColor=1A2740)](https://www.conventionalcommits.org/)
@@ -102,7 +103,34 @@ Semgrep (with Aedis-specific rules); releases are versioned from Conventional Co
 an SBOM and build provenance; actions are pinned by SHA and workflows start from `permissions: {}`. The repository is
 audited against the Aedis conformance levels (L1–L3) by [aedis-platform](https://github.com/aedis-build/aedis-platform),
 which also runs the policy-based merge gate. Details in [docs/SECURITY-COMPLIANCE.md](docs/SECURITY-COMPLIANCE.md) and
-[docs/SECURITY-HARDENING.md](docs/SECURITY-HARDENING.md).
+[docs/SECURITY-HARDENING.md](docs/SECURITY-HARDENING.md). How each OpenSSF Best Practices criterion is met, with the
+evidence for every answer, is in [docs/compliance/openssf-best-practices.md](docs/compliance/openssf-best-practices.md).
+
+## Documentation
+
+- **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md), the layers and the dependency rule.
+- **Module guides** in [docs/](docs): multi-tenancy, payments, AI, Server-Sent Events, log redaction, injection
+  defense, hardening and the code style.
+- **API reference**: every public type and member is documented in XML, shipped inside each NuGet package and shown by
+  IntelliSense; the build fails when a public member has no documentation.
+- **Templates**: `dotnet new aedis-api` and `dotnet new aedis-worker` generate a documented, tested starting point.
+
+## Getting help and reporting issues
+
+- **Bugs and feature requests**: [open an issue](https://github.com/aedis-build/aedis-dotnet/issues/new/choose) with
+  the bug or feature form. The [issue archive](https://github.com/aedis-build/aedis-dotnet/issues?q=is%3Aissue) is
+  public and searchable.
+- **Questions and ideas**: [Discussions](https://github.com/aedis-build/aedis-dotnet/discussions).
+- **Vulnerabilities**: never in a public issue. Use
+  [Report a vulnerability](https://github.com/aedis-build/aedis-dotnet/security/advisories/new), as described in
+  [SECURITY.md](SECURITY.md).
+
+## Versioning and releases
+
+Aedis follows [Semantic Versioning](https://semver.org/). The version is derived from the Conventional Commits merged
+since the previous release (`feat` bumps the minor, `fix` the patch, a breaking change the major), and each release is
+the git tag `vX.Y.Z`. [Releases](https://github.com/aedis-build/aedis-dotnet/releases) carry human-readable notes
+built from the merged pull requests, the NuGet packages, Sigstore signatures, an SPDX SBOM and SLSA build provenance.
 
 ## 🚧 Status
 

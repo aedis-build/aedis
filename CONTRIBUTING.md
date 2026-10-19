@@ -51,8 +51,9 @@ registers (for example `Unable to resolve service for type ICommandExecutor`).
 1. **Discuss first** for large changes: open an issue or a Discussion to align on direction.
 2. Branch from `main` (`feat/short-name`, `fix/short-name`).
 3. Keep the PR **small and focused**, one purpose per PR. Link the related issue.
-4. Include **tests** for new behavior and keep the suite green. The coverage gate is 95 % lines / 85 % branches.
-5. Make sure `dotnet build` (zero warnings) and `dotnet test` pass locally.
+4. **Tests are required.** Every new feature and every bug fix comes with automated tests that exercise it, and the
+   suite stays green. The coverage gate is 95 % lines / 85 % branches.
+5. Make sure `dotnet build` and `dotnet test` pass locally. Warnings are errors: a build with a warning fails.
 6. Open the PR with a clear description of *what* and *why*. PRs that meet every criterion of
    `.github/aedis-merge-policy.yaml` are approved and merged by the Aedis Compliance merge gate; changes to security
    packages, workflows, licensing and versioning always get a human review.
