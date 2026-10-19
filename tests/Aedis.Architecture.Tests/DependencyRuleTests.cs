@@ -1,3 +1,4 @@
+using System.Reflection;
 using FluentAssertions;
 using NetArchTest.Rules;
 using Xunit;
@@ -116,5 +117,27 @@ public class DependencyRuleTests
 
         result.IsSuccessful.Should().BeTrue(
             "Aedis.Tenancy.Abstractions é só contrato: resolução por token, middleware e banco ficam nos pacotes de implementação");
+    }
+    /// <summary>
+    ///     Pacotes <c>*.Abstractions</c> publicam contratos e DTOs; quem implementa um contrato do próprio pacote é
+    ///     implementação e pertence a um pacote neutro ou ao projeto de testes. Messaging e Storage ainda carregam
+    ///     serializadores e serviços legados e entram quando forem limpos.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(Aedis.Payments.Abstractions.IPaymentGateway))]
+    [InlineData(typeof(Aedis.ExchangeRates.Abstractions.IExchangeRates))]
+    [InlineData(typeof(Aedis.AI.Abstractions.IAgentEngine))]
+    [InlineData(typeof(Aedis.Signing.Abstractions.ISigningKeyProvider))]
+    [InlineData(typeof(Aedis.Tenancy.Abstractions.ICurrentTenant))]
+    public void Abstractions_nao_implementa_os_proprios_contratos(Type marker) {
+        var assembly = marker.Assembly;
+        var implementations = assembly.GetTypes()
+            .Where(t => t is { IsClass: true, IsAbstract: false } && !t.IsSubclassOf(typeof(Exception)))
+            .Where(t => t.GetInterfaces().Any(i => i.Assembly == assembly))
+            .Select(t => t.FullName)
+            .ToList();
+
+        implementations.Should().BeEmpty(
+            $"{assembly.GetName().Name} é só contrato: implementações vão para um pacote neutro ou para os testes");
     }
 }

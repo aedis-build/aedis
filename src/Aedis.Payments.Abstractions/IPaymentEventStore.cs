@@ -3,8 +3,7 @@ namespace Aedis.Payments.Abstractions;
 /// <summary>
 ///     Registro de eventos de webhook já processados, para que reenvios do provedor não sejam tratados duas vezes. A
 ///     aplicação registra uma implementação durável e compartilhada entre réplicas (ex.: tabela com chave única); o
-///     processador recusa notificações sem uma. <see cref="InMemoryPaymentEventStore" /> serve a testes e a uma
-///     única instância.
+///     processador recusa notificações sem uma.
 /// </summary>
 public interface IPaymentEventStore
 {
