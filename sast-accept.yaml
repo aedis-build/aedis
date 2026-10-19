@@ -8,3 +8,7 @@ accept:
     path: src/Aedis.Database.SqlServer/
     reason: "Idem Postgres: identificadores das naming strategies com quoting [col]; valores parametrizados."
     until: 2027-10-15
+  - rule: aedis-platform.semgrep.rules.aedis.dapper-sql-interpolation
+    path: src/Aedis.Database.MySql/
+    reason: "Idem Postgres: identificadores das naming strategies com quoting de crase; valores parametrizados (INSERT multi-linha e ON DUPLICATE KEY UPDATE com @p)."
+    until: 2027-10-15

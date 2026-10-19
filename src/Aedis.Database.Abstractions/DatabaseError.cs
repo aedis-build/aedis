@@ -6,7 +6,7 @@ namespace Aedis.Database.Abstractions;
 ///     <c>OnDatabaseError</c> do repositório e do <see cref="IDatabaseErrorMapper" />.
 /// </summary>
 /// <param name="Kind">Classe normalizada do erro.</param>
-/// <param name="Provider">Identificador do provider que traduziu o erro (ex.: <c>postgres</c>, <c>sqlserver</c>).</param>
+/// <param name="Provider">Identificador do provider que traduziu o erro (ex.: <c>postgres</c>, <c>sqlserver</c>, <c>mysql</c>).</param>
 /// <param name="SqlState">Código <c>SQLSTATE</c> nativo, quando o provider o expõe.</param>
 /// <param name="Number">Número de erro nativo, quando o provider o expõe.</param>
 /// <param name="ConstraintName">Nome da restrição violada, quando informado pelo servidor.</param>

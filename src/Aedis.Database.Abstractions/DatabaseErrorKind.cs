@@ -1,7 +1,7 @@
 namespace Aedis.Database.Abstractions;
 
 /// <summary>
-///     Classe normalizada de um erro do banco, independente do provider (PostgreSQL, SQL Server). Permite que a
+///     Classe normalizada de um erro do banco, independente do provider (PostgreSQL, SQL Server, MySQL). Permite que a
 ///     aplicação reaja a violações de integridade e a falhas transitórias sem conhecer <c>SqlState</c> ou
 ///     <c>Number</c> específicos.
 /// </summary>

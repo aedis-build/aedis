@@ -14,6 +14,7 @@
     <Project Path="src/Aedis.Database/Aedis.Database.csproj" />
     <Project Path="src/Aedis.Database.Abstractions/Aedis.Database.Abstractions.csproj" />
     <Project Path="src/Aedis.Database.Postgres/Aedis.Database.Postgres.csproj" />
+    <Project Path="src/Aedis.Database.MySql/Aedis.Database.MySql.csproj" />
     <Project Path="src/Aedis.Database.SqlServer/Aedis.Database.SqlServer.csproj" />
     <Project Path="src/Aedis.Diagnostics/Aedis.Diagnostics.csproj" />
     <Project Path="src/Aedis.Domain/Aedis.Domain.csproj" />
@@ -78,6 +79,7 @@
     <Project Path="tests/Aedis.Domain.Tests/Aedis.Domain.Tests.csproj" />
     <Project Path="tests/Aedis.Events.Tests/Aedis.Events.Tests.csproj" />
     <Project Path="tests/Aedis.Database.Postgres.Tests/Aedis.Database.Postgres.Tests.csproj" />
+    <Project Path="tests/Aedis.Database.MySql.Tests/Aedis.Database.MySql.Tests.csproj" />
     <Project Path="tests/Aedis.Database.SqlServer.Tests/Aedis.Database.SqlServer.Tests.csproj" />
     <Project Path="tests/Aedis.Database.Tests/Aedis.Database.Tests.csproj" />
     <Project Path="tests/Aedis.Diagnostics.Tests/Aedis.Diagnostics.Tests.csproj" />

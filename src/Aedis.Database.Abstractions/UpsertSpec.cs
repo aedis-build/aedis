@@ -3,7 +3,7 @@ namespace Aedis.Database.Abstractions;
 /// <summary>Valor calculado pelo servidor de banco, resolvido para a função nativa de cada provider.</summary>
 public enum UpsertServerValue
 {
-    /// <summary>Instante UTC atual — <c>now()</c> no PostgreSQL, <c>SYSUTCDATETIME()</c> no SQL Server.</summary>
+    /// <summary>Instante UTC atual — <c>now()</c> no PostgreSQL, <c>SYSUTCDATETIME()</c> no SQL Server, <c>UTC_TIMESTAMP(6)</c> no MySQL.</summary>
     UtcNow
 }
 
