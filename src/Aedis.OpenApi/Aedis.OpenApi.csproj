@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>Aedis.OpenApi</PackageId>
-    <Description>Aedis.OpenApi — OpenAPI 3.1 document over the native ASP.NET Core generator (AddAedisOpenApi/MapAedisOpenApi): Bearer scheme, [Obsolete] as deprecated, [ProducesStandardErrors] responses, QUERY operations and HAL schema ids.</Description>
+    <Description>Aedis.OpenApi — OpenAPI 3.1 document over the native ASP.NET Core generator (AddAedisOpenApi/MapAedisOpenApi): Bearer scheme, [Obsolete] as deprecated, [ProducesStandardErrors] responses, QUERY operations, HAL schema ids and the x-aedis-roles/x-aedis-anonymous/x-aedis-risk/x-aedis-rules extensions so portals and agents read authorization, risk and 422 rules from the contract.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
   <ItemGroup>

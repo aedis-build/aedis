@@ -11,7 +11,9 @@ namespace Microsoft.Extensions.DependencyInjection;
 ///     Registers the Aedis OpenAPI document over the native ASP.NET Core generator, bound to the
 ///     <see cref="AedisOpenApiOptions.SectionName" /> section: OpenAPI 3.1, document info, the Bearer scheme
 ///     (when enabled), <c>[Obsolete]</c> as <c>deprecated</c>, the <c>[ProducesStandardErrors]</c> responses,
-///     the <c>QUERY</c> operations under <c>x-oai-additionalOperations</c> and the HAL schema ids.
+///     the <c>QUERY</c> operations under <c>x-oai-additionalOperations</c>, the HAL schema ids and the
+///     <c>x-aedis-roles</c>/<c>x-aedis-anonymous</c>/<c>x-aedis-risk</c>/<c>x-aedis-rules</c> extensions that
+///     portals and agents read instead of reimplementing authorization, risk and 422 rules.
 /// </summary>
 public static class AedisOpenApiServiceCollectionExtensions
 {
@@ -51,6 +53,9 @@ public static class AedisOpenApiServiceCollectionExtensions
 
             openApi.AddOperationTransformer<ObsoleteOperationTransformer>();
             openApi.AddOperationTransformer<StandardErrorsOperationTransformer>();
+            openApi.AddOperationTransformer<AuthorizationOperationTransformer>();
+            openApi.AddOperationTransformer<RiskOperationTransformer>();
+            openApi.AddOperationTransformer<ValidationRulesOperationTransformer>();
             openApi.AddDocumentTransformer<QueryOperationsDocumentTransformer>();
 
             if (options.IncludeBearerSecurity)

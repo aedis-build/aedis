@@ -16,7 +16,8 @@ namespace Aedis.OpenApi;
 ///     transformer synthesizes them under the <c>x-oai-additionalOperations</c> extension — the shape tools
 ///     like Scalar already read. Body and responses point (<c>$ref</c>) to the component schemas the other
 ///     operations produced, when present; <c>[EndpointSummary]</c>/<c>[EndpointDescription]</c>,
-///     <c>[Obsolete]</c> and <c>[ProducesStandardErrors]</c> are honored.
+///     <c>[Obsolete]</c> and <c>[ProducesStandardErrors]</c> are honored, as are the <c>x-aedis-*</c>
+///     metadata extensions the operation transformers would have added.
 /// </summary>
 public sealed class QueryOperationsDocumentTransformer : IOpenApiDocumentTransformer
 {
@@ -28,10 +29,10 @@ public sealed class QueryOperationsDocumentTransformer : IOpenApiDocumentTransfo
         string.Equals(api.HttpMethod, HalFormsTemplate.QueryMethod, StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
-    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken) {
+    public async Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken) {
         var queryApis = context.DescriptionGroups.SelectMany(group => group.Items).Where(IsQuery).ToList();
         if (queryApis.Count == 0)
-            return Task.CompletedTask;
+            return;
 
         document.Paths ??= new OpenApiPaths();
 
@@ -47,11 +48,11 @@ public sealed class QueryOperationsDocumentTransformer : IOpenApiDocumentTransfo
                 ? node
                 : new JsonObject();
 
-            additional[HalFormsTemplate.QueryMethod] = BuildOperation(api, document);
+            var operation = BuildOperation(api, document);
+            await OperationMetadata.ApplyAsync(operation, api, context.ApplicationServices);
+            additional[HalFormsTemplate.QueryMethod] = operation;
             pathItem.Extensions[ExtensionName] = new JsonNodeExtension(additional);
         }
-
-        return Task.CompletedTask;
     }
 
     private static JsonObject BuildOperation(ApiDescription api, OpenApiDocument document) {

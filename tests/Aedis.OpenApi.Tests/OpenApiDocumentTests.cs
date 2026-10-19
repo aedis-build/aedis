@@ -191,10 +191,18 @@ public sealed class OpenApiSampleApiHost(Action<OpenApiOptions>? configure, Acti
     /// <summary>Desliga a telemetria OTLP no teste.</summary>
     protected override bool EnableTelemetry => false;
 
+    /// <summary>Policy cujo nome difere das roles, para provar que a extensão publica as roles resolvidas.</summary>
+    protected override void ConfigureAuthorization(Microsoft.AspNetCore.Authorization.AuthorizationOptions options) {
+        options.AddPolicy("orders:write", policy => policy.RequireRole("orders.writer", "orders.admin"));
+    }
+
     /// <inheritdoc />
     protected override void ConfigureServices(IConfiguration configuration, IServiceCollection services) {
         services.AddControllers().AddApplicationPart(typeof(OpenApiSampleApiHost).Assembly);
         services.AddAedisOpenApi(configuration, configure);
+        services.AddScoped<FluentValidation.IValidator<CreateOrder>, CreateOrderValidator>();
+        services.AddScoped<FluentValidation.IValidator<OrderFilter>, OrderFilterValidator>();
+        services.AddScoped<FluentValidation.IValidator<Address>>(_ => new AddressValidator("BR"));
         services.Configure<GracefulShutdownOptions>(options => options.DrainDelay = TimeSpan.Zero);
     }
 
