@@ -51,6 +51,8 @@ Dizer só "hexagonal" subvende o Aedis — ele opera em três níveis:
 | **3 · Implementações** | `Aedis.Cache.Redis` · `Aedis.Messaging.{RabbitMq,IbmMq,AwsSqs}` · `Aedis.Database.{Postgres,SqlServer}` · `Aedis.Storage.S3` · `Aedis.Observability.{Serilog,Otlp}` · `Aedis.Hosting.{AspNetCore,Worker}` · `Aedis.Security.Keycloak` · `Aedis.Diagnostics` · `Aedis.Payments.Stripe` · `Aedis.ExchangeRates.Ptax` |
 | **4 · Meta + tooling** | `Aedis.Build` (batteries-included) · `Aedis.Templates` · `Aedis.Analyzers` |
 
+Eventos em tempo real para o navegador (Server-Sent Events) pelo host seguro: **[docs/SERVER-SENT-EVENTS.md](docs/SERVER-SENT-EVENTS.md)**.
+
 ## Quickstart
 
 > ⚠️ API ilustrativa do design pretendido — em desenvolvimento, ainda não publicada.
