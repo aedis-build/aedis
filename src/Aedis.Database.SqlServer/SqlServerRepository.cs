@@ -356,13 +356,18 @@ public class SqlServerRepository<TEntity, TId> : IRepository<TEntity, TId>
         });
     }
 
-    private static DynamicParameters ToParameters(TEntity entity, PropertyInfo[] properties) {
+    private DynamicParameters ToParameters(TEntity entity, PropertyInfo[] properties) {
         var parameters = new DynamicParameters();
         foreach (var property in properties) {
             var value = property.GetValue(entity);
             if (value is not null) {
                 var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
                 if (type.IsEnum) value = Aedis.Database.Abstractions.EnumPersistence.ToStoredName((Enum)value);
+            }
+
+            if (value is string text) {
+                parameters.Add("@" + property.Name, SqlServerStrings.Parameter(property, text, Options.SqlServerUnicodeStrings));
+                continue;
             }
 
             parameters.Add("@" + property.Name, value);

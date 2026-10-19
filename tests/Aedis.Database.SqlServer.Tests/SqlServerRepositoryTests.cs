@@ -177,9 +177,35 @@ public sealed class SqlServerRepositoryTests : IClassFixture<SqlServerRepository
 
         for (var i = 0; i < 3; i++) {
             await using var session = await factory.CreateReadSessionAsync();
+            session.HasActiveTransaction().Should().BeFalse("leitura roda em autocommit: nada a confirmar ou reverter no descarte");
             (await session.QuerySingleOrDefaultAsync<int>("SELECT 1")).Should().Be(1);
             await session.CommitAsync();
         }
+    }
+
+    [SkippableFact]
+    public async Task Strings_vao_como_varchar_por_padrao_e_nvarchar_com_Unicode() {
+        Skip.IfNot(_fixture.Enabled, "Defina AEDIS_SQLSERVER_IT=1 para rodar a integração SQL Server.");
+        var table = $"coded_{Guid.NewGuid():N}";
+        await _fixture.ExecAsync($"CREATE TABLE {table} (id UNIQUEIDENTIFIER PRIMARY KEY, code VARCHAR(20), nome NVARCHAR(50))");
+        var repo = _fixture.Repo<Coded>(table);
+        var entity = new Coded { Id = Guid.NewGuid(), Code = "abc", Nome = "ação ✓" };
+
+        await repo.SaveAsync(entity);
+
+        var saved = await repo.GetByIdAsync(entity.Id);
+        saved!.Nome.Should().Be("ação ✓", "o parâmetro [Unicode] vai como nvarchar e não perde o caractere");
+        saved.Code.Should().Be("abc");
+        await using var session = await _fixture.Factory.CreateReadSessionAsync();
+        (await session.QuerySingleOrDefaultAsync<string>("SELECT CAST(SQL_VARIANT_PROPERTY(@p, 'BaseType') AS nvarchar(20))", new { p = "x" }))
+            .Should().Be("varchar", "strings soltas (critérios, objetos anônimos) seguem o mapa global");
+    }
+
+    public sealed class Coded
+    {
+        public Guid Id { get; set; }
+        [System.ComponentModel.DataAnnotations.MaxLength(20)] public string Code { get; set; } = string.Empty;
+        [Unicode] public string Nome { get; set; } = string.Empty;
     }
 
     public sealed class Projection
