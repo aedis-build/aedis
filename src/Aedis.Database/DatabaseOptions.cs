@@ -3,7 +3,7 @@ using Aedis.Database.Abstractions;
 namespace Aedis.Database;
 
 /// <summary>
-///     Opções dos providers de banco do Aedis (SQL Server e PostgreSQL). Lidas da seção <c>Database</c> da configuração. Suporta
+///     Opções dos providers de banco do Aedis (SQL Server, PostgreSQL e MySQL). Lidas da seção <c>Database</c> da configuração. Suporta
 ///     endpoint de escrita (primário) e leitura (réplicas) separados; sem eles, usa
 ///     <see cref="ConnectionString" /> para ambos.
 /// </summary>

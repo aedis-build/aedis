@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>Aedis.Database</PackageId>
-    <Description>Aedis.Database — implementações agnósticas de provider (opções, estratégias de nomes, colunas de auditoria, mapeamento padrão de erros, type handlers e critérios brutos) compartilhadas por Aedis.Database.SqlServer e Aedis.Database.Postgres.</Description>
+    <Description>Aedis.Database — implementações agnósticas de provider (opções, estratégias de nomes, colunas de auditoria, mapeamento padrão de erros, type handlers e critérios brutos) compartilhadas por Aedis.Database.SqlServer, Aedis.Database.Postgres e Aedis.Database.MySql.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,9 +19,11 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Aedis.Database.SqlServer" />
     <InternalsVisibleTo Include="Aedis.Database.Postgres" />
+    <InternalsVisibleTo Include="Aedis.Database.MySql" />
     <InternalsVisibleTo Include="Aedis.Database.Tests" />
     <InternalsVisibleTo Include="Aedis.Database.SqlServer.Tests" />
     <InternalsVisibleTo Include="Aedis.Database.Postgres.Tests" />
+    <InternalsVisibleTo Include="Aedis.Database.MySql.Tests" />
   </ItemGroup>
 
 </Project>

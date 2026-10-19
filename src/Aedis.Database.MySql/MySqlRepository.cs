@@ -1,0 +1,388 @@
+using System.Collections;
+using System.Reflection;
+using Aedis.Database.Abstractions;
+using Aedis.Database.Naming;
+using Aedis.Security.Abstractions;
+using Dapper;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Aedis.Database.MySql;
+
+/// <summary>
+///     Repositório MySQL convention-based: mapeia a entidade para tabela/colunas pela
+///     <see cref="DatabaseOptions.NamingConvention" /> (padrão snake_case), usa a propriedade <c>Id</c> como
+///     chave e detecta soft-delete pela presença de uma propriedade <c>IsDeleted</c>. Leituras vão em sessão
+///     de leitura (autocommit); escritas em sessão transacional. O
+///     <see cref="SaveAsync(TEntity,CancellationToken)" /> é um upsert quando <see cref="GetUpsertSpec" />
+///     devolve uma spec: <c>INSERT … AS new ON DUPLICATE KEY UPDATE</c> ou, com guarda, <c>UPDATE … WHERE
+///     guarda</c> + <c>INSERT</c> das linhas ausentes (ver <see cref="MySqlUpsertCompiler" />). Bulk insert
+///     delega ao <see cref="MySqlBulkInserter" /> (INSERT multi-linha em lotes). Convenções de tipo:
+///     <see cref="Guid" /> em <c>CHAR(36)</c>, <see cref="bool" /> em <c>TINYINT(1)</c>,
+///     <see cref="DateTimeOffset" /> em <c>DATETIME(6)</c> UTC, enums pelo nome declarado
+///     (<see cref="EnumPersistence" />) em paridade com o bulk; a comparação de texto segue a collation do
+///     servidor (case-insensitive por padrão). Erros do banco são normalizados em <see cref="DatabaseError" />
+///     e passam por <see cref="OnDatabaseError" />, pelo <see cref="IDatabaseErrorMapper" /> registrado e,
+///     por fim, pelo mapeamento padrão do framework.
+/// </summary>
+public class MySqlRepository<TEntity, TId> : IRepository<TEntity, TId>
+    where TEntity : class
+    where TId : notnull
+{
+    private readonly IAuditContext? _audit;
+    private readonly IDatabaseErrorMapper? _errorMapper;
+    private readonly AuditColumns _auditColumns;
+    private readonly MySqlBulkInserter _bulkInserter;
+    private readonly PropertyInfo[] _columns;
+    private readonly bool _hasDeletedAt;
+    private readonly bool _hasDeletedBy;
+    private readonly bool _hasSoftDelete;
+    private readonly PropertyInfo _idProperty;
+    private readonly ILogger _logger;
+    private readonly NamingStrategyResolver _naming;
+    private readonly IUnitOfWorkFactory _sessionFactory;
+
+    /// <summary>Opções do provider MySQL em vigor para este repositório (convenção de nomes, pool, auditoria, chunk de bulk).</summary>
+    protected readonly DatabaseOptions Options;
+
+    /// <summary>Nome da tabela resolvido para a entidade — vindo do parâmetro explícito ou da convenção de nomes aplicada ao nome do tipo.</summary>
+    protected readonly string TableName;
+
+    /// <summary>
+    ///     Constrói o repositório, resolvendo tabela e colunas da entidade por reflexão e convenção de
+    ///     nomes, localizando a chave <c>Id</c> e detectando as colunas de soft-delete (IsDeleted/DeletedAt/DeletedBy).
+    /// </summary>
+    /// <param name="sessionFactory">Fábrica de sessões (escrita/leitura) usada pelos métodos sem unidade de trabalho explícita.</param>
+    /// <param name="logger">Logger do repositório.</param>
+    /// <param name="naming">Resolvedor de estratégias de nomes para mapear propriedades em colunas/tabelas.</param>
+    /// <param name="options">Opções do provider MySQL.</param>
+    /// <param name="bulkInserter">Inseridor em massa por INSERT multi-linha, usado pelas operações de bulk.</param>
+    /// <param name="tableName">Nome de tabela explícito; quando <c>null</c>, deriva-se do nome da entidade pela convenção.</param>
+    /// <param name="auditContext">Contexto de auditoria opcional; quando presente, carimba as colunas de auditoria existentes.</param>
+    /// <param name="errorMapper">Mapeador opcional de erros do banco, consultado após <see cref="OnDatabaseError" />.</param>
+    public MySqlRepository(IUnitOfWorkFactory sessionFactory, ILogger<MySqlRepository<TEntity, TId>> logger,
+        NamingStrategyResolver naming, IOptions<DatabaseOptions> options, MySqlBulkInserter bulkInserter,
+        string? tableName = null, IAuditContext? auditContext = null, IDatabaseErrorMapper? errorMapper = null) {
+        _sessionFactory = sessionFactory;
+        _logger = logger;
+        _naming = naming;
+        Options = options.Value;
+        _bulkInserter = bulkInserter;
+        _audit = auditContext;
+        _errorMapper = errorMapper;
+        _auditColumns = AuditColumns.For(typeof(TEntity));
+
+        var entityType = typeof(TEntity);
+        TableName = tableName ?? Convert(NamingContext.ForTable(Options.NamingConvention, entityType.Name));
+        _columns = entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p is { CanRead: true, CanWrite: true } && !IsCollection(p.PropertyType))
+            .ToArray();
+        _idProperty = _columns.FirstOrDefault(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                      ?? throw new InvalidOperationException($"A entidade {entityType.Name} não tem propriedade Id.");
+        _hasSoftDelete = HasColumn("IsDeleted");
+        _hasDeletedAt = HasColumn("DeletedAt");
+        _hasDeletedBy = HasColumn("DeletedBy");
+    }
+
+    private bool HasColumn(string name) =>
+        _columns.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+
+    /// <inheritdoc />
+    public Task<TEntity?> GetByIdAsync(TId id, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => GetByIdAsync(id, uow, c), ct);
+
+    /// <inheritdoc />
+    public async Task<TEntity?> GetByIdAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        var sql = $"SELECT {SelectColumns()} FROM {TableName} WHERE {Col("Id")} = @Id{SoftDeleteSuffix()}";
+        return await unitOfWork.QuerySingleOrDefaultAsync<TEntity>(sql, new { Id = id }, ct);
+    }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<TEntity>> FindAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => FindAsync(criteria, uow, c), ct);
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<TEntity>> FindAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var (sql, parameters) = criteria.Build();
+        return await unitOfWork.QueryAsync<TEntity>(sql, parameters, ct);
+    }
+
+    /// <inheritdoc />
+    public Task<int> CountAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => CountAsync(criteria, uow, c), ct);
+
+    /// <inheritdoc />
+    public async Task<int> CountAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var (sql, parameters) = criteria.Build();
+        return await unitOfWork.QuerySingleOrDefaultAsync<int>($"SELECT count(*) FROM ({sql}) AS _c", parameters, ct);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> ExistsAsync(TId id, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => ExistsAsync(id, uow, c), ct);
+
+    /// <inheritdoc />
+    public async Task<bool> ExistsAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        var sql = $"SELECT EXISTS(SELECT 1 FROM {TableName} WHERE {Col("Id")} = @Id{SoftDeleteSuffix()})";
+        return await unitOfWork.QuerySingleOrDefaultAsync<bool>(sql, new { Id = id }, ct);
+    }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<TResult>> QueryAsync<TResult>(ICriteria<TResult> criteria, CancellationToken ct = default) =>
+        InReadSessionAsync((uow, c) => QueryAsync(criteria, uow, c), ct);
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<TResult>> QueryAsync<TResult>(ICriteria<TResult> criteria, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var (sql, parameters) = criteria.Build();
+        return await unitOfWork.QueryAsync<TResult>(sql, parameters, ct);
+    }
+
+
+    /// <inheritdoc />
+    public Task<TEntity> SaveAsync(TEntity entity, CancellationToken ct = default) =>
+        InWriteSessionAsync((uow, c) => SaveAsync(entity, uow, c), ct);
+
+    /// <inheritdoc />
+    public async Task<TEntity> SaveAsync(TEntity entity, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        Stamp(entity);
+        var parameters = ToParameters(entity, _columns);
+        var columns = string.Join(", ", _columns.Select(p => Col(p.Name)));
+        var values = string.Join(", ", _columns.Select(p => "@" + p.Name));
+        var insert = $"INSERT INTO {TableName} ({columns}) VALUES ({values})";
+
+        var spec = GetUpsertSpec();
+        if (spec is null) {
+            await unitOfWork.ExecuteAsync(insert, parameters, ct);
+            return entity;
+        }
+
+        var properties = _columns.Select(p => p.Name).ToList();
+        var guardedUpdate = MySqlUpsertCompiler.GuardedUpdate(spec, TableName, properties, Col, p => "@" + p, null);
+        if (guardedUpdate is not null)
+            await unitOfWork.ExecuteAsync(guardedUpdate, parameters, ct);
+
+        var onDuplicate = MySqlUpsertCompiler.OnDuplicateKeyUpdate(spec, TableName, properties, Col);
+        await unitOfWork.ExecuteAsync($"{insert} AS new {onDuplicate}", parameters, ct);
+        return entity;
+    }
+
+    /// <inheritdoc />
+    public Task DeleteAsync(TId id, CancellationToken ct = default) =>
+        InWriteSessionAsync(async (uow, c) => {
+            await DeleteAsync(id, uow, c);
+            return true;
+        }, ct);
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(TId id, IUnitOfWork unitOfWork, CancellationToken ct = default) {
+        if (!_hasSoftDelete) {
+            await unitOfWork.ExecuteAsync($"DELETE FROM {TableName} WHERE {Col("Id")} = @Id", new { Id = id }, ct);
+            return;
+        }
+
+        var sets = new List<string> { $"{Col("IsDeleted")} = true" };
+        var parameters = new DynamicParameters();
+        parameters.Add("@Id", id);
+
+        if (_audit is not null) {
+            if (_hasDeletedAt) {
+                sets.Add($"{Col("DeletedAt")} = @DeletedAt");
+                parameters.Add("@DeletedAt", _audit.Now);
+            }
+
+            if (_hasDeletedBy) {
+                sets.Add($"{Col("DeletedBy")} = @DeletedBy");
+                parameters.Add("@DeletedBy", _audit.CurrentActor ?? Options.DefaultAuditActor);
+            }
+        }
+
+        await unitOfWork.ExecuteAsync(
+            $"UPDATE {TableName} SET {string.Join(", ", sets)} WHERE {Col("Id")} = @Id", parameters, ct);
+    }
+
+    /// <inheritdoc />
+    public Task BulkInsertAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
+        InWriteSessionAsync(async (uow, c) => {
+            await BulkInsertAsync(entities, uow, c);
+            return true;
+        }, ct);
+
+    /// <inheritdoc />
+    public Task BulkInsertAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork, CancellationToken ct = default) =>
+        _bulkInserter.BulkInsertAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
+            GetUpsertSpec(), ct);
+
+    /// <inheritdoc />
+    public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
+        InWriteSessionAsync(async (uow, c) => {
+            await BulkInsertChunkedAsync(entities, uow, c);
+            return true;
+        }, ct);
+
+    /// <inheritdoc />
+    public Task BulkInsertChunkedAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) =>
+        _bulkInserter.BulkInsertChunkedAsync(unitOfWork, TableName, _columns, Stamped(entities), _naming, Options,
+            Options.BulkInsertChunkSize, GetUpsertSpec(), ct);
+
+    /// <inheritdoc />
+    public Task BulkUpdateAsync(IEnumerable<TEntity> entities, CancellationToken ct = default) =>
+        InWriteSessionAsync(async (uow, c) => {
+            await BulkUpdateAsync(entities, uow, c);
+            return true;
+        }, ct);
+
+    /// <inheritdoc />
+    public async Task BulkUpdateAsync(IEnumerable<TEntity> entities, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var updateColumns = _columns.Where(IsNotId).ToArray();
+        var setClause = string.Join(", ", updateColumns.Select(p => $"{Col(p.Name)} = @{p.Name}"));
+        var sql = $"UPDATE {TableName} SET {setClause} WHERE {Col("Id")} = @{_idProperty.Name}";
+
+        foreach (var entity in entities) {
+            Stamp(entity);
+            await unitOfWork.ExecuteAsync(sql, ToParameters(entity, [.. updateColumns, _idProperty]), ct);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<int> CommandAsync(ICriteria<TEntity> criteria, CancellationToken ct = default) =>
+        InWriteSessionAsync((uow, c) => CommandAsync(criteria, uow, c), ct);
+
+    /// <inheritdoc />
+    public async Task<int> CommandAsync(ICriteria<TEntity> criteria, IUnitOfWork unitOfWork,
+        CancellationToken ct = default) {
+        var (sql, parameters) = criteria.Build();
+        return await unitOfWork.ExecuteAsync(sql, parameters, ct);
+    }
+
+    /// <summary>
+    ///     Template method da especificação de upsert <strong>agnóstica de provider</strong>, aplicada de
+    ///     forma consistente no <see cref="SaveAsync(TEntity,CancellationToken)" /> e nas operações de bulk.
+    ///     Padrão <c>null</c> (insert simples). Sobrescreva com a mesma <see cref="UpsertSpec" /> que vale nos
+    ///     providers PostgreSQL e SQL Server, sem refatoração ao trocar de banco, ex.:
+    ///     <c>protected override UpsertSpec? GetUpsertSpec() => UpsertSpec.OnKey("Id")
+    ///     .SetServerUtcNow("UpdatedAt").When(g => g.Newer("ObservedAt").AndNotDeleted());</c>.
+    /// </summary>
+    protected virtual UpsertSpec? GetUpsertSpec() => null;
+
+    /// <summary>
+    ///     Hook de tradução de erros do banco: recebe o erro normalizado e pode devolver a exceção que o
+    ///     repositório deve lançar — tipicamente uma <c>BusinessException</c> com a regra violada. Devolva
+    ///     <c>null</c> para seguir a cadeia padrão: o <see cref="IDatabaseErrorMapper" /> registrado e, por fim,
+    ///     o mapeamento do framework. Erros que o provider não reconhece não chegam aqui e são relançados como
+    ///     estão. A sessão já foi revertida quando a exceção devolvida é lançada.
+    /// </summary>
+    /// <param name="error">Erro normalizado pelo provider.</param>
+    protected virtual Exception? OnDatabaseError(DatabaseError error) => null;
+
+    private Exception? TranslateDatabaseError(Exception exception) {
+        var error = MySqlDatabaseErrorTranslator.TryTranslate(exception);
+        if (error is null) return null;
+
+        return OnDatabaseError(error) ?? _errorMapper?.Map(error) ?? DefaultDatabaseErrorMapping.Map(error);
+    }
+
+
+    private async Task<T> InReadSessionAsync<T>(Func<IUnitOfWork, CancellationToken, Task<T>> action,
+        CancellationToken ct) {
+        await using var uow = await _sessionFactory.CreateReadSessionAsync(ct);
+        try {
+            return await action(uow, ct);
+        }
+        catch (Exception exception) when (TranslateDatabaseError(exception) is { } translated) {
+            throw translated;
+        }
+    }
+
+    private async Task<T> InWriteSessionAsync<T>(Func<IUnitOfWork, CancellationToken, Task<T>> action,
+        CancellationToken ct) {
+        await using var uow = await _sessionFactory.CreateWriteSessionAsync(ct);
+        try {
+            var result = await action(uow, ct);
+            await uow.CommitAsync(ct);
+            return result;
+        }
+        catch (Exception exception) when (TranslateDatabaseError(exception) is { } translated) {
+            await uow.RollbackAsync(ct);
+            throw translated;
+        }
+        catch {
+            await uow.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <summary>
+    ///     Carimba as colunas de auditoria presentes (CreatedAt/By, UpdatedAt/By, UpdatedReason) a partir
+    ///     do <see cref="IAuditContext" />, quando há um contexto registrado. No-op caso contrário.
+    /// </summary>
+    private void Stamp(TEntity entity) {
+        if (_audit is not null && _auditColumns.HasAny)
+            _auditColumns.Stamp(entity, _audit, Options.DefaultAuditActor);
+    }
+
+    /// <summary>Carimba cada entidade de forma preguiçosa (sem materializar antes do inserter).</summary>
+    private IEnumerable<TEntity> Stamped(IEnumerable<TEntity> entities) {
+        if (_audit is null || !_auditColumns.HasAny)
+            return entities;
+
+        return entities.Select(entity => {
+            _auditColumns.Stamp(entity, _audit, Options.DefaultAuditActor);
+            return entity;
+        });
+    }
+
+    private static DynamicParameters ToParameters(TEntity entity, PropertyInfo[] properties) {
+        var parameters = new DynamicParameters();
+        foreach (var property in properties)
+            parameters.Add("@" + property.Name, EnumPersistence.ToStored(property.GetValue(entity)));
+
+        return parameters;
+    }
+
+    /// <summary>Lista de colunas do SELECT; colunas cujo nome difere da propriedade ganham alias entre crases.</summary>
+    private string SelectColumns() =>
+        string.Join(", ", _columns.Select(p => {
+            var column = Col(p.Name);
+            return column.Equals(p.Name, StringComparison.Ordinal) ? column : $"{column} AS `{p.Name}`";
+        }));
+
+    private string SoftDeleteSuffix() => _hasSoftDelete ? $" AND {Col("IsDeleted")} = false" : string.Empty;
+
+    private bool IsNotId(PropertyInfo property) => property != _idProperty;
+
+    private string Col(string propertyName) => Convert(NamingContext.ForColumn(Options.NamingConvention, propertyName));
+
+    private string Convert(NamingContext context) => _naming.GetStrategy(context).Convert(context);
+
+    /// <summary>
+    ///     Decide se o tipo deve ficar fora das colunas mapeadas. <c>string</c> e <c>byte[]</c> são colunas
+    ///     escalares (texto/blob); dicionários <c>string → string</c> são colunas <c>JSON</c>. Coleções de
+    ///     tipos complexos representam navegação de agregado e são excluídas.
+    /// </summary>
+    private static bool IsCollection(Type type) {
+        if (type == typeof(string) || type == typeof(byte[]))
+            return false;
+        if (!typeof(IEnumerable).IsAssignableFrom(type))
+            return false;
+
+        var element = type.IsArray
+            ? type.GetElementType()
+            : type.IsGenericType
+                ? type.GetGenericArguments().FirstOrDefault()
+                : null;
+        return element is null || !IsSimple(element);
+    }
+
+    private static bool IsSimple(Type type) {
+        type = Nullable.GetUnderlyingType(type) ?? type;
+        return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal)
+               || type == typeof(Guid) || type == typeof(DateTime) || type == typeof(DateTimeOffset)
+               || type == typeof(DateOnly) || type == typeof(TimeOnly);
+    }
+}

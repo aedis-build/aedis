@@ -8,10 +8,11 @@ surgir um caso real que o B não cubra.
 
 A intenção de upsert é declarada **uma vez**, de forma neutra, na camada de contratos
 (`Aedis.Database.Abstractions`), e cada provider a **compila para o seu dialeto**. O mesmo
-`GetUpsertSpec()` roda no Postgres e no SQL Server sem refatoração ao trocar o provider:
+`GetUpsertSpec()` roda no Postgres, no SQL Server e no MySQL sem refatoração ao trocar o provider:
 
 - Postgres → `INSERT … ON CONFLICT (…) DO UPDATE SET … WHERE <guarda>`
 - SQL Server → `MERGE … WHEN MATCHED AND <guarda> THEN UPDATE SET …` (com `HOLDLOCK`)
+- MySQL → `INSERT … AS new ON DUPLICATE KEY UPDATE col = new.col`; com guarda, `UPDATE … WHERE <guarda>` + `INSERT` das linhas ausentes (o `ON DUPLICATE KEY UPDATE` não tem `WHERE`, e `IF(...)` por coluna é incorreto porque as atribuições são avaliadas da esquerda para a direita)
 
 Save (single-row) e bulk compartilham a mesma compilação, garantindo comportamento idêntico nos
 dois caminhos.
@@ -39,6 +40,7 @@ DSL de política **restrita** que cobre o caso dominante de upsert.
 
 - `PostgresUpsertCompiler` (`src/Aedis.Database.Postgres/`) → sufixo `ON CONFLICT … DO UPDATE … WHERE`.
 - `SqlServerUpsertCompiler` (`src/Aedis.Database.SqlServer/`) → corpo do `MERGE` (`WHEN MATCHED …`).
+- `MySqlUpsertCompiler` (`src/Aedis.Database.MySql/`) → sufixo `ON DUPLICATE KEY UPDATE` e, com guarda, o `UPDATE … WHERE` separado.
 
 Encapsulam as diferenças de dialeto: `EXCLUDED`/tabela vs `s.`/`t.`, booleano `false` vs `0`,
 `now()` vs `SYSUTCDATETIME()`, e frescor **null-aware** (`col IS NULL OR s.col >= t.col`) — sem
