@@ -95,4 +95,15 @@ public class DependencyRuleTests
         result.IsSuccessful.Should().BeTrue(
             "Aedis.ExchangeRates.Abstractions é só contrato: a consulta à fonte da cotação fica no pacote de implementação");
     }
+
+    [Fact]
+    public void AI_Abstractions_nao_depende_do_SDK_do_provedor() {
+        var result = Types.InAssembly(typeof(Aedis.AI.Abstractions.IAgentEngine).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("Anthropic", "Microsoft.AspNetCore")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.AI.Abstractions é só contrato: o SDK do provedor de agentes fica no pacote de implementação");
+    }
 }
