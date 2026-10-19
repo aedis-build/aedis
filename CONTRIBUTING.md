@@ -26,6 +26,16 @@ dotnet build
 dotnet test
 ```
 
+### Testar uma mudança num app (feed local)
+
+Para consumir o Aedis de um app antes do release, empacote com um sufixo **único** por pacote gerado:
+
+```bash
+dotnet pack Aedis.slnx -c Release -o ../aedis-feed /p:VersionSuffix=preview.1.local.$(date +%Y%m%d%H%M)
+```
+
+e use essa versão no `Directory.Packages.props` do app. Reempacotar com a mesma versão (`0.1.0-preview.1`) não chega ao app: o NuGet nunca reextrai uma versão que já está no cache global (`~/.nuget/packages`) e segue restaurando o conteúdo antigo — sintoma típico é o app falhar com um serviço que o host atual já registra (ex.: `Unable to resolve service for type ICommandExecutor`).
+
 ## Fluxo de Pull Request
 
 1. **Discuta antes** de mudanças grandes — abra uma issue ou Discussion para alinhar a direção.
