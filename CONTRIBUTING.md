@@ -1,23 +1,27 @@
-# Contribuindo com o Aedis
+# Contributing to Aedis
 
-Obrigado pelo interesse em contribuir! O Aedis cresce com a comunidade, e contribuições de todos os tamanhos são bem-vindas — de correções de typo a novos módulos.
+Thank you for your interest. Aedis grows with its community, and contributions of every size are welcome, from typo
+fixes to new modules.
 
-> Este guia vale como padrão para **todos os repositórios** da organização [`aedis-build`](https://github.com/aedis-build). Um repositório pode publicar o seu próprio `CONTRIBUTING.md` com instruções específicas (build, testes, estrutura) que complementam este.
+> This guide is the standard for **every repository** of the [`aedis-build`](https://github.com/aedis-build)
+> organization. A repository may publish its own `CONTRIBUTING.md` with specific build, test and layout instructions
+> that complement this one.
 
-Antes de começar, leia nosso [Código de Conduta](CODE_OF_CONDUCT.md). Participar do projeto significa concordar em mantê-lo.
+Before you start, read our [Code of Conduct](CODE_OF_CONDUCT.md). Taking part in the project means agreeing to uphold
+it. How decisions are made and how maintainers are chosen is in [GOVERNANCE.md](GOVERNANCE.md).
 
-## Formas de contribuir
+## Ways to contribute
 
-- 🐛 **Reportar bugs** — abra uma *issue* descrevendo o comportamento esperado, o observado e como reproduzir.
-- 💡 **Propor ideias** — use *Discussions* para arquitetura, novos módulos ou mudanças de design antes de abrir um PR grande.
-- 📖 **Melhorar docs** — documentação clara é tão valiosa quanto código.
-- 🔧 **Enviar código** — correções e features via Pull Request (veja abaixo).
+- 🐛 **Report bugs**: open an issue describing the expected behavior, the observed one and how to reproduce it.
+- 💡 **Propose ideas**: use Discussions for architecture, new modules or design changes before opening a large PR.
+- 📖 **Improve the docs**: clear documentation is as valuable as code.
+- 🔧 **Send code**: fixes and features through pull requests (see below).
 
-> Para vulnerabilidades de segurança, **não** abra uma issue pública. Siga o [SECURITY.md](SECURITY.md).
+> For security vulnerabilities, **do not** open a public issue. Follow [SECURITY.md](SECURITY.md).
 
-## Ambiente de desenvolvimento
+## Development environment
 
-Pré-requisitos: **.NET 10 SDK** (ou superior). Cada repositório documenta seus passos específicos; o fluxo típico é:
+Prerequisite: **.NET 10 SDK** (or later). Each repository documents its specific steps; the usual flow is:
 
 ```bash
 git clone https://github.com/aedis-build/<repo>.git
@@ -26,56 +30,74 @@ dotnet build
 dotnet test
 ```
 
-### Testar uma mudança num app (feed local)
+Integration tests use Testcontainers and are opt-in by environment variable (for example `AEDIS_SQLSERVER_IT=1`);
+Docker must be available for them. The CI runs them all.
 
-Para consumir o Aedis de um app antes do release, empacote com um sufixo **único** por pacote gerado:
+### Testing a change from an app (local feed)
+
+To consume Aedis from an app before a release, pack with a suffix that is **unique** per pack:
 
 ```bash
 dotnet pack Aedis.slnx -c Release -o ../aedis-feed /p:VersionSuffix=preview.1.local.$(date +%Y%m%d%H%M)
 ```
 
-e use essa versão no `Directory.Packages.props` do app. Reempacotar com a mesma versão (`0.1.0-preview.1`) não chega ao app: o NuGet nunca reextrai uma versão que já está no cache global (`~/.nuget/packages`) e segue restaurando o conteúdo antigo — sintoma típico é o app falhar com um serviço que o host atual já registra (ex.: `Unable to resolve service for type ICommandExecutor`).
+and use that version in the app's `Directory.Packages.props`. Repacking with the same version (`0.1.0-preview.1`) never
+reaches the app: NuGet does not re-extract a version that is already in the global cache (`~/.nuget/packages`) and
+keeps restoring the old content. The typical symptom is the app failing on a service the current host already
+registers (for example `Unable to resolve service for type ICommandExecutor`).
 
-## Fluxo de Pull Request
+## Pull request flow
 
-1. **Discuta antes** de mudanças grandes — abra uma issue ou Discussion para alinhar a direção.
-2. Crie um *branch* a partir de `main` (`feat/nome-curto`, `fix/nome-curto`).
-3. Mantenha o PR **pequeno e focado** — um propósito por PR. Vincule a issue relacionada.
-4. Inclua **testes** para novo comportamento e mantenha a suíte verde.
-5. Garanta que `dotnet build` e `dotnet test` passam localmente.
-6. Abra o PR com uma descrição clara do *quê* e do *porquê*.
+1. **Discuss first** for large changes: open an issue or a Discussion to align on direction.
+2. Branch from `main` (`feat/short-name`, `fix/short-name`).
+3. Keep the PR **small and focused**, one purpose per PR. Link the related issue.
+4. Include **tests** for new behavior and keep the suite green. The coverage gate is 95 % lines / 85 % branches.
+5. Make sure `dotnet build` (zero warnings) and `dotnet test` pass locally.
+6. Open the PR with a clear description of *what* and *why*. PRs that meet every criterion of
+   `.github/aedis-merge-policy.yaml` are approved and merged by the Aedis Compliance merge gate; changes to security
+   packages, workflows, licensing and versioning always get a human review.
 
-## Padrões de commit
+## Commit standards
 
-Usamos [Conventional Commits](https://www.conventionalcommits.org/):
+We use [Conventional Commits](https://www.conventionalcommits.org/); the CI rejects anything else:
 
 ```
-feat(messaging): adiciona suporte a outbox no publisher
-fix(validation): corrige resposta 422 para coleções vazias
-docs(readme): ajusta exemplo de quickstart
+feat(messaging): add outbox support to the publisher
+fix(validation): fix 422 response for empty collections
+docs(readme): adjust quickstart example
 ```
 
-Tipos comuns: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
+Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`. Subject up to 100 characters; scope with
+`[a-z0-9._/-]` only.
 
-## Padrões de código
+## Code standards
 
-- **Respeite a regra de dependência.** Código de domínio e aplicação referencia **apenas** contratos (`Aedis.Core`, `Aedis.*.Abstractions`); somente o *host*/*composition root* referencia implementações concretas (`Aedis.*.<Provider>`). Não acople o domínio à infraestrutura — é o que torna a portabilidade um *package swap*.
-- **Respeite os limites de contexto.** Cada módulo (`Aedis.*`) tem responsabilidade clara; não acople domínios. Uma fonte da verdade por contexto.
-- **Domínio primeiro.** Modele o negócio com linguagem ubíqua antes da tecnologia.
-- **Eventos sobre chamadas síncronas** onde fizer sentido — coreografia, não orquestração central.
-- **Seguro por construção.** Não desabilite controles padrão sem justificar o trade-off; mantenha a postura segura como caminho de menor resistência.
-- Siga o `.editorconfig` do repositório. `nullable` e `implicit usings` habilitados.
-- Prefira código testável e explícito; evite otimização prematura, mas documente quando otimizar de propósito.
-- APIs públicas devem ser previsíveis e estáveis — trate contratos como produto.
+- **Respect the dependency rule.** Domain and application code reference **only** contracts (`Aedis.Core`,
+  `Aedis.*.Abstractions`); only the host / composition root references concrete implementations
+  (`Aedis.*.<Provider>`). Do not couple the domain to infrastructure; that is what makes portability a package swap.
+- **Respect context boundaries.** Each module (`Aedis.*`) has a clear responsibility; do not couple domains. One
+  source of truth per context.
+- **Domain first.** Model the business in ubiquitous language before technology.
+- **Events over synchronous calls** where it makes sense: choreography, not central orchestration.
+- **Secure by construction.** Do not disable default controls without justifying the trade-off; keep the secure
+  posture as the path of least resistance.
+- Follow the repository `.editorconfig`. `nullable` and `implicit usings` are enabled.
+- Every public member has an XML summary in English (`CS1591` is on); no inline comments. See
+  [docs/CODE-STYLE.md](docs/CODE-STYLE.md).
+- Prefer explicit, testable code; avoid premature optimization, but document deliberate optimizations.
+- Public APIs must be predictable and stable: treat contracts as a product.
 
-## Licença das contribuições
+## Contribution license
 
-Ao enviar um Pull Request, você concorda que sua contribuição é licenciada sob a [Apache-2.0](LICENSE), a mesma licença do projeto. Recomendamos assinar seus commits (`git commit -s`) para incluir o *sign-off* do [DCO](https://developercertificate.org/).
+By submitting a pull request you agree that your contribution is licensed under [Apache-2.0](LICENSE), the same license
+as the project. We recommend signing off your commits (`git commit -s`) per the
+[DCO](https://developercertificate.org/).
 
-## Revisão
+## Review
 
-PRs são revisados pelos mantenedores. Podemos pedir ajustes — é parte normal do processo e não um julgamento sobre o seu trabalho. Seja paciente e aberto ao diálogo; faremos o mesmo.
+Maintainers review PRs. We may ask for changes; that is a normal part of the process, not a judgment of your work. Be
+patient and open to dialogue; we will do the same.
 
 ---
 
-Obrigado por ajudar a construir uma fundação segura para o ecossistema .NET. 🦫
+Thank you for helping build a secure foundation for the .NET ecosystem. 🦫

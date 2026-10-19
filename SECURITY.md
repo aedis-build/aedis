@@ -1,30 +1,33 @@
-# Política de segurança
+# Security policy
 
-## Versões suportadas
+## Supported versions
 
-| Versão | Suporte |
+| Version | Support |
 |---|---|
-| 0.x (preview) | correções em `main` |
+| 0.x (preview) | fixes land on `main` |
 
-## Como reportar uma vulnerabilidade
+## Reporting a vulnerability
 
-Use **Report a vulnerability** na aba Security deste repositório (GitHub Private Vulnerability Reporting). Não abra
-issue pública para vulnerabilidades.
+Use **Report a vulnerability** in the Security tab of this repository (GitHub Private Vulnerability Reporting). Do not
+open a public issue for vulnerabilities.
 
-- Confirmação de recebimento em até 3 dias úteis.
-- Avaliação inicial de severidade (CVSS) em até 7 dias.
-- Correção ou mitigação documentada para severidade alta/crítica em até 30 dias.
-- Crédito ao pesquisador no advisory, se desejar.
+- Acknowledgement within 3 business days.
+- Initial severity assessment (CVSS) within 7 days.
+- Fix or documented mitigation for high/critical severity within 30 days.
+- Credit to the researcher in the advisory, if desired.
 
-## Escopo
+## Scope
 
-Todos os pacotes `Aedis.*` publicados a partir deste repositório, os templates `dotnet new aedis-*` e o analisador
-`Aedis.Analyzers`. A entrega em Kubernetes (chart, políticas, workflows) é do
-[aedis-platform](https://github.com/aedis-build/aedis-platform), que tem a sua própria política.
+Every `Aedis.*` package published from this repository, the `dotnet new aedis-*` templates and the `Aedis.Analyzers`
+analyzer. Kubernetes delivery (chart, policies, workflows) belongs to
+[aedis-platform](https://github.com/aedis-build/aedis-platform), which has its own policy.
 
-## Práticas deste repositório
+## Practices of this repository
 
-- Actions pinadas por SHA, `permissions: {}` por padrão, sem credenciais de longa duração.
-- Dependências atualizadas por Dependabot com cooldown; CodeQL e Semgrep (regras do Aedis) a cada PR; OpenSSF
-  Scorecard publicado; selo OpenSSF Best Practices em andamento.
-- Postura de segurança dos pacotes em `docs/SECURITY-COMPLIANCE.md` e `docs/SECURITY-HARDENING.md`.
+- Actions pinned by SHA, `permissions: {}` by default, no long-lived credentials.
+- Dependencies updated by Dependabot with cooldown; CodeQL and Semgrep (Aedis rules) on every pull request;
+  known-vulnerability scan of dependencies (`deps-summary`) on every build; OpenSSF Scorecard published; OpenSSF Best
+  Practices badge in progress.
+- Releases versioned from Conventional Commits, signed with Sigstore, with SBOM (SPDX) and build provenance (GitHub
+  Artifact Attestations).
+- Security posture of the packages in `docs/SECURITY-COMPLIANCE.md` and `docs/SECURITY-HARDENING.md`.
