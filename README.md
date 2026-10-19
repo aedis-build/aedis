@@ -47,8 +47,8 @@ Dizer só "hexagonal" subvende o Aedis — ele opera em três níveis:
 | Tier | Pacotes |
 |---|---|
 | **1 · Core puro** | `Aedis.Core` · `Aedis.Exceptions` · `Aedis.Events` · `Aedis.Domain` · `Aedis.Commands` |
-| **2 · Abstrações** | `Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Payments.Abstractions` · `Aedis.ExchangeRates.Abstractions` |
-| **3 · Implementações** | `Aedis.Cache.Redis` · `Aedis.Messaging.{RabbitMq,IbmMq,AwsSqs}` · `Aedis.Database.{Postgres,SqlServer,MySql}` · `Aedis.Storage.S3` · `Aedis.Observability.{Serilog,Otlp}` · `Aedis.Hosting.{AspNetCore,Worker}` · `Aedis.Security.Keycloak` · `Aedis.Diagnostics` · `Aedis.Payments.Stripe` · `Aedis.ExchangeRates.Ptax` |
+| **2 · Abstrações** | `Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Payments.Abstractions` · `Aedis.ExchangeRates.Abstractions` · `Aedis.AI.Abstractions` |
+| **3 · Implementações** | `Aedis.Cache.Redis` · `Aedis.Messaging.{RabbitMq,IbmMq,AwsSqs}` · `Aedis.Database.{Postgres,SqlServer,MySql}` · `Aedis.Storage.S3` · `Aedis.Observability.{Serilog,Otlp}` · `Aedis.Hosting.{AspNetCore,Worker}` · `Aedis.Security.Keycloak` · `Aedis.Diagnostics` · `Aedis.Payments.Stripe` · `Aedis.ExchangeRates.Ptax` · `Aedis.AI.ManagedAgents` |
 | **4 · Meta + tooling** | `Aedis.Build` (batteries-included) · `Aedis.Templates` · `Aedis.Analyzers` |
 
 Eventos em tempo real para o navegador (Server-Sent Events) pelo host seguro: **[docs/SERVER-SENT-EVENTS.md](docs/SERVER-SENT-EVENTS.md)**.

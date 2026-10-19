@@ -1,0 +1,20 @@
+# Política do portão de merge (aedis-build/aedis-platform merge-gate.yml). Lida sempre do branch padrão; o que não
+# está aqui exige um humano.
+schema: aedis.platform/merge-policy/v1
+trustedAuthors: [jeffersonnlucas]
+humanRequiredPaths:
+  - ".github/**"
+  - CODEOWNERS
+  - SECURITY.md
+  - LICENSE
+  - "LICENSES/**"
+  - REUSE.toml
+  - Directory.Build.props
+  - Directory.Packages.props
+  - "src/Aedis.Security*/**"
+  - "src/Aedis.Signing*/**"
+requiredSummaries: [coverage-summary, sast-summary]
+coverageNoRegression: true
+maxChangedLines: 2000
+allowBreaking: false
+mergeMethod: squash

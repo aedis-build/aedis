@@ -164,6 +164,7 @@ public sealed class PostgresRepositoryTests : IClassFixture<PostgresRepositoryTe
 
         for (var i = 0; i < 3; i++) {
             await using var session = await factory.CreateReadSessionAsync();
+            session.HasActiveTransaction().Should().BeFalse("leitura roda em autocommit: nada a confirmar ou reverter no descarte");
             (await session.QuerySingleOrDefaultAsync<int>("SELECT 1")).Should().Be(1);
             await session.CommitAsync();
         }
