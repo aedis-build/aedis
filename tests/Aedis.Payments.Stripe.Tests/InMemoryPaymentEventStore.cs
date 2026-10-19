@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
+using Aedis.Payments.Abstractions;
 
-namespace Aedis.Payments.Abstractions;
+namespace Aedis.Payments.Stripe.Tests;
 
 /// <summary>
-///     <see cref="IPaymentEventStore" /> em memória do processo. Serve a testes e a uma instância única: não sobrevive a
-///     restart nem é visto por outras réplicas. Uma reserva sem conclusão expira em <see cref="ClaimTimeout" />, para
-///     um processamento que morreu no meio não bloquear o reenvio para sempre.
+///     <see cref="IPaymentEventStore" /> em memória para os testes: não sobrevive a restart nem é visto por outras
+///     réplicas, por isso não é entregue às aplicações. Uma reserva sem conclusão expira em <see cref="ClaimTimeout" />,
+///     para um processamento que morreu no meio não bloquear o reenvio para sempre.
 /// </summary>
 public sealed class InMemoryPaymentEventStore(TimeProvider? timeProvider = null) : IPaymentEventStore
 {

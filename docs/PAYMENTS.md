@@ -6,7 +6,7 @@
 
 | Pacote | Tier | Papel |
 |---|---|---|
-| `Aedis.Payments.Abstractions` | 2 | `IPaymentGateway`, `IPaymentWebhookProcessor`, `IPaymentEventHandler`, `IPaymentEventStore` (+ `InMemoryPaymentEventStore`), valores (`PaymentRef`, `Money`, `PlanPrice`, `OneOffCharge`…), eventos (`PaymentSucceeded`, `PaymentFailed`, `SubscriptionChanged`, `SubscriptionCanceled`, `PaymentMethodUpdated`), `AddAedisPayments()` |
+| `Aedis.Payments.Abstractions` | 2 | `IPaymentGateway`, `IPaymentWebhookProcessor`, `IPaymentEventHandler`, `IPaymentEventStore`, valores (`PaymentRef`, `Money`, `PlanPrice`, `OneOffCharge`…), eventos (`PaymentSucceeded`, `PaymentFailed`, `SubscriptionChanged`, `SubscriptionCanceled`, `PaymentMethodUpdated`), `AddAedisPayments()` |
 | `Aedis.Payments.Stripe` | 3 | Gateway e processador de webhook sobre a Stripe, várias contas por aplicação; `WithStripe(configuration)` |
 
 O código de aplicação depende só de `Aedis.Payments.Abstractions`; a composition root escolhe o provider e registra o store e os handlers:
@@ -73,7 +73,7 @@ app.MapPost("/webhooks/pagamentos", async (HttpRequest request, IPaymentWebhookP
 ```
 
 - **Assinatura, falha fechado.** O cabeçalho `Stripe-Signature` é conferido contra o `WebhookSecret` de cada conta, com tolerância de 5 minutos. Sem acerto (segredo errado, corpo adulterado, assinatura velha, cabeçalho ausente), `PaymentWebhookSignatureException` e nada é processado. Leia o corpo cru: a assinatura cobre os bytes exatos.
-- **Idempotência.** O evento é reservado no `IPaymentEventStore` (`stripe:{conta}:{evt_…}`) antes dos handlers e concluído só depois de todos passarem. Reenvio de evento concluído volta `WebhookOutcome.Duplicate` sem chamar handler; exceção de handler libera a reserva e propaga (responda 5xx), e a Stripe reenvia. Sem `IPaymentEventStore` registrado o processador recusa a notificação. `InMemoryPaymentEventStore` serve a testes e a uma instância única; em produção, use uma tabela com chave única e o mesmo contrato (reserva com prazo, conclusão, liberação).
+- **Idempotência.** O evento é reservado no `IPaymentEventStore` (`stripe:{conta}:{evt_…}`) antes dos handlers e concluído só depois de todos passarem. Reenvio de evento concluído volta `WebhookOutcome.Duplicate` sem chamar handler; exceção de handler libera a reserva e propaga (responda 5xx), e a Stripe reenvia. Sem `IPaymentEventStore` registrado o processador recusa a notificação. Use uma tabela com chave única e o mesmo contrato (reserva com prazo, conclusão, liberação).
 - **Versão da API.** Crie os endpoints de webhook com a versão da API do `Stripe.net` em uso (`StripeConfiguration.ApiVersion`); evento de outra versão é rejeitado na leitura.
 - **Eventos traduzidos** (cada handler recebe um `PaymentEvent` num escopo de DI por notificação):
 
