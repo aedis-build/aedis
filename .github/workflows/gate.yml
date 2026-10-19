@@ -21,6 +21,7 @@ jobs:
       actions: read
     with:
       head-sha: ${{ github.event.workflow_run.head_sha }}
+      platform-ref: e4ced17a596571eb2dc8b6862a66fe4279ffa314
     secrets:
       app-id: ${{ secrets.AEDIS_APP_ID }}
       app-private-key: ${{ secrets.AEDIS_APP_PRIVATE_KEY }}
