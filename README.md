@@ -11,8 +11,7 @@
 
 <br>
 
-[![CI](https://github.com/aedis-build/aedis-dotnet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aedis-build/aedis-dotnet/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/aedis-build/aedis-dotnet/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/aedis-build/aedis-dotnet/actions/workflows/codeql.yml)
+[![aedis-ci](https://github.com/aedis-build/aedis-dotnet/actions/workflows/aedis-ci.yml/badge.svg?branch=main)](https://github.com/aedis-build/aedis-dotnet/actions/workflows/aedis-ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/aedis-build/aedis-dotnet/badge)](https://scorecard.dev/viewer/?uri=github.com/aedis-build/aedis-dotnet)
 [![codecov](https://codecov.io/gh/aedis-build/aedis-dotnet/graph/badge.svg)](https://codecov.io/gh/aedis-build/aedis-dotnet)
 [![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/spec/v1.0/levels#build-l3)

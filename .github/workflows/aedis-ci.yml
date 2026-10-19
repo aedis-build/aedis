@@ -1,0 +1,37 @@
+# Pipeline único de qualidade do framework: chama o aedis-ci do Aedis Platform (Conventional Commits, build + testes
+# com cobertura e gate 95/85, Codecov, SAST, CodeQL, REUSE). O conteúdo do pipeline é da plataforma; aqui ficam só o
+# gatilho, as permissões e os parâmetros do repositório. Em PR roda para qualquer base, para as PRs empilhadas
+# também serem validadas; o agendamento semanal reexecuta CodeQL e SAST sobre o código parado.
+name: aedis-ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  schedule:
+    - cron: "23 5 * * 2"
+
+permissions: {}
+
+jobs:
+  aedis:
+    uses: aedis-build/aedis-platform/.github/workflows/aedis-ci.yml@6c9ae788df5073558dc7fd89145ca30dd0dfeed0 # feat/aedis-ci (repinar em main após o merge)
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      security-events: write
+      id-token: write
+    with:
+      language: dotnet
+      solution: Aedis.slnx
+      dotnet-version: 10.0.x
+      min-line: 95
+      min-branch: 85
+      codecov: true
+      test-env: |
+        AEDIS_SQLSERVER_IT=1
+        AEDIS_AWS_IT=1
+        AEDIS_VAULT_IT=1
+        AEDIS_IBMMQ_IMAGE=ghcr.io/aedis-build/aedis-dotnet/ibm-mq:10.0.1.0
+      platform-ref: 6c9ae788df5073558dc7fd89145ca30dd0dfeed0
