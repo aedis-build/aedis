@@ -20,6 +20,10 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.OpenApi.Tests" />
+  </ItemGroup>
+
   <!-- Sem o gerador de XML comments do pacote: ele interceptaria o AddOpenApi desta biblioteca com a documentação dela, não a do app. -->
   <Target Name="RemoveOpenApiXmlCommentGenerator" BeforeTargets="CoreCompile">
     <ItemGroup>

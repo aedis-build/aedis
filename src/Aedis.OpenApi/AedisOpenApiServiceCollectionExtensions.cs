@@ -13,7 +13,8 @@ namespace Microsoft.Extensions.DependencyInjection;
 ///     (when enabled), <c>[Obsolete]</c> as <c>deprecated</c>, the <c>[ProducesStandardErrors]</c> responses,
 ///     the <c>QUERY</c> operations under <c>x-oai-additionalOperations</c>, the HAL schema ids and the
 ///     <c>x-aedis-roles</c>/<c>x-aedis-anonymous</c>/<c>x-aedis-risk</c>/<c>x-aedis-rules</c> extensions that
-///     portals and agents read instead of reimplementing authorization, risk and 422 rules.
+///     portals and agents read instead of reimplementing authorization, risk and 422 rules. The application's XML
+///     documentation comments (actions, parameters, DTOs) fill summaries and descriptions left empty by attributes.
 /// </summary>
 public static class AedisOpenApiServiceCollectionExtensions
 {
@@ -56,6 +57,8 @@ public static class AedisOpenApiServiceCollectionExtensions
             openApi.AddOperationTransformer<AuthorizationOperationTransformer>();
             openApi.AddOperationTransformer<RiskOperationTransformer>();
             openApi.AddOperationTransformer<ValidationRulesOperationTransformer>();
+            openApi.AddOperationTransformer<XmlCommentsOperationTransformer>();
+            openApi.AddSchemaTransformer<XmlCommentsSchemaTransformer>();
             openApi.AddDocumentTransformer<QueryOperationsDocumentTransformer>();
 
             if (options.IncludeBearerSecurity)

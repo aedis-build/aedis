@@ -16,7 +16,8 @@ namespace Aedis.OpenApi;
 ///     transformer synthesizes them under the <c>x-oai-additionalOperations</c> extension — the shape tools
 ///     like Scalar already read. Body and responses point (<c>$ref</c>) to the component schemas the other
 ///     operations produced, when present; <c>[EndpointSummary]</c>/<c>[EndpointDescription]</c>,
-///     <c>[Obsolete]</c> and <c>[ProducesStandardErrors]</c> are honored, as are the <c>x-aedis-*</c>
+///     <c>[Obsolete]</c> and <c>[ProducesStandardErrors]</c> are honored (the action's XML <c>&lt;summary&gt;</c>/
+///     <c>&lt;remarks&gt;</c> fill summary/description when the attributes are absent), as are the <c>x-aedis-*</c>
 ///     metadata extensions the operation transformers would have added.
 /// </summary>
 public sealed class QueryOperationsDocumentTransformer : IOpenApiDocumentTransformer
@@ -59,13 +60,15 @@ public sealed class QueryOperationsDocumentTransformer : IOpenApiDocumentTransfo
         var operation = new JsonObject();
         var metadata = api.ActionDescriptor.EndpointMetadata;
 
+        var action = (api.ActionDescriptor as ControllerActionDescriptor)?.MethodInfo;
+
         if (api.ActionDescriptor is ControllerActionDescriptor descriptor)
             operation["tags"] = new JsonArray(descriptor.ControllerName);
 
-        if (metadata.OfType<EndpointSummaryAttribute>().FirstOrDefault()?.Summary is { } summary)
+        if ((metadata.OfType<EndpointSummaryAttribute>().FirstOrDefault()?.Summary ?? (action is null ? null : XmlDocumentation.Summary(action))) is { } summary)
             operation["summary"] = summary;
 
-        if (metadata.OfType<EndpointDescriptionAttribute>().FirstOrDefault()?.Description is { } description)
+        if ((metadata.OfType<EndpointDescriptionAttribute>().FirstOrDefault()?.Description ?? (action is null ? null : XmlDocumentation.Remarks(action))) is { } description)
             operation["description"] = description;
 
         if (metadata.OfType<ObsoleteAttribute>().Any())
