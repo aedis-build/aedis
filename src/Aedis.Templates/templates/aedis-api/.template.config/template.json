@@ -10,7 +10,7 @@
   ],
   "identity": "Aedis.Templates.Api",
   "name": "Aedis Secure API (camadas + CRUD)",
-  "description": "Solução REST em 4 camadas (Api/Application/Domain/Infrastructure + testes) sobre o AedisApiHost: CRUD de exemplo ponta a ponta com CQRS, repositório PostgreSQL, HATEOAS, validação 422, ProblemDetails e autenticação fail-closed. Inclui Dockerfile endurecido, values do chart aedis-app e CI do Aedis Platform.",
+  "description": "Solução REST em 4 camadas (Api/Application/Domain/Infrastructure + testes) sobre o AedisApiHost: CRUD de exemplo ponta a ponta com CQRS, repositório PostgreSQL, HATEOAS (Aedis.Hypermedia), OpenAPI 3.1 + Scalar só em Development, validação 422, ProblemDetails e autenticação fail-closed. Inclui Dockerfile endurecido, values do chart aedis-app e CI do Aedis Platform.",
   "shortName": "aedis-api",
   "tags": {
     "language": "C#",

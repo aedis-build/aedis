@@ -61,7 +61,7 @@ controles em `docs/SECURITY-COMPLIANCE.md`):
 | **T1059** Command and Scripting Interpreter (injeção) | SQL parametrizado, sem shell-out, validação de entrada |
 | **T1203** Exploitation for Client Execution / corrupção de memória | código gerenciado memory-safe (0 `unsafe`) + hardening AOT |
 | **T1195** Supply Chain Compromise | build determinístico, CPM com versões fixas, override de transitivo vulnerável |
-| **T1592** Gather Victim Host Information | sem header `Server`, Swagger off por default, erros genéricos |
+| **T1592** Gather Victim Host Information | sem header `Server`, documentação OpenAPI só com o plugin `Aedis.OpenApi` (e só em Development no template), erros genéricos |
 
 **Fora do escopo do framework (responsabilidade do IdP/operador/imagem):** brute force de **credencial** e
 revogação definitiva (Keycloak); hardening de binário/processo/imagem (runtime/SO/container — ver

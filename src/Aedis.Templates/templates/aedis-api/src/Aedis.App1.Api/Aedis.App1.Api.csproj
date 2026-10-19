@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <PackageReference Include="Aedis.Hosting.AspNetCore" />
+    <PackageReference Include="Aedis.Hypermedia.AspNetCore" />
+    <PackageReference Include="Aedis.OpenApi" />
+    <PackageReference Include="Aedis.OpenApi.Scalar" />
     <PackageReference Include="Aedis.Security.Keycloak" />
     <PackageReference Include="Aedis.Security" />
     <PackageReference Include="Aedis.Database.Postgres" />

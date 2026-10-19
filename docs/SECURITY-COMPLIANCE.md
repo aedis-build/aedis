@@ -27,7 +27,7 @@ Uma biblioteca entrega **controles técnicos de camada de aplicação**. Por iss
 | 11 | Validação de JWT (issuer/audience/lifetime, claims preservados) | provider (ex.: `Aedis.Security.Keycloak`) | A07 | PR.AA-03 | A.8.5 | mitiga T1550.001 |
 | 12 | Logging estruturado + telemetria OTLP + contexto de auditoria | `Aedis.Observability.*`, `IAuditContext` | A09 | DE.CM, DE.AE | A.8.15, A.8.16 | M1047; suporta detecção de T1110/T1078 |
 | 13 | Shutdown gracioso (drena requisições, libera recursos) | `Aedis.Diagnostics` | A04 | PR.PS, RC.RP | A.8.14 | reduz perda/condição de corrida no encerramento |
-| 14 | Swagger desligado por default (opt-in) | `AedisApiHost.EnableSwagger` | A05 | PR.PS | A.8.9 | mitiga T1592 (redução de superfície) |
+| 14 | Documentação OpenAPI ausente por default: plugin opt-in por pacote (`Aedis.OpenApi` + `Aedis.OpenApi.Scalar`) e, no template, mapeado só em `IsDevelopment()` | `MapAedisOpenApi`/`MapAedisScalar` | A05 | PR.PS | A.8.9 | mitiga T1592 (redução de superfície) |
 | 15 | Build determinístico, CPM com versões fixas, override de transitivo vulnerável | `Directory.*.props` | A06, A08 | ID.RA, PR.PS | A.8.8, A.8.29, A.8.30 | mitiga T1195 (supply chain) |
 | 16 | Compressão de resposta consciente de HTTPS | `AedisApiHost` (response compression) | — | — | — | trade-off documentado (BREACH) |
 | 17 | Anti-força-bruta por credencial com bloqueio em 3 níveis configuráveis (chaveado pelo alvo, não pelo IP → imune a IP-rotation; distribuído via ICache) | `IBruteForceGuard`/`CacheBruteForceGuard` | A07 | PR.AA, DE.CM | A.8.5 | M1036; mitiga T1110 (incl. T1110.003 com rotação de IP) |

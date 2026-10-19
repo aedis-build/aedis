@@ -49,10 +49,24 @@ dotnet run --project src/Aedis.App1.Api
 dotnet test
 ```
 
-Os endpoints exigem autenticação (`[Authorize]`, fail-closed). Para liberar o Swagger em desenvolvimento,
-descomente `EnableSwagger` em `ApiHost.cs`. Os links de hipermídia são declarados em `ProductLinks` (resolvidos
-por *action*, sem URL na mão); para condicioná-los à permissão do usuário, injete `ICurrentUser` e só declare o
-link quando o papel exigido estiver presente.
+Os endpoints exigem autenticação (`[Authorize]`, fail-closed). Os links de hipermídia são declarados em
+`ProductLinks` (resolvidos por *action*, sem URL na mão); para condicioná-los à permissão do usuário, injete
+`ICurrentUser` e só declare o link quando o papel exigido estiver presente.
+
+## Documentação OpenAPI (Scalar)
+
+A documentação é um plugin (`Aedis.OpenApi` + `Aedis.OpenApi.Scalar`), ligado em `ApiHost.cs` só em Development:
+`/openapi` abre a UI do Scalar e `/openapi/v1.json` serve o documento OpenAPI 3.1 (seção `OpenApi` do
+`appsettings` para título, versão e prefixo). Actions `[HttpQuery]` saem sob `x-oai-additionalOperations`.
+
+Além do contrato, cada operação publica extensões que portais e agentes leem em vez de reimplementar a API:
+
+| Extensão | Origem | Conteúdo |
+|---|---|---|
+| `x-aedis-roles` | `[Authorize(Roles)]` e as roles das policies resolvidas | roles exigidas, ordenadas |
+| `x-aedis-anonymous` | `[AllowAnonymous]` | `true` |
+| `x-aedis-risk` | `[OperationRisk(RiskLevel, "motivo")]` | `{ "level": "HIGH", "reason": "..." }` — High/Critical exigem aprovação humana quando um agente executa |
+| `x-aedis-rules` | validators FluentValidation do body/query | uma entrada por regra com a mensagem do 422 (`field`, `type`, `parameters`, `conditional`) |
 
 ## Imagem e deploy
 

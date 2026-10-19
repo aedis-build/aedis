@@ -5,6 +5,7 @@ using Aedis.Hosting.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Aedis.App1.Api;
 
@@ -12,13 +13,11 @@ namespace Aedis.App1.Api;
 ///     Host da API. Por herdar de <see cref="AedisApiHost" />, já sobe com health probes
 ///     (<c>/health</c>, <c>/health/live</c>, <c>/health/ready</c>), security headers, rate limiting,
 ///     ProblemDetails (RFC 9457), validação 422 e o portão de autenticação fail-closed. Aqui o host apenas
-///     compõe as camadas (aplicação, infraestrutura), liga os controllers e registra os builders de HATEOAS.
-///     Swagger é opt-in.
+///     compõe as camadas (aplicação, infraestrutura), liga os controllers e os plugins de hipermídia
+///     (<c>Aedis.Hypermedia.AspNetCore</c>) e de documentação (<c>Aedis.OpenApi</c> + <c>Aedis.OpenApi.Scalar</c>,
+///     expostos só em Development).
 /// </summary>
 public sealed class ApiHost : AedisApiHost {
-    // Para expor o Swagger em desenvolvimento, descomente:
-    // protected override bool EnableSwagger => true;
-
     /// <inheritdoc />
     protected override void ConfigureAuthentication(IServiceCollection services, IConfiguration configuration) {
         services.AddAedisKeycloakAuth(configuration);
@@ -35,10 +34,16 @@ public sealed class ApiHost : AedisApiHost {
 
         services.AddScoped<ProductMapper>();
         services.AddAedisHypermedia().Resource<ProductResponse, ProductLinks>();
+        services.AddAedisOpenApi(configuration);
     }
 
     /// <inheritdoc />
     protected override void ConfigureMiddleware(WebApplication app) {
         app.MapControllers();
+
+        if (app.Environment.IsDevelopment()) {
+            app.MapAedisOpenApi();
+            app.MapAedisScalar();
+        }
     }
 }
