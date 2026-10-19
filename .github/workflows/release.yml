@@ -63,7 +63,7 @@ jobs:
     name: Empacotar, assinar, atestar e publicar (SLSA Build L3)
     needs: [cut]
     if: always() && (github.event_name == 'push' || needs.cut.result == 'success')
-    uses: aedis-build/aedis-platform/.github/workflows/release-nuget.yml@4b216788ded9c027be75453af7bf917ec7567fd5
+    uses: aedis-build/aedis-platform/.github/workflows/release-nuget.yml@7bc05934d08f7ea3c238c1ffe330e99775f9084a
     permissions:
       contents: write
       id-token: write

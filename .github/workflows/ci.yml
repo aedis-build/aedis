@@ -23,10 +23,8 @@ jobs:
     permissions:
       contents: read
       packages: read
-      id-token: write # upload ao Codecov por OIDC
     with:
       solution: Aedis.slnx
-      codecov: true
       dotnet-version: 10.0.x
       # Mínimo aceitável do framework: 95 % de linhas. Hoje a suíte cobre ~55 % (mesclado, sem os containers de
       # integração); o check fica vermelho até os pacotes abaixo do piso ganharem testes ou perderem código em excesso.
@@ -38,6 +36,14 @@ jobs:
         AEDIS_AWS_IT=1
         AEDIS_VAULT_IT=1
         AEDIS_IBMMQ_IMAGE=ghcr.io/aedis-build/aedis-dotnet/ibm-mq:10.0.1.0
+
+  codecov:
+    name: Codecov
+    needs: build-test
+    uses: aedis-build/aedis-platform/.github/workflows/codecov.yml@7bc05934d08f7ea3c238c1ffe330e99775f9084a
+    permissions:
+      contents: read
+      id-token: write
 
   reuse:
     name: REUSE (licença e copyright em todo arquivo)
