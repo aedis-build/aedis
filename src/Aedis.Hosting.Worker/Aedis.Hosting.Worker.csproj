@@ -10,6 +10,7 @@
     <ProjectReference Include="..\Aedis.Diagnostics\Aedis.Diagnostics.csproj" />
     <ProjectReference Include="..\Aedis.Observability.Serilog\Aedis.Observability.Serilog.csproj" />
     <ProjectReference Include="..\Aedis.Observability.Otlp\Aedis.Observability.Otlp.csproj" />
+    <ProjectReference Include="..\Aedis.Tenancy\Aedis.Tenancy.csproj" />
   </ItemGroup>
 
   <ItemGroup>

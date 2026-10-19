@@ -11,6 +11,7 @@
     <ProjectReference Include="..\Aedis.Domain\Aedis.Domain.csproj" />
     <ProjectReference Include="..\Aedis.Exceptions\Aedis.Exceptions.csproj" />
     <ProjectReference Include="..\Aedis.Security.Abstractions\Aedis.Security.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Tenancy.Abstractions\Aedis.Tenancy.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

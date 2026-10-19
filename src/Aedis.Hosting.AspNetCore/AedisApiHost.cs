@@ -63,6 +63,13 @@ public abstract class AedisApiHost
     /// <summary>Quando <c>true</c> (default), liga a telemetria OTLP (métricas/traces).</summary>
     protected virtual bool EnableTelemetry => true;
 
+    /// <summary>
+    ///     Quando <c>true</c>, liga a multi-tenancy: registra <c>AddAedisTenancy</c> (tenant da claim
+    ///     <c>Tenancy:ClaimType</c>, trocável por outro <c>ITenantResolver</c>) e resolve o tenant de cada
+    ///     requisição logo após a autorização. Default <c>false</c>.
+    /// </summary>
+    protected virtual bool EnableTenancy => false;
+
     /// <summary>Quando <c>true</c>, expõe o Swagger. Default <c>false</c> — opt-in, mantendo a superfície mínima.</summary>
     protected virtual bool EnableSwagger => false;
 
@@ -148,6 +155,9 @@ public abstract class AedisApiHost
         services.ConfigureHttpJsonOptions(options => SystemJsonOptionsFactory.Configure(options.SerializerOptions));
         services.AddAedisApiValidation();
 
+        if (EnableTenancy)
+            services.AddAedisTenancy(configuration);
+
         if (EnableSwagger)
             services.AddAedisSwagger(configuration, ApplicationInfo.DisplayName, ConfigureSwagger);
     }
@@ -189,6 +199,9 @@ public abstract class AedisApiHost
             app.UseAuthentication();
 
         app.UseAuthorization();
+
+        if (EnableTenancy)
+            app.UseAedisTenancy();
 
         ConfigureMiddleware(app);
 

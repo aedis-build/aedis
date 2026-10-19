@@ -106,4 +106,15 @@ public class DependencyRuleTests
         result.IsSuccessful.Should().BeTrue(
             "Aedis.AI.Abstractions é só contrato: o SDK do provedor de agentes fica no pacote de implementação");
     }
+
+    [Fact]
+    public void Tenancy_Abstractions_nao_depende_de_AspNetCore_nem_de_provider() {
+        var result = Types.InAssembly(typeof(Aedis.Tenancy.Abstractions.ICurrentTenant).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("Microsoft.AspNetCore", "Npgsql", "Dapper", "Aedis.Security.Keycloak")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.Tenancy.Abstractions é só contrato: resolução por token, middleware e banco ficam nos pacotes de implementação");
+    }
 }
