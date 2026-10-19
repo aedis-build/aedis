@@ -11,6 +11,20 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: "build(deps)"
+  - package-ecosystem: docker
+    directories:
+      - /docs/hardening
+      - /src/Aedis.Templates/templates/aedis-api
+      - /src/Aedis.Templates/templates/aedis-worker/standalone
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      docker:
+        patterns: ["*"]
+    commit-message:
+      prefix: "build(deps)"
   - package-ecosystem: github-actions
     directory: /
     schedule:
