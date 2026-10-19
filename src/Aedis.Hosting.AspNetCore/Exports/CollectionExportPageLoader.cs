@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using Aedis.Hosting.AspNetCore.Requests;
+using Aedis.Hosting.Abstractions;
 
 namespace Aedis.Hosting.AspNetCore.Exports;
 
