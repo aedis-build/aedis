@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.OpenApi.Scalar</PackageId>
+    <Description>Aedis.OpenApi.Scalar — Scalar API reference UI over the Aedis OpenAPI document (MapAedisScalar), with QUERY operations rendered from x-oai-additionalOperations.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.OpenApi.Abstractions\Aedis.OpenApi.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

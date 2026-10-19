@@ -1,4 +1,3 @@
-using Aedis.Hosting.AspNetCore.Filters;
 using Aedis.Hosting.AspNetCore.ServerSentEvents;
 using Aedis.Core.Utils;
 using Aedis.Observability.Serilog;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Metrics;
 using Serilog;
-using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Aedis.Hosting.AspNetCore;
 
@@ -19,8 +17,9 @@ namespace Aedis.Hosting.AspNetCore;
 ///     <see cref="ConfigureServices" /> e chama <see cref="RunAsync" /> no <c>Main</c>. O host compõe por
 ///     default toda a camada preparatória — logging estruturado (Serilog), telemetria (OTLP), diagnósticos
 ///     e health checks, a camada de segurança HTTP (<c>Aedis.Security.Web</c>), tratamento de erros em
-///     ProblemDetails, validação 422 e o portão de autenticação fail-closed. O Swagger é opt-in
-///     (<see cref="EnableSwagger" />).
+///     ProblemDetails, validação 422 e o portão de autenticação fail-closed. Documentação OpenAPI e hipermídia
+///     são plugins opt-in (<c>Aedis.OpenApi</c> + <c>Aedis.OpenApi.Scalar</c>, <c>Aedis.Hypermedia.AspNetCore</c>),
+///     registrados pela aplicação em <see cref="ConfigureServices" />/<see cref="ConfigureMiddleware" />.
 /// </summary>
 /// <remarks>
 ///     Padrão Template Method: os pontos <c>protected virtual</c> permitem customizar sem reescrever o
@@ -51,9 +50,6 @@ public abstract class AedisApiHost
     /// <summary>Adiciona exportadores de métricas extras (ex.: Prometheus) ao pipeline de telemetria.</summary>
     protected virtual void ConfigureMetricsExporters(MeterProviderBuilder builder) { }
 
-    /// <summary>Ajusta a geração do documento Swagger quando <see cref="EnableSwagger" /> é <c>true</c>.</summary>
-    protected virtual void ConfigureSwagger(SwaggerGenOptions options) { }
-
     /// <summary>Insere middlewares próprios da aplicação, após a autenticação/autorização e antes dos endpoints.</summary>
     protected virtual void ConfigureMiddleware(WebApplication app) { }
 
@@ -69,9 +65,6 @@ public abstract class AedisApiHost
     ///     requisição logo após a autorização. Default <c>false</c>.
     /// </summary>
     protected virtual bool EnableTenancy => false;
-
-    /// <summary>Quando <c>true</c>, expõe o Swagger. Default <c>false</c> — opt-in, mantendo a superfície mínima.</summary>
-    protected virtual bool EnableSwagger => false;
 
     /// <summary>
     ///     Costura para fontes de configuração adicionais, executada antes de a infraestrutura ler a configuração:
@@ -150,16 +143,13 @@ public abstract class AedisApiHost
 
         services.AddAedisProblemDetails();
         services.AddAedisCommands();
-        services.AddControllers(options => options.Filters.Add<ActionRequestCaptureFilter>())
+        services.AddControllers()
             .AddJsonOptions(options => SystemJsonOptionsFactory.Configure(options.JsonSerializerOptions));
         services.ConfigureHttpJsonOptions(options => SystemJsonOptionsFactory.Configure(options.SerializerOptions));
         services.AddAedisApiValidation();
 
         if (EnableTenancy)
             services.AddAedisTenancy(configuration);
-
-        if (EnableSwagger)
-            services.AddAedisSwagger(configuration, ApplicationInfo.DisplayName, ConfigureSwagger);
     }
 
     private void ConfigureSecurity(WebApplicationBuilder builder) {
@@ -204,9 +194,6 @@ public abstract class AedisApiHost
             app.UseAedisTenancy();
 
         ConfigureMiddleware(app);
-
-        if (EnableSwagger)
-            app.UseAedisSwagger(app.Configuration);
 
         app.MapAedisHealthChecks();
         app.MapControllers();

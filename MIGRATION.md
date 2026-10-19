@@ -31,7 +31,9 @@ O framework de origem é **um projeto** que referencia simultaneamente AWS SDK, 
 | `Logging/` (Serilog) | `Aedis.Observability.Abstractions` + `Aedis.Observability.Serilog` | 2/3 | `Serilog.*` |
 | `Metrics/` (OTel/OTLP) | `Aedis.Observability.Otlp` | 3 | `OpenTelemetry.*` |
 | `HealthChecks/` | `Aedis.Diagnostics` (zero-config) | 3 | `Microsoft.*.HealthChecks` |
-| `Hosting/` (WebApiHost, Controllers, Hateoas, Middleware, Filters, GracefulShutdown) | `Aedis.Hosting.Abstractions` + `Aedis.Hosting.AspNetCore` | 2/3 | `Swashbuckle`, `Microsoft.OpenApi`, `HttpOverrides`, `ResponseCompression`, `FluentValidation.AspNetCore` |
+| `Hosting/` (WebApiHost, Controllers, Middleware, Filters, GracefulShutdown) | `Aedis.Hosting.Abstractions` + `Aedis.Hosting.AspNetCore` | 2/3 | `HttpOverrides`, `ResponseCompression`, `FluentValidation.AspNetCore` |
+| `Hosting/Hateoas` | `Aedis.Hypermedia.Abstractions` + `Aedis.Hypermedia.AspNetCore` (plugin: `AddAedisHypermedia`, `IHypermedia`) | 2/3 | — |
+| `Hosting/OpenApi` (Swagger, QUERY, transformers) | `Aedis.OpenApi.Abstractions` + `Aedis.OpenApi` + `Aedis.OpenApi.Scalar` (plugin: gerador nativo, `x-oai-additionalOperations`, `x-aedis-*`) | 2/3 | `Microsoft.AspNetCore.OpenApi`, `Scalar.AspNetCore`, `FluentValidation` |
 | `Hosting/Authentication` (JWT) | `Aedis.Security.Abstractions` + `Aedis.Security.Keycloak` | 2/3 | `Microsoft.AspNetCore.Authentication.JwtBearer` |
 | `StandaloneApp` + `HostedServices` | `Aedis.Hosting.Worker` | 3 | `Microsoft.Extensions.Hosting` |
 | `HostedServices/Hangfire` + agendamento | `Aedis.Scheduling.Hangfire` | 3 | `Hangfire.AspNetCore`, `Hangfire.PostgreSql`, `Cronos` |

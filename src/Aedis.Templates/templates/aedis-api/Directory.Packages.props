@@ -11,6 +11,9 @@
     <PackageVersion Include="Aedis.Database.Abstractions" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Database.Postgres" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Hosting.AspNetCore" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.Hypermedia.AspNetCore" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.OpenApi" Version="AEDIS_PKG_VERSION" />
+    <PackageVersion Include="Aedis.OpenApi.Scalar" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Security" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Security.Keycloak" Version="AEDIS_PKG_VERSION" />
     <PackageVersion Include="Aedis.Analyzers" Version="AEDIS_PKG_VERSION" />

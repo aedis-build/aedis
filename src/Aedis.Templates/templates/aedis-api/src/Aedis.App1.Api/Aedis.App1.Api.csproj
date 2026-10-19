@@ -2,10 +2,16 @@
 
   <PropertyGroup>
     <RootNamespace>Aedis.App1.Api</RootNamespace>
+    <!-- Os comentários /// dos controllers e DTOs viram a documentação do OpenAPI (Aedis.OpenApi lê este XML). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Aedis.Hosting.AspNetCore" />
+    <PackageReference Include="Aedis.Hypermedia.AspNetCore" />
+    <PackageReference Include="Aedis.OpenApi" />
+    <PackageReference Include="Aedis.OpenApi.Scalar" />
     <PackageReference Include="Aedis.Security.Keycloak" />
     <PackageReference Include="Aedis.Security" />
     <PackageReference Include="Aedis.Database.Postgres" />

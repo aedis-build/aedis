@@ -70,9 +70,12 @@
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
     <PackageVersion Include="Microsoft.AspNetCore.HttpOverrides" Version="2.3.11" />
     <PackageVersion Include="Microsoft.AspNetCore.ResponseCompression" Version="2.3.11" />
-    <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.12.2" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.18.0" />
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.1" />
+    <!-- Mesma versão que FluentValidation.AspNetCore 11.3.1 já resolve transitivamente (pinada pelo CPM transitivo). -->
+    <PackageVersion Include="FluentValidation" Version="11.11.0" />
     <PackageVersion Include="Flurl.Http" Version="4.0.2" />
   </ItemGroup>
 

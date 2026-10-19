@@ -1,5 +1,5 @@
 using Aedis.Hosting.AspNetCore.Exports;
-using Aedis.Hosting.AspNetCore.Requests;
+using Aedis.Hosting.Abstractions;
 using FluentAssertions;
 using Xunit;
 

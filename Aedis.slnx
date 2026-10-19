@@ -28,6 +28,8 @@
     <Project Path="src/Aedis.Hosting.AspNetCore/Aedis.Hosting.AspNetCore.csproj" />
     <Project Path="src/Aedis.Hosting.Worker/Aedis.Hosting.Worker.csproj" />
     <Project Path="src/Aedis.Http/Aedis.Http.csproj" />
+    <Project Path="src/Aedis.Hypermedia.Abstractions/Aedis.Hypermedia.Abstractions.csproj" />
+    <Project Path="src/Aedis.Hypermedia.AspNetCore/Aedis.Hypermedia.AspNetCore.csproj" />
     <Project Path="src/Aedis.Http.Abstractions/Aedis.Http.Abstractions.csproj" />
     <Project Path="src/Aedis.Http.Cache/Aedis.Http.Cache.csproj" />
     <Project Path="src/Aedis.Http.Flurl/Aedis.Http.Flurl.csproj" />
@@ -40,6 +42,9 @@
     <Project Path="src/Aedis.Observability.Abstractions/Aedis.Observability.Abstractions.csproj" />
     <Project Path="src/Aedis.Observability.Otlp/Aedis.Observability.Otlp.csproj" />
     <Project Path="src/Aedis.Observability.Serilog/Aedis.Observability.Serilog.csproj" />
+    <Project Path="src/Aedis.OpenApi/Aedis.OpenApi.csproj" />
+    <Project Path="src/Aedis.OpenApi.Abstractions/Aedis.OpenApi.Abstractions.csproj" />
+    <Project Path="src/Aedis.OpenApi.Scalar/Aedis.OpenApi.Scalar.csproj" />
     <Project Path="src/Aedis.Payments.Abstractions/Aedis.Payments.Abstractions.csproj" />
     <Project Path="src/Aedis.Payments.Stripe/Aedis.Payments.Stripe.csproj" />
     <Project Path="src/Aedis.Pdf.Abstractions/Aedis.Pdf.Abstractions.csproj" />
@@ -90,12 +95,14 @@
     <Project Path="tests/Aedis.Http.Tests/Aedis.Http.Tests.csproj" />
     <Project Path="tests/Aedis.Http.Cache.Tests/Aedis.Http.Cache.Tests.csproj" />
     <Project Path="tests/Aedis.Http.Flurl.Tests/Aedis.Http.Flurl.Tests.csproj" />
+    <Project Path="tests/Aedis.Hypermedia.AspNetCore.Tests/Aedis.Hypermedia.AspNetCore.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.AwsSqs.Tests/Aedis.Messaging.AwsSqs.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.AzureServiceBus.Tests/Aedis.Messaging.AzureServiceBus.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.IbmMq.Tests/Aedis.Messaging.IbmMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.RabbitMq.Tests/Aedis.Messaging.RabbitMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.Tests/Aedis.Messaging.Tests.csproj" />
     <Project Path="tests/Aedis.Observability.Tests/Aedis.Observability.Tests.csproj" />
+    <Project Path="tests/Aedis.OpenApi.Tests/Aedis.OpenApi.Tests.csproj" />
     <Project Path="tests/Aedis.Payments.Stripe.Tests/Aedis.Payments.Stripe.Tests.csproj" />
     <Project Path="tests/Aedis.Pdf.QuestPdf.Tests/Aedis.Pdf.QuestPdf.Tests.csproj" />
     <Project Path="tests/Aedis.Scheduling.Hangfire.Tests/Aedis.Scheduling.Hangfire.Tests.csproj" />

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.OpenApi</PackageId>
+    <Description>Aedis.OpenApi — OpenAPI 3.1 document over the native ASP.NET Core generator (AddAedisOpenApi/MapAedisOpenApi): Bearer scheme, [Obsolete] as deprecated, [ProducesStandardErrors] responses, QUERY operations, HAL schema ids and the x-aedis-roles/x-aedis-anonymous/x-aedis-risk/x-aedis-rules extensions so portals and agents read authorization, risk and 422 rules from the contract.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
+    <ProjectReference Include="..\Aedis.OpenApi.Abstractions\Aedis.OpenApi.Abstractions.csproj" />
+    <ProjectReference Include="..\Aedis.Hypermedia.Abstractions\Aedis.Hypermedia.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aedis.OpenApi.Tests" />
+  </ItemGroup>
+
+  <!-- Sem o gerador de XML comments do pacote: ele interceptaria o AddOpenApi desta biblioteca com a documentação dela, não a do app. -->
+  <Target Name="RemoveOpenApiXmlCommentGenerator" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'Microsoft.AspNetCore.OpenApi.SourceGenerators'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

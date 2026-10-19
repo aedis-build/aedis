@@ -1,7 +1,6 @@
 using Aedis.Excel.Abstractions;
 using Aedis.Exceptions;
-using Aedis.Hosting.AspNetCore.Hypermedia;
-using Aedis.Hosting.AspNetCore.Requests;
+using Aedis.Hosting.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,7 +20,7 @@ namespace Aedis.Hosting.AspNetCore.Exports;
 ///             (p, s, c) =&gt; LoadPageAsync(request, p, s, c), Columns, "orders", cancellationToken: ct);
 ///         if (export is not null) return export;
 ///
-///         return this.AsCollection(await LoadAsync(request, ct), ExportLinkOptions.XlsxOnly);
+///         return OkCollection(await LoadAsync(request, ct), ExportLinkOptions.XlsxOnly);
 ///     }
 ///     </code>
 /// </example>

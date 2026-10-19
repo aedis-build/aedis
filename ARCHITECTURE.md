@@ -108,7 +108,7 @@ graph TD
 
 **Tier 2 — Abstrações de capability (dependem só de Core):**
 
-`Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Tenancy.Abstractions` · `Aedis.Excel.Abstractions` · `Aedis.Pdf.Abstractions` · `Aedis.Payments.Abstractions` · `Aedis.ExchangeRates.Abstractions` · `Aedis.AI.Abstractions`
+`Aedis.Cache.Abstractions` · `Aedis.Messaging.Abstractions` · `Aedis.Database.Abstractions` · `Aedis.Storage.Abstractions` · `Aedis.Hosting.Abstractions` · `Aedis.Hypermedia.Abstractions` · `Aedis.OpenApi.Abstractions` · `Aedis.Observability.Abstractions` · `Aedis.Security.Abstractions` · `Aedis.Tenancy.Abstractions` · `Aedis.Excel.Abstractions` · `Aedis.Pdf.Abstractions` · `Aedis.Payments.Abstractions` · `Aedis.ExchangeRates.Abstractions` · `Aedis.AI.Abstractions`
 
 **Tier 3 — Implementações por provider (só o host referencia):**
 
@@ -120,6 +120,8 @@ graph TD
 | Storage | `Aedis.Storage.S3` *(+ `.AzureBlob`, `.Gcs` no roadmap)* |
 | Observability | `Aedis.Observability.Serilog` · `Aedis.Observability.Otlp` |
 | Hosting | `Aedis.Hosting.AspNetCore` · `Aedis.Hosting.Worker` |
+| Hipermídia | `Aedis.Hypermedia.AspNetCore` (HAL, links por action, QUERY templates) |
+| OpenAPI | `Aedis.OpenApi` · `Aedis.OpenApi.Scalar` (gerador nativo 3.1, QUERY via `x-oai-additionalOperations`, extensões `x-aedis-*`) |
 | Scheduling | `Aedis.Scheduling.Hangfire` |
 | Security | `Aedis.Security.Keycloak` *(+ `Secrets.Vault`/`.AwsSecretsManager` no roadmap)* |
 | Tenancy | `Aedis.Tenancy` (tenant ambiente + resolução por claim; ver [docs/TENANCY.md](docs/TENANCY.md)) |
