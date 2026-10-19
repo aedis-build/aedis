@@ -1,3 +1,4 @@
+using System.Data;
 using Aedis.Database;
 using Aedis.Database.Abstractions;
 using Aedis.Database.TypeHandlers;
@@ -29,6 +30,8 @@ public static class SqlServerServiceCollectionExtensions
             .Bind(configuration.GetSection(DatabaseOptions.SectionName))
             .ValidateOnStart();
 
+        var unicode = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()?.SqlServerUnicodeStrings ?? false;
+        SqlMapper.AddTypeMap(typeof(string), unicode ? DbType.String : DbType.AnsiString);
         SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
         SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
         SqlMapper.AddTypeHandler(new JsonDictionaryTypeHandler<Dictionary<string, string?>>());

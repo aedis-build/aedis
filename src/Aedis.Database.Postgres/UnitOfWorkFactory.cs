@@ -47,10 +47,8 @@ public sealed class UnitOfWorkFactory : IUnitOfWorkFactory
         var connection = new NpgsqlConnection(BuildConnectionString(raw, false));
         await connection.OpenAsync(ct);
 
-        var unitOfWork = new UnitOfWork(connection, true, _sessionLogger);
-        DbTransaction transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
-        unitOfWork.SetTransaction(transaction);
-        return unitOfWork;
+        // Leitura em autocommit: sem transação não há rollback no descarte nem round-trips de BEGIN/COMMIT.
+        return new UnitOfWork(connection, true, _sessionLogger);
     }
 
     private string? NextReadConnectionString() {
