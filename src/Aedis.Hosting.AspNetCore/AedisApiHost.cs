@@ -1,4 +1,5 @@
 using Aedis.Hosting.AspNetCore.Filters;
+using Aedis.Hosting.AspNetCore.ServerSentEvents;
 using Aedis.Core.Utils;
 using Aedis.Observability.Serilog;
 using Microsoft.AspNetCore.Authorization;
@@ -141,6 +142,11 @@ public abstract class AedisApiHost
         AddCustomHealthChecks(services.AddHealthChecks());
 
         services.AddResponseCompression(options => options.EnableForHttps = true);
+        services.AddOptions<ServerSentEventsOptions>()
+            .BindConfiguration(ServerSentEventsOptions.SectionName)
+            .Validate(sse => sse.HeartbeatInterval > TimeSpan.Zero && sse.MaxConnectionDuration > TimeSpan.Zero,
+                "ServerSentEventsOptions.HeartbeatInterval e MaxConnectionDuration devem ser positivos.")
+            .ValidateOnStart();
 
         services.AddAedisProblemDetails();
         services.AddAedisCommands();

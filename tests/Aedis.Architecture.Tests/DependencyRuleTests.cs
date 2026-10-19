@@ -75,6 +75,39 @@ public class DependencyRuleTests
     }
 
     [Fact]
+    public void Payments_Abstractions_nao_depende_do_SDK_do_provedor() {
+        var result = Types.InAssembly(typeof(Aedis.Payments.Abstractions.IPaymentGateway).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("Stripe", "System.Net.Http", "Microsoft.AspNetCore")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.Payments.Abstractions é só contrato: o SDK do provedor de pagamento fica no pacote de implementação");
+    }
+
+    [Fact]
+    public void ExchangeRates_Abstractions_nao_depende_de_HTTP() {
+        var result = Types.InAssembly(typeof(Aedis.ExchangeRates.Abstractions.IExchangeRates).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("System.Net.Http", "Microsoft.AspNetCore")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.ExchangeRates.Abstractions é só contrato: a consulta à fonte da cotação fica no pacote de implementação");
+    }
+
+    [Fact]
+    public void AI_Abstractions_nao_depende_do_SDK_do_provedor() {
+        var result = Types.InAssembly(typeof(Aedis.AI.Abstractions.IAgentEngine).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("Anthropic", "Microsoft.AspNetCore")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.AI.Abstractions é só contrato: o SDK do provedor de agentes fica no pacote de implementação");
+    }
+
+    [Fact]
     public void Tenancy_Abstractions_nao_depende_de_AspNetCore_nem_de_provider() {
         var result = Types.InAssembly(typeof(Aedis.Tenancy.Abstractions.ICurrentTenant).Assembly)
             .Should()

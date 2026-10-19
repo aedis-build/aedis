@@ -91,10 +91,19 @@
     <PackageVersion Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 
+  <ItemGroup Label="Pagamentos">
+    <PackageVersion Include="Stripe.net" Version="53.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="IA">
+    <PackageVersion Include="Anthropic" Version="12.53.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Extensions / runtime">
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.9" />

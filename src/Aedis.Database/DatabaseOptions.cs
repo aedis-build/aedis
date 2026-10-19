@@ -24,6 +24,13 @@ public sealed class DatabaseOptions
     /// <summary>Convenção de nomes para tabelas/colunas. Padrão snake_case.</summary>
     public NamingConvention NamingConvention { get; set; } = NamingConvention.SnakeCase;
 
+    /// <summary>
+    ///     Só SQL Server. <c>false</c> (padrão): parâmetros <c>string</c> vão como <c>varchar</c>, e as propriedades
+    ///     marcadas com <c>[Unicode]</c> vão como <c>nvarchar</c>; <c>true</c>: todas vão como <c>nvarchar</c>. Enviar
+    ///     <c>nvarchar</c> contra coluna <c>varchar</c> converte a coluna e descarta o índice; o inverso é barato.
+    /// </summary>
+    public bool SqlServerUnicodeStrings { get; set; }
+
     /// <summary>Tamanho máximo do pool de conexões do endpoint de escrita (primário). Padrão 50.</summary>
     public int WritePoolSize { get; set; } = 50;
 
