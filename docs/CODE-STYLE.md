@@ -45,7 +45,16 @@ Exceções permitidas: diretivas do compilador/ferramenta (`#pragma`, `// TODO:`
 
 ## 4. Idioma e voz
 
-Português, presente, conciso e profissional. Consistente com o restante da base.
+Presente, conciso e profissional. O idioma segue o público de cada texto:
+
+- **Inglês** em tudo que é lido por quem adota o framework: summaries XML da API pública, `README.md`,
+  `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `docs/` e textos de erro/log
+  que chegam ao usuário da biblioteca. Textos novos já nascem em inglês; os existentes em português migram
+  pacote a pacote, em PRs próprias, sem misturar com mudança de comportamento.
+- **Português** continua nos commits, nas PRs, nos comentários internos deste repositório e nos testes
+  (nomes de método e summaries das classes de teste), até decisão em contrário.
+
+Consistência dentro de um mesmo arquivo vale mais que a regra: não deixe um pacote metade em cada idioma.
 
 ## 5. Enforcement
 
