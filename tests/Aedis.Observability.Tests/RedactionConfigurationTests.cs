@@ -121,4 +121,17 @@ public sealed class RedactionConfigurationTests
         withSink.Should().NotThrow();
         disabled.Should().NotThrow();
     }
+
+    [Fact]
+    public void Escalar_nulo_sensivel_vira_placeholder_e_dicionario_e_sequencia_sem_segredo_ficam_iguais() {
+        var (logger, events) = Build([]);
+        using (logger) {
+            logger.Information("login {Password} {@Dict} {@Items}", (string?)null,
+                new Dictionary<string, string> { ["name"] = "a" }, new[] { 1, 2 });
+        }
+
+        Scalar(events[0].Properties["Password"]).Should().Be("***");
+        events[0].Properties["Dict"].Should().BeOfType<DictionaryValue>().Which.Elements.Should().HaveCount(1);
+        events[0].Properties["Items"].Should().BeOfType<SequenceValue>().Which.Elements.Should().HaveCount(2);
+    }
 }

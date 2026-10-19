@@ -21,6 +21,8 @@
     <Project Path="src/Aedis.Excel.Abstractions/Aedis.Excel.Abstractions.csproj" />
     <Project Path="src/Aedis.Excel.MiniExcel/Aedis.Excel.MiniExcel.csproj" />
     <Project Path="src/Aedis.Exceptions/Aedis.Exceptions.csproj" />
+    <Project Path="src/Aedis.ExchangeRates.Abstractions/Aedis.ExchangeRates.Abstractions.csproj" />
+    <Project Path="src/Aedis.ExchangeRates.Ptax/Aedis.ExchangeRates.Ptax.csproj" />
     <Project Path="src/Aedis.Hosting.Abstractions/Aedis.Hosting.Abstractions.csproj" />
     <Project Path="src/Aedis.Hosting.AspNetCore/Aedis.Hosting.AspNetCore.csproj" />
     <Project Path="src/Aedis.Hosting.Worker/Aedis.Hosting.Worker.csproj" />
@@ -37,6 +39,8 @@
     <Project Path="src/Aedis.Observability.Abstractions/Aedis.Observability.Abstractions.csproj" />
     <Project Path="src/Aedis.Observability.Otlp/Aedis.Observability.Otlp.csproj" />
     <Project Path="src/Aedis.Observability.Serilog/Aedis.Observability.Serilog.csproj" />
+    <Project Path="src/Aedis.Payments.Abstractions/Aedis.Payments.Abstractions.csproj" />
+    <Project Path="src/Aedis.Payments.Stripe/Aedis.Payments.Stripe.csproj" />
     <Project Path="src/Aedis.Pdf.Abstractions/Aedis.Pdf.Abstractions.csproj" />
     <Project Path="src/Aedis.Pdf.QuestPdf/Aedis.Pdf.QuestPdf.csproj" />
     <Project Path="src/Aedis.Scheduling.Abstractions/Aedis.Scheduling.Abstractions.csproj" />
@@ -76,6 +80,7 @@
     <Project Path="tests/Aedis.Database.Tests/Aedis.Database.Tests.csproj" />
     <Project Path="tests/Aedis.Diagnostics.Tests/Aedis.Diagnostics.Tests.csproj" />
     <Project Path="tests/Aedis.Excel.MiniExcel.Tests/Aedis.Excel.MiniExcel.Tests.csproj" />
+    <Project Path="tests/Aedis.ExchangeRates.Ptax.Tests/Aedis.ExchangeRates.Ptax.Tests.csproj" />
     <Project Path="tests/Aedis.Hosting.AspNetCore.Tests/Aedis.Hosting.AspNetCore.Tests.csproj" />
     <Project Path="tests/Aedis.Hosting.Worker.Tests/Aedis.Hosting.Worker.Tests.csproj" />
     <Project Path="tests/Aedis.Http.Tests/Aedis.Http.Tests.csproj" />
@@ -87,6 +92,7 @@
     <Project Path="tests/Aedis.Messaging.RabbitMq.Tests/Aedis.Messaging.RabbitMq.Tests.csproj" />
     <Project Path="tests/Aedis.Messaging.Tests/Aedis.Messaging.Tests.csproj" />
     <Project Path="tests/Aedis.Observability.Tests/Aedis.Observability.Tests.csproj" />
+    <Project Path="tests/Aedis.Payments.Stripe.Tests/Aedis.Payments.Stripe.Tests.csproj" />
     <Project Path="tests/Aedis.Pdf.QuestPdf.Tests/Aedis.Pdf.QuestPdf.Tests.csproj" />
     <Project Path="tests/Aedis.Scheduling.Hangfire.Tests/Aedis.Scheduling.Hangfire.Tests.csproj" />
     <Project Path="tests/Aedis.Secrets.AwsSecretsManager.Tests/Aedis.Secrets.AwsSecretsManager.Tests.csproj" />
