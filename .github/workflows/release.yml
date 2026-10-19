@@ -63,7 +63,7 @@ jobs:
     name: Empacotar, assinar, atestar e publicar (SLSA Build L3)
     needs: [cut]
     if: always() && (github.event_name == 'push' || needs.cut.result == 'success')
-    uses: aedis-build/aedis-platform/.github/workflows/release-nuget.yml@08ac809ce27627f60cfd141166f31ebcc72a941c # main, #31
+    uses: aedis-build/aedis-platform/.github/workflows/release-nuget.yml@6e5c3235f49e9a037246c1c84e4800e326386ca6 # main (#39)
     permissions:
       contents: write
       id-token: write
@@ -72,5 +72,7 @@ jobs:
       tag: ${{ needs.cut.outputs.tag || github.ref_name }}
       solution: Aedis.slnx
       artifact-name: aedis
+      # NuGet público fica para depois do site e da primeira release: ligar junto com o secret NUGET_API_KEY.
+      publish-nuget: false
     secrets:
       NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
