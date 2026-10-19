@@ -1,0 +1,37 @@
+name: Feature request
+description: Propose a new capability, provider or change to an existing package.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Large changes (a new provider, a new abstraction, a breaking change) are discussed in an issue before a pull
+        request, as described in [GOVERNANCE.md](https://github.com/aedis-build/aedis-dotnet/blob/main/GOVERNANCE.md).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and why is it hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The API or behavior you would like, with a short code example if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Breaking change?
+      options:
+        - "No"
+        - "Yes"
+        - "Not sure"
+    validations:
+      required: true

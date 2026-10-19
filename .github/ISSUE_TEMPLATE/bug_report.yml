@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Aedis does not behave as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. **Do not report security vulnerabilities here**: follow
+        [SECURITY.md](https://github.com/aedis-build/aedis-dotnet/blob/main/SECURITY.md) and use the private
+        "Report a vulnerability" channel instead.
+  - type: input
+    id: version
+    attributes:
+      label: Aedis version
+      description: Package version (for example `0.1.0-preview.1`) or commit SHA.
+    validations:
+      required: true
+  - type: input
+    id: packages
+    attributes:
+      label: Packages involved
+      description: For example `Aedis.Hosting.AspNetCore`, `Aedis.Database.Postgres`.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the error message and stack trace, with secrets removed.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The smallest code or configuration that shows the problem.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: .NET SDK version, operating system, and the provider involved (database, broker, cloud).
