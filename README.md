@@ -14,6 +14,8 @@
 [![CI](https://github.com/aedis-build/aedis-dotnet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aedis-build/aedis-dotnet/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/aedis-build/aedis-dotnet/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/aedis-build/aedis-dotnet/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/aedis-build/aedis-dotnet/badge)](https://scorecard.dev/viewer/?uri=github.com/aedis-build/aedis-dotnet)
+[![codecov](https://codecov.io/gh/aedis-build/aedis-dotnet/graph/badge.svg)](https://codecov.io/gh/aedis-build/aedis-dotnet)
+[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/spec/v1.0/levels#build-l3)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-C8A24C?style=flat-square&labelColor=1A2740)](https://www.conventionalcommits.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-C8A24C?style=flat-square&labelColor=1A2740)](LICENSE)
 <img src="https://img.shields.io/badge/-10%20LTS-C8A24C?style=flat-square&labelColor=1A2740&logo=dotnet&logoColor=ECE5D5" alt=".NET 10 LTS">

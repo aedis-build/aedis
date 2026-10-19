@@ -23,8 +23,10 @@ jobs:
     permissions:
       contents: read
       packages: read
+      id-token: write # upload ao Codecov por OIDC
     with:
       solution: Aedis.slnx
+      codecov: true
       dotnet-version: 10.0.x
       # Mínimo aceitável do framework: 95 % de linhas. Hoje a suíte cobre ~55 % (mesclado, sem os containers de
       # integração); o check fica vermelho até os pacotes abaixo do piso ganharem testes ou perderem código em excesso.
