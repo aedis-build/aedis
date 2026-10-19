@@ -40,7 +40,7 @@ jobs:
   codecov:
     name: Codecov
     needs: build-test
-    uses: aedis-build/aedis-platform/.github/workflows/codecov.yml@7bc05934d08f7ea3c238c1ffe330e99775f9084a
+    uses: aedis-build/aedis-platform/.github/workflows/codecov.yml@08ac809ce27627f60cfd141166f31ebcc72a941c # main, #31
     permissions:
       contents: read
       id-token: write
