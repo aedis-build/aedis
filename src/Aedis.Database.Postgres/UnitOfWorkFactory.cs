@@ -50,8 +50,10 @@ public sealed class UnitOfWorkFactory : IUnitOfWorkFactory
 
     /// <summary>
     ///     Abre a sessão de leitura em autocommit, sem transação: em <c>ReadCommitted</c> ela não dava consistência
-    ///     entre statements e só custava <c>BEGIN</c>/<c>COMMIT</c> e o rollback no descarte. <see cref="IUnitOfWork.HasActiveTransaction" />
-    ///     responde <c>false</c>; commit e rollback são no-op.
+    ///     entre statements e só custava <c>BEGIN</c>/<c>COMMIT</c> e o rollback no descarte. A exceção é o fluxo com
+    ///     tenant: <c>set_config(…, true)</c> só vive dentro de uma transação, então a sessão abre uma
+    ///     (<c>ReadCommitted</c>) antes de gravar <see cref="PostgresTenancy.SettingName" />; sem tenant,
+    ///     <see cref="IUnitOfWork.HasActiveTransaction" /> responde <c>false</c> e commit e rollback são no-op.
     /// </summary>
     public async Task<IUnitOfWork> CreateReadSessionAsync(CancellationToken ct = default) {
         var raw = NextReadConnectionString() ?? _options.ConnectionString ?? _options.WriteConnectionString
@@ -61,7 +63,6 @@ public sealed class UnitOfWorkFactory : IUnitOfWorkFactory
         await connection.OpenAsync(ct);
 
         var unitOfWork = new UnitOfWork(connection, true, _sessionLogger);
-        // set_config(..., true) só vive dentro de uma transação: com tenant a leitura ganha uma; sem tenant fica em autocommit.
         if (_currentTenant?.Id is not null)
             unitOfWork.SetTransaction(await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct));
         await ApplyTenantAsync(unitOfWork, ct);
