@@ -39,7 +39,11 @@ public sealed class UnitOfWorkFactory : IUnitOfWorkFactory
         return unitOfWork;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    ///     Abre a sessão de leitura em autocommit, sem transação: em <c>ReadCommitted</c> ela não dava consistência
+    ///     entre statements e só custava <c>BEGIN</c>/<c>COMMIT</c> e o rollback no descarte. <see cref="IUnitOfWork.HasActiveTransaction" />
+    ///     responde <c>false</c>; commit e rollback são no-op.
+    /// </summary>
     public async Task<IUnitOfWork> CreateReadSessionAsync(CancellationToken ct = default) {
         var raw = NextReadConnectionString() ?? _options.ConnectionString ?? _options.WriteConnectionString
             ?? throw new InvalidOperationException("ConnectionString deve ser configurado.");
@@ -47,7 +51,6 @@ public sealed class UnitOfWorkFactory : IUnitOfWorkFactory
         var connection = new NpgsqlConnection(BuildConnectionString(raw, false));
         await connection.OpenAsync(ct);
 
-        // Leitura em autocommit: sem transação não há rollback no descarte nem round-trips de BEGIN/COMMIT.
         return new UnitOfWork(connection, true, _sessionLogger);
     }
 
