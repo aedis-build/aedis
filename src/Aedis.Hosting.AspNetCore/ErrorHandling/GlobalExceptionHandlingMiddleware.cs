@@ -41,10 +41,12 @@ public sealed class GlobalExceptionHandlingMiddleware
         var problem = ExceptionToProblemDetailsMapper.Map(context, exception, _problemDetailsFactory);
         var statusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
 
+        var method = LogValueSanitizer.Sanitize(context.Request.Method);
+        var path = LogValueSanitizer.Sanitize(context.Request.Path.Value);
         if (statusCode >= StatusCodes.Status500InternalServerError)
-            _logger.LogError(exception, "Erro não tratado ao processar {Method} {Path}.", context.Request.Method, context.Request.Path);
+            _logger.LogError(exception, "Erro não tratado ao processar {Method} {Path}.", method, path);
         else
-            _logger.LogDebug(exception, "Requisição rejeitada ({StatusCode}) em {Method} {Path}.", statusCode, context.Request.Method, context.Request.Path);
+            _logger.LogDebug(exception, "Requisição rejeitada ({StatusCode}) em {Method} {Path}.", statusCode, method, path);
 
         if (context.Response.HasStarted) {
             _logger.LogWarning("A resposta já havia começado; não foi possível escrever o ProblemDetails.");
