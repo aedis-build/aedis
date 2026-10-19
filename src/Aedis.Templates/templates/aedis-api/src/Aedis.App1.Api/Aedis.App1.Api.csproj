@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <RootNamespace>Aedis.App1.Api</RootNamespace>
+    <!-- Os comentários /// dos controllers e DTOs viram a documentação do OpenAPI (Aedis.OpenApi lê este XML). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
