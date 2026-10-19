@@ -44,30 +44,6 @@ public sealed class SampleApiHost : AedisApiHost
     }
 }
 
-/// <summary>Variante do exemplo com Swagger habilitado (opt-in), para demonstrar o documento OpenAPI.</summary>
-public sealed class SwaggerSampleApiHost : AedisApiHost
-{
-    /// <inheritdoc cref="SampleApiHost.EnableAuthentication" />
-    protected override bool EnableAuthentication => false;
-
-    /// <inheritdoc cref="SampleApiHost.EnableTelemetry" />
-    protected override bool EnableTelemetry => false;
-
-    /// <summary>Liga o Swagger (no host real, mantenha desligado em produção ou proteja no ingress).</summary>
-    protected override bool EnableSwagger => true;
-
-    /// <inheritdoc />
-    protected override void ConfigureServices(IConfiguration configuration, IServiceCollection services) {
-        services.Configure<GracefulShutdownOptions>(options => options.DrainDelay = TimeSpan.Zero);
-    }
-
-    /// <summary>Expõe um endpoint obsoleto para demonstrar que ele sai como <c>deprecated</c> no documento.</summary>
-    protected override void ConfigureMiddleware(WebApplication app) {
-        app.MapGet("/legado", [Obsolete("Use /ping no lugar.")] () => Results.Ok(new { message = "legado" }));
-        app.MapGet("/ping", () => Results.Ok(new { message = "pong" }));
-    }
-}
-
 /// <summary>Modelo de entrada do exemplo, validado por <see cref="SampleInputValidator" />.</summary>
 public sealed record SampleInput(string Nome);
 

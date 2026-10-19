@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\Aedis.AI.Abstractions\Aedis.AI.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Tenancy.Abstractions\Aedis.Tenancy.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Aedis.Hypermedia.Abstractions\Aedis.Hypermedia.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Aedis.OpenApi.Abstractions\Aedis.OpenApi.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

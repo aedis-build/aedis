@@ -13,7 +13,7 @@ namespace Aedis.Hosting.AspNetCore.Tests;
 ///     Exercita o <see cref="AedisApiHost" /> ponta-a-ponta através de <see cref="SampleApiHost" /> num
 ///     servidor de teste real: prova que a composição secure-by-default funciona de fato — cabeçalhos de
 ///     segurança em toda resposta, exceções traduzidas em ProblemDetails, validação 422, health,
-///     Swagger opt-in e o portão de autenticação fail-closed.
+///     documentação OpenAPI ausente sem o plugin e o portão de autenticação fail-closed.
 /// </summary>
 public sealed class AedisApiHostEndToEndTests
 {
@@ -93,23 +93,12 @@ public sealed class AedisApiHostEndToEndTests
     }
 
     [Fact]
-    public async Task Swagger_desligado_por_default_retorna_404() {
+    public async Task Sem_o_plugin_de_OpenApi_as_rotas_de_documentacao_nao_existem() {
         await using var app = await StartAsync(new SampleApiHost());
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/swagger/v1/swagger.json");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task Swagger_opt_in_expoe_o_documento_openapi() {
-        await using var app = await StartAsync(new SwaggerSampleApiHost());
-        var client = app.GetTestClient();
-
-        var response = await client.GetAsync("/swagger/v1/swagger.json");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.GetAsync("/openapi/v1.json")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await client.GetAsync("/openapi")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

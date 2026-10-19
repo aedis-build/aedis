@@ -130,6 +130,17 @@ public class DependencyRuleTests
             "Aedis.Hypermedia.Abstractions é só contrato e envelope HAL: LinkGenerator, filtros e DI ficam em Aedis.Hypermedia.AspNetCore");
     }
 
+    [Fact]
+    public void OpenApi_Abstractions_nao_depende_do_gerador_nem_de_AspNetCore() {
+        var result = Types.InAssembly(typeof(Aedis.OpenApi.Abstractions.AedisOpenApiOptions).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny("Microsoft.AspNetCore", "Microsoft.OpenApi", "Scalar", "Swashbuckle")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            "Aedis.OpenApi.Abstractions é só opções e marcadores: o gerador e a UI ficam em Aedis.OpenApi e Aedis.OpenApi.Scalar");
+    }
+
     /// <summary>
     ///     Pacotes <c>*.Abstractions</c> publicam contratos e DTOs; quem implementa um contrato do próprio pacote é
     ///     implementação e pertence a um pacote neutro ou ao projeto de testes. Messaging e Storage ainda carregam
@@ -141,6 +152,7 @@ public class DependencyRuleTests
     [InlineData(typeof(Aedis.AI.Abstractions.IAgentEngine))]
     [InlineData(typeof(Aedis.Signing.Abstractions.ISigningKeyProvider))]
     [InlineData(typeof(Aedis.Tenancy.Abstractions.ICurrentTenant))]
+    [InlineData(typeof(Aedis.OpenApi.Abstractions.AedisOpenApiOptions))]
     public void Abstractions_nao_implementa_os_proprios_contratos(Type marker) {
         var assembly = marker.Assembly;
         var implementations = assembly.GetTypes()

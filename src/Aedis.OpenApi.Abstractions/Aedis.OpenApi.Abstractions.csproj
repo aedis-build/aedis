@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Aedis.OpenApi.Abstractions</PackageId>
+    <Description>Aedis.OpenApi.Abstractions — options (AedisOpenApiOptions) and documentation markers ([ProducesStandardErrors]) for the Aedis OpenAPI plugin, free of generator dependencies.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aedis.Core\Aedis.Core.csproj" />
+  </ItemGroup>
+
+</Project>
