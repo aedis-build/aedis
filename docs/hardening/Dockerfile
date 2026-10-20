@@ -12,7 +12,8 @@ ARG DOTNET_VERSION=10.0
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa AS build
 WORKDIR /src
 COPY . .
-RUN dotnet restore
+# --locked-mode: restaura exatamente o packages.lock.json versionado (RestorePackagesWithLockFile) e falha se divergir.
+RUN dotnet restore --locked-mode
 RUN dotnet publish -c Release -o /app --no-restore
 
 # ---- runtime (chiseled: Ubuntu mínima, non-root por padrão, sem shell) ----

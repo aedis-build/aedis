@@ -1,0 +1,22 @@
+# Release do app: em tag vX.Y.Z, a imagem multi-arch é construída, escaneada, assinada (cosign keyless), com SBOM e
+# proveniência pelo workflow reutilizável build-image do Aedis Platform. Separado do aedis-ci porque precisa de
+# permissões de escrita (pacotes, OIDC, atestações) que o CI de toda PR não deve ter.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  image:
+    uses: aedis-build/aedis-platform/.github/workflows/build-image.yml@820bfc78a548c3fcc98a5b9e303c93fa3a368243 # main
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      image: ghcr.io/${{ github.repository_owner }}/aedis-app1
+      version: ${{ github.ref_name }}
