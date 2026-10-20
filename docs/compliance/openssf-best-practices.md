@@ -113,3 +113,4 @@ Repository: <https://github.com/aedis-build/aedis-dotnet>. Links below point to 
 | `dynamic_analysis` | Met | Property-based tests with FsCheck on the parsers of external input, plus integration suites against real SQL Server, LocalStack, Vault and IBM MQ containers. |
 | `dynamic_analysis_unsafe` | N/A | C# is memory-safe; Aedis contains no unsafe code. |
 | `dynamic_analysis_enable_assertions` | Met | Invariants are guard clauses that are always active (not `Debug.Assert`), so every test run exercises them. |
+| `dynamic_analysis_fixed` | Met | Dynamic analysis runs on every pull request and a failure blocks the merge (required checks plus the Aedis Compliance merge gate), so any exploitable finding is fixed before the change lands. None of medium or higher severity has been found so far. |
