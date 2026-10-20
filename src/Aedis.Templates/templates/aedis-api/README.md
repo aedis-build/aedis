@@ -78,8 +78,9 @@ O `Dockerfile` usa base *chiseled* non-root e restaura com `--locked-mode`: as v
 de cada projeto, gerado no primeiro `dotnet restore` (`RestorePackagesWithLockFile`). Versione esses arquivos; o build
 da imagem falha se um pacote mudar sem o lock acompanhar. O deploy é declarativo pelo [Aedis Platform](https://github.com/aedis-build/aedis-platform):
 `deploy/app.yaml` são os values do chart `aedis-app` (baseline de pod, segredos via cofre, canário); copie-o para
-`apps/<nome>/app.yaml` no repositório GitOps (`aedis platform new-app`). O `.github/workflows/ci.yml` roda o
-`app-ci` reutilizável (commits, cobertura, SAST, CodeQL) e, em tag `vX.Y.Z`, constrói a imagem assinada com SBOM.
+`apps/<nome>/app.yaml` no repositório GitOps (`aedis platform new-app`). O `.github/workflows/aedis-ci.yml` roda o pipeline
+único `aedis-ci` da plataforma (commits, cobertura, SAST, CodeQL, REUSE) e o `.github/workflows/release.yml`, em tag
+`vX.Y.Z`, constrói a imagem assinada com SBOM e proveniência.
 
 ## Versão dos pacotes Aedis
 
