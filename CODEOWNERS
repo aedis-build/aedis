@@ -1,10 +1,11 @@
-# Donos por caminho. Segurança, hosting, CI e templates exigem revisão do time de plataforma/segurança.
+# Donos por caminho: o time maintainers (que precisa de escrita no repositório para valer). Os caminhos de
+# segurança, hosting, CI e templates ficam listados à parte para, quando houver um time de segurança, trocar só o dono.
 *                               @aedis-build/maintainers
-/src/Aedis.Security*/           @aedis-build/platform-security
-/src/Aedis.Secrets*/            @aedis-build/platform-security
-/src/Aedis.Signing*/            @aedis-build/platform-security
-/src/Aedis.Hosting*/            @aedis-build/platform-security
-/src/Aedis.Templates/           @aedis-build/platform-security
-/.github/                       @aedis-build/platform-security
-/CODEOWNERS                     @aedis-build/platform-security
-/SECURITY.md                    @aedis-build/platform-security
+/src/Aedis.Security*/           @aedis-build/maintainers
+/src/Aedis.Secrets*/            @aedis-build/maintainers
+/src/Aedis.Signing*/            @aedis-build/maintainers
+/src/Aedis.Hosting*/            @aedis-build/maintainers
+/src/Aedis.Templates/           @aedis-build/maintainers
+/.github/                       @aedis-build/maintainers
+/CODEOWNERS                     @aedis-build/maintainers
+/SECURITY.md                    @aedis-build/maintainers
