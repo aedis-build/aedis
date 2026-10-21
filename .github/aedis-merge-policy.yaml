@@ -1,7 +1,10 @@
 # Política do portão de merge (aedis-build/aedis-platform merge-gate.yml). Lida sempre do branch padrão; o que não
 # está aqui exige um humano.
 schema: aedis.platform/merge-policy/v1
-trustedAuthors: [jeffersonnlucas]
+# Bots entre aspas: os colchetes de "[bot]" quebram a lista em YAML.
+trustedAuthors: [jeffersonnlucas, "aedis-agent-coder[bot]"]
+# Só membros deste time contam como a revisão humana que os caminhos abaixo exigem (lido pela App do portão).
+maintainersTeam: maintainers
 humanRequiredPaths:
   - ".github/**"
   - CODEOWNERS
