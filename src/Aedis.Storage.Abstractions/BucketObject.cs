@@ -33,6 +33,6 @@ public record BucketObject(
     ///     Representação <c>bucket/caminho</c> do objeto, com barras duplicadas colapsadas em uma só.
     /// </summary>
     public override string ToString() {
-        return Regex.Replace($"{BucketName}/{FilePath}", "/{2,}", "/");
+        return Regex.Replace($"{BucketName}/{FilePath}", "/{2,}", "/", RegexOptions.None, TimeSpan.FromMilliseconds(100));
     }
 }

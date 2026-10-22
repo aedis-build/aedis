@@ -17,8 +17,8 @@ internal static class XmlDocumentation
 {
     private static readonly IReadOnlyDictionary<string, XElement> None = new Dictionary<string, XElement>();
     private static readonly ConcurrentDictionary<Assembly, IReadOnlyDictionary<string, XElement>> Files = new();
-    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
-    private static readonly Regex GenericArity = new(@"`\d+", RegexOptions.Compiled);
+    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex GenericArity = new(@"`\d+", RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
 
     public static string? Summary(MemberInfo member) => Text(Member(member)?.Element("summary"));
 
