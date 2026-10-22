@@ -27,7 +27,7 @@ namespace Aedis.OpenApi;
 internal static class ValidationRules
 {
     private const int MaxDepth = 4;
-    private static readonly Regex Placeholder = new(@"\{[A-Za-z]+\}", RegexOptions.Compiled);
+    private static readonly Regex Placeholder = new(@"\{[A-Za-z]+\}", RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
 
     /// <summary>
     ///     Rules of the validated types of the operation: the body and the complex query/route objects

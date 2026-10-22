@@ -28,6 +28,15 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
+  <!-- Os analyzers do próprio Aedis valem para o código do framework (src/), fora o projeto dos analyzers e os
+       modelos de template. Testes ficam de fora: comparam valores de teste e não são código entregue. -->
+  <PropertyGroup>
+    <_AedisProjectPath>$([MSBuild]::MakeRelative('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)').Replace('\', '/'))</_AedisProjectPath>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Aedis.Analyzers' And '$(MSBuildProjectName)' != 'Aedis.Templates' And $(_AedisProjectPath.StartsWith('src/')) And !$(_AedisProjectPath.Contains('/templates/'))">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/Aedis.Analyzers/Aedis.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
+
   <!-- Build determinístico em CI (supply-chain trust). -->
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>

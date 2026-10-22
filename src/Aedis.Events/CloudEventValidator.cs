@@ -12,14 +12,14 @@ public static class CloudEventValidator
     ///     "/orders/payments".
     /// </summary>
     private static readonly Regex SourcePattern =
-        new(@"^/[a-z0-9-]+(?:/[a-z0-9-]+)*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        new(@"^/[a-z0-9-]+(?:/[a-z0-9-]+)*$", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
 
     /// <summary>
     ///     Valida <c>type</c> na convenção reverse-DNS recomendada pelo CloudEvents, ex.:
     ///     "com.acme.order.created".
     /// </summary>
     private static readonly Regex TypePattern = new(@"^[a-z0-9]+(?:\.[a-z0-9]+)+$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
 
     /// <summary>
     ///     Valida um ResourceCloudEvent, verificando campos obrigatórios e formatos.
