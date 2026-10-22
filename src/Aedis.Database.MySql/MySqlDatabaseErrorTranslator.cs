@@ -19,9 +19,10 @@ internal static class MySqlDatabaseErrorTranslator
 
     private static readonly Regex ConstraintName = new(
         @"for key '(?:[^'.]+\.)?(?<name>[^']+)'|CONSTRAINT `(?<name>[^`]+)`|Check constraint '(?<name>[^']+)'",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        RegexOptions.Compiled | RegexOptions.CultureInvariant,
+        TimeSpan.FromMilliseconds(100));
 
-    private static readonly Regex ColumnName = new(@"Column '(?<name>[^']+)'", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex ColumnName = new(@"Column '(?<name>[^']+)'", RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
     /// <summary>Traduz a exceção; <c>null</c> quando ela não é um erro do banco reconhecido.</summary>
     internal static DatabaseError? TryTranslate(Exception exception) {
