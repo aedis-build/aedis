@@ -28,6 +28,28 @@ public sealed class UnsafeCodeAnalyzerTests
     }
 
     [Fact]
+    public async Task Tipo_campo_propriedade_funcao_local_e_delegate_unsafe_reportam()
+    {
+        const string source = """
+            public unsafe class A { }
+            public unsafe struct B { }
+            public class C {
+                private unsafe int* _p;
+                public unsafe int* P => _p;
+                public unsafe C(int* p) { _p = p; }
+                public void M() {
+                    unsafe void Local(int* q) { }
+                }
+            }
+            public unsafe delegate void D(int* p);
+            """;
+
+        var diagnostics = await AnalyzerHarness.RunAsync(new UnsafeCodeAnalyzer(), source);
+
+        diagnostics.Should().HaveCount(7);
+    }
+
+    [Fact]
     public async Task Codigo_gerenciado_e_stackalloc_em_span_nao_reportam()
     {
         const string source = """
@@ -38,6 +60,7 @@ public sealed class UnsafeCodeAnalyzerTests
                     Span<char> stack = stackalloc char[16];
                     heap.Fill(1);
                     stack.Fill('a');
+                    void Local() { }
                 }
             }
             """;

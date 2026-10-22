@@ -27,6 +27,27 @@ public sealed class ConstantTimeComparisonAnalyzerTests
     }
 
     [Fact]
+    public async Task Campo_propriedade_chamada_e_diferenca_tambem_reportam()
+    {
+        const string source = """
+            using System;
+            public class C {
+                private string _secret = "";
+                public string ApiKey { get; set; } = "";
+                public string ComputeHmac() => "";
+                public bool A(string other) => _secret != other;
+                public bool B(string other) => "x" == ApiKey;
+                public bool D(string other) => ComputeHmac().Equals(other);
+                public bool E(ReadOnlySpan<byte> digest, ReadOnlySpan<byte> other) => digest.SequenceEqual(other);
+            }
+            """;
+
+        var diagnostics = await AnalyzerHarness.RunAsync(new ConstantTimeComparisonAnalyzer(), source);
+
+        diagnostics.Should().HaveCount(4);
+    }
+
+    [Fact]
     public async Task Tempo_constante_nulo_ou_nome_comum_nao_reporta()
     {
         const string source = """
@@ -36,6 +57,10 @@ public sealed class ConstantTimeComparisonAnalyzerTests
                 public bool B(string token) => token == null;
                 public bool D(string status, string other) => status == other;
                 public bool E(int hashCode, int other) => hashCode == other;
+                public bool F(string token) => token == default;
+                public bool G(string token) => token.Equals((object)42);
+                public bool H(string token, string other) => token.StartsWith(other);
+                public bool I(int a, int b) => a < b;
             }
             """;
 
