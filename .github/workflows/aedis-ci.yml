@@ -8,13 +8,21 @@ on:
   push:
     branches: [ main ]
   pull_request:
+    types: [opened, synchronize, reopened, closed]
   schedule:
     - cron: "23 5 * * 2"
+
+# Uma execução por pull request: um push novo ou fechar o PR cancela a que está rodando. Push na main e o
+# agendamento nunca dividem grupo (run_id), então essas execuções sempre terminam.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 permissions: {}
 
 jobs:
   aedis:
+    if: github.event.action != 'closed'
     uses: aedis-build/aedis-platform/.github/workflows/aedis-ci.yml@9e9de9827e398a7317a2b9408f665e407ad855e1 # main (#38)
     permissions:
       contents: read
